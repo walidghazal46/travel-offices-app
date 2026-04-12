@@ -5,7 +5,9 @@ const {defineSecret} = require("firebase-functions/params");
 const {initializeApp} = require("firebase-admin/app");
 const {getAuth} = require("firebase-admin/auth");
 const {getFirestore, FieldValue} = require("firebase-admin/firestore");
+const {getStorage} = require("firebase-admin/storage");
 const {Resend} = require("resend");
+const {randomUUID} = require("node:crypto");
 
 initializeApp();
 const firestoreDb = getFirestore();
@@ -19,6 +21,7 @@ const ADMIN_EMAILS = [
   "walidghazal51@yahoo.com",
 ];
 const FROM_EMAIL = "noreply@mail.trustedoffices.org";
+const DEFAULT_STORAGE_BUCKET = "travel-offices-90c53.appspot.com";
 const COUNTRY_PAID_DEVICE_REQUEST_LIMIT = 3;
 const COUNTRY_PAID_DEVICE_REQUEST_WINDOW_DAYS = 7;
 const CV_PAID_DEVICE_REQUEST_LIMIT = 3;
@@ -59,6 +62,17 @@ function setCorsHeaders(res) {
   res.set("Access-Control-Allow-Origin", "*");
   res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+}
+
+function sanitizeFileName(name = "receipt") {
+  return String(name)
+    .replace(/[^\w.\-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function buildStorageDownloadUrl(bucketName, filePath, token) {
+  return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
 }
 
 function getOrderLimitConfig(order = {}) {
@@ -284,6 +298,74 @@ exports.sendOrderEmails = onRequest(
     } catch (error) {
       logger.error("Failed to send order emails", {orderId, error: error?.message || error});
       res.status(500).json({ok: false, error: error?.message || "email-send-failed"});
+    }
+  }
+);
+
+exports.uploadOrderReceipt = onRequest(
+  {
+    region: "us-central1",
+  },
+  async (req, res) => {
+    setCorsHeaders(res);
+
+    if (req.method === "OPTIONS") {
+      res.status(204).send("");
+      return;
+    }
+
+    if (req.method !== "POST") {
+      res.status(405).json({ok: false, error: "method-not-allowed"});
+      return;
+    }
+
+    const orderSerial = String(req.body?.orderSerial || "").trim();
+    const fileName = sanitizeFileName(req.body?.fileName || "receipt");
+    const contentType = String(req.body?.contentType || "application/octet-stream").trim() || "application/octet-stream";
+    const base64Data = String(req.body?.base64Data || "").trim();
+
+    if (!orderSerial || !base64Data) {
+      res.status(400).json({ok: false, error: "missing-upload-payload"});
+      return;
+    }
+
+    try {
+      const normalizedBase64 = base64Data.includes(",") ? base64Data.split(",").pop() : base64Data;
+      const fileBuffer = Buffer.from(normalizedBase64, "base64");
+      if (!fileBuffer.length) {
+        res.status(400).json({ok: false, error: "empty-file"});
+        return;
+      }
+
+      const bucket = getStorage().bucket(DEFAULT_STORAGE_BUCKET);
+      const filePath = `order-receipts/${orderSerial}/${Date.now()}-${fileName}`;
+      const token = randomUUID();
+      const file = bucket.file(filePath);
+
+      await file.save(fileBuffer, {
+        resumable: false,
+        metadata: {
+          contentType,
+          metadata: {
+            firebaseStorageDownloadTokens: token,
+          },
+        },
+      });
+
+      res.status(200).json({
+        ok: true,
+        path: filePath,
+        url: buildStorageDownloadUrl(bucket.name, filePath, token),
+        name: fileName,
+        type: contentType,
+        size: fileBuffer.length,
+      });
+    } catch (error) {
+      logger.error("Failed to upload order receipt", {
+        error: error?.message || error,
+        orderSerial,
+      });
+      res.status(500).json({ok: false, error: error?.message || "receipt-upload-failed"});
     }
   }
 );

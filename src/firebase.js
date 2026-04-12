@@ -57,6 +57,7 @@ export const firebaseStorage = getStorage(app);
 
 export const firebaseAuth = getAuth(app);
 export const CREATE_ORDER_FUNCTION_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/createOrder";
+export const UPLOAD_ORDER_RECEIPT_FUNCTION_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/uploadOrderReceipt";
 export const EXCHANGE_CUSTOM_TOKEN_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/exchangeIdTokenForCustomToken";
 export const DELETE_AUTH_USER_BY_ADMIN_FUNCTION_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/deleteAuthUserByAdmin";
 const DEVICE_ID_STORAGE_KEY = "travel-offices-device-id";
@@ -95,6 +96,60 @@ function sanitizeFileName(name = "receipt") {
     .replace(/[^\w.\-]+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+function shouldUseFunctionReceiptUpload() {
+  if (Capacitor.getPlatform() !== "web") return false;
+  try {
+    const host = String(window?.location?.hostname || "").toLowerCase();
+    return host === "127.0.0.1" || host === "localhost";
+  } catch {
+    return false;
+  }
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("file-read-failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadReceiptViaFunction(file, orderSerial) {
+  const dataUrl = await readFileAsDataUrl(file);
+  const response = await withRetry(async () => fetch(UPLOAD_ORDER_RECEIPT_FUNCTION_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      orderSerial,
+      fileName: file.name || "receipt",
+      contentType: file.type || "application/octet-stream",
+      base64Data: dataUrl,
+    }),
+  }));
+
+  const responsePayload = await response.json().catch(() => null);
+  if (!response.ok || !responsePayload?.ok) {
+    const nextError = new Error(
+      responsePayload?.message ||
+      responsePayload?.error ||
+      `upload-receipt-http-${response.status}`
+    );
+    nextError.code = responsePayload?.error || `http-${response.status}`;
+    nextError.status = response.status;
+    nextError.details = responsePayload || null;
+    throw nextError;
+  }
+
+  return {
+    path: responsePayload.path,
+    url: responsePayload.url,
+    name: responsePayload.name,
+    type: responsePayload.type,
+    size: responsePayload.size,
+  };
 }
 
 function createFallbackDeviceId() {
@@ -141,20 +196,60 @@ export async function getClientDeviceId() {
 export async function uploadReceiptToFirebase(file, orderSerial) {
   if (!file) return null;
   const cleanName = sanitizeFileName(file.name || "receipt");
-  const storageRef = ref(firebaseStorage, `order-receipts/${orderSerial}/${Date.now()}-${cleanName}`);
-  await withRetry(async () => {
-    await uploadBytes(storageRef, file, {
-      contentType: file.type || "application/octet-stream",
+  if (shouldUseFunctionReceiptUpload()) {
+    try {
+      return await uploadReceiptViaFunction(file, orderSerial);
+    } catch (error) {
+      console.warn("Receipt upload function unavailable on localhost, deferring receipt upload", error);
+      return {
+        path: "",
+        url: "",
+        name: file.name || cleanName,
+        type: file.type || "",
+        size: file.size || 0,
+        deferred: true,
+        errorCode: String(error?.code || error?.message || "receipt-upload-deferred-localhost"),
+      };
+    }
+  }
+  try {
+    const storageRef = ref(firebaseStorage, `order-receipts/${orderSerial}/${Date.now()}-${cleanName}`);
+    await withRetry(async () => {
+      await uploadBytes(storageRef, file, {
+        contentType: file.type || "application/octet-stream",
+      });
     });
-  });
-  const downloadUrl = await getDownloadURL(storageRef);
-  return {
-    path: storageRef.fullPath,
-    url: downloadUrl,
-    name: file.name || cleanName,
-    type: file.type || "",
-    size: file.size || 0,
-  };
+    const downloadUrl = await getDownloadURL(storageRef);
+    return {
+      path: storageRef.fullPath,
+      url: downloadUrl,
+      name: file.name || cleanName,
+      type: file.type || "",
+      size: file.size || 0,
+    };
+  } catch (error) {
+    if (Capacitor.getPlatform() === "web") {
+      console.warn("Direct Firebase Storage upload failed, retrying via function", error);
+      try {
+        return await uploadReceiptViaFunction(file, orderSerial);
+      } catch (fallbackError) {
+        if (shouldUseFunctionReceiptUpload()) {
+          console.warn("Receipt upload still blocked on localhost, deferring upload", fallbackError);
+          return {
+            path: "",
+            url: "",
+            name: file.name || cleanName,
+            type: file.type || "",
+            size: file.size || 0,
+            deferred: true,
+            errorCode: String(fallbackError?.code || fallbackError?.message || "receipt-upload-deferred-localhost"),
+          };
+        }
+        throw fallbackError;
+      }
+    }
+    throw error;
+  }
 }
 
 export async function saveOrderToFirebase(orderData) {

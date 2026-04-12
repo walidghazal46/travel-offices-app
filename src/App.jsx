@@ -3576,31 +3576,38 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
         60000,
         "receipt upload"
       );
-      if (!uploadedReceipt?.url) {
+      if (!uploadedReceipt?.url && !uploadedReceipt?.deferred) {
         throw new Error("receipt-upload-failed");
       }
 
+      const receiptUploadDeferred = !!uploadedReceipt?.deferred;
+      const receiptUploadError = String(uploadedReceipt?.errorCode || "");
+
       nextOrder = hydratePaidOrder({
         ...nextOrder,
-        receiptUrl: uploadedReceipt.url,
-        receiptStoragePath: uploadedReceipt.path,
+        receiptUrl: uploadedReceipt?.url || "",
+        receiptStoragePath: uploadedReceipt?.path || "",
         receiptMeta: {
           ...(nextOrder.receiptMeta || {}),
-          uploadedName: uploadedReceipt.name,
-          uploadedType: uploadedReceipt.type,
-          uploadedSize: uploadedReceipt.size,
+          uploadedName: uploadedReceipt?.name || nextOrder?.receiptName || "",
+          uploadedType: uploadedReceipt?.type || nextOrder?.receiptMeta?.type || "",
+          uploadedSize: uploadedReceipt?.size || nextOrder?.receiptMeta?.size || 0,
         },
-        uploadStatus: "uploaded",
+        uploadStatus: receiptUploadDeferred ? "deferred" : "uploaded",
+        receiptUploadDeferred,
+        receiptUploadError,
       });
 
       await withTimeout(
         updateOrderInFirebase(firebaseId, {
-          receiptUrl: uploadedReceipt.url,
-          receiptStoragePath: uploadedReceipt.path,
+          receiptUrl: uploadedReceipt?.url || "",
+          receiptStoragePath: uploadedReceipt?.path || "",
           receiptMeta: {
             ...(nextOrder.receiptMeta || {}),
           },
-          uploadStatus: "uploaded",
+          uploadStatus: receiptUploadDeferred ? "deferred" : "uploaded",
+          receiptUploadDeferred,
+          receiptUploadError,
         }),
         60000,
         "order update"
