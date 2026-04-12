@@ -5834,6 +5834,7 @@ export default function App() {
     premium: createEmptyCvPackageStats(),
     elite: createEmptyCvPackageStats(),
   });
+  const [cvAdminAllOrders, setCvAdminAllOrders] = useState([]);
   const [officeReviewSubmitting, setOfficeReviewSubmitting] = useState(false);
   const [officeReviewError, setOfficeReviewError] = useState("");
   const [officeReviewEditingId, setOfficeReviewEditingId] = useState("");
@@ -8144,6 +8145,18 @@ export default function App() {
     };
   }, [applyCvPackageStatsUpdate]);
 
+  useEffect(() => {
+    if (!isAdminUser) return undefined;
+    let isMounted = true;
+    fetchServiceOrdersFromFirebase()
+      .then(orders => {
+        if (!isMounted) return;
+        setCvAdminAllOrders((orders || []).filter(o => String(o?.serviceCategory || "") === "cv"));
+      })
+      .catch(err => console.error("CV admin orders fetch failed", err));
+    return () => { isMounted = false; };
+  }, [isAdminUser]);
+
   // 3. تعريف المتغيرات المشتقة (لإصلاح خطأ dir is not defined)
   const dir = lang === "ar" ? "rtl" : "ltr";
   const t = dark ? themes.dark : themes.light;
@@ -8650,6 +8663,10 @@ export default function App() {
         if (cvBuilderScreen === "orderDetails") {
           setSelectedCvBuilderOrder(null);
           setCvBuilderScreen("previousOrders");
+          return;
+        }
+        if (cvBuilderScreen === "adminOrders") {
+          setCvBuilderScreen("menu");
           return;
         }
         if (cvBuilderScreen === "previousOrders") {
@@ -12516,26 +12533,31 @@ export default function App() {
           const cvBuilderStats = cvPackageStats.builder || createEmptyCvPackageStats();
           const cvPremiumStats = cvPackageStats.premium || createEmptyCvPackageStats();
           const cvEliteStats = cvPackageStats.elite || createEmptyCvPackageStats();
+          // Use real order counts for admin; fall back to stats doc counts for regular users
+          const cvRealBuilderCount = isAdminUser ? cvAdminAllOrders.filter(o => String(o?.serviceKey || "") === "builder").length : cvBuilderStats.requestsCount;
+          const cvRealPremiumCount = isAdminUser ? cvAdminAllOrders.filter(o => String(o?.serviceKey || "") === "premium").length : cvPremiumStats.requestsCount;
+          const cvRealEliteCount = isAdminUser ? cvAdminAllOrders.filter(o => String(o?.serviceKey || "") === "elite").length : cvEliteStats.requestsCount;
+          const cvAdminBuilderOrders = isAdminUser ? cvAdminAllOrders.filter(o => String(o?.serviceKey || "") === "builder") : [];
           const cvPackageStatsCards = [
             {
               key: "builder",
               accent: "#0f766e",
               icon: "📄",
-              users: cvBuilderStats.requestsCount,
+              users: cvRealBuilderCount,
               avg: Number(cvBuilderStats.averageRating || 0).toFixed(1),
             },
             {
               key: "premium",
               accent: "#c8960c",
               icon: "👑",
-              users: cvPremiumStats.requestsCount,
+              users: cvRealPremiumCount,
               avg: Number(cvPremiumStats.averageRating || 0).toFixed(1),
             },
             {
               key: "elite",
               accent: "#7c3aed",
               icon: "🚀",
-              users: cvEliteStats.requestsCount,
+              users: cvRealEliteCount,
               avg: Number(cvEliteStats.averageRating || 0).toFixed(1),
             },
           ];
@@ -12685,6 +12707,7 @@ export default function App() {
                   </div>
                 </div>
               )}
+              {!cvMode && (
               <div style={{ ...cardStyle, padding:isCompactPhone ? "9px" : "12px", marginTop:6, background: dark ? "linear-gradient(135deg, rgba(15,23,42,0.96), rgba(30,41,59,0.88))" : "linear-gradient(135deg, #fff8e6, #eef4ff)", border:`1px solid ${t.gold}44`, boxShadow: dark ? "0 18px 38px rgba(0,0,0,0.24)" : "0 18px 38px rgba(15,23,42,0.08)" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, marginBottom:isCompactPhone ? 5 : 6, flexWrap:"wrap" }}>
                   <span style={{ ...tagStyle, background:"#e53e3e18", color:"#e53e3e" }}>🔥 {lang==="ar" ? "خصم 50٪ لفترة محدودة" : "50% OFF for a limited time"}</span>
@@ -12785,6 +12808,23 @@ export default function App() {
                   ))}
                 </div>
               </div>
+              )}
+
+              {cvMode && (
+                <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:6, marginBottom:6, fontFamily:"'Cairo',sans-serif" }}>
+                  <button
+                    onClick={() => { setCvMode(null); setSelectedCvPackage(null); setCvBuilderScreen("menu"); setSelectedCvBuilderOrder(null); setCvStep(0); setCvUnlocked(false); }}
+                    disabled={cvPackageSelectionLocked}
+                    style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 13px", borderRadius:999, border:`1px solid ${t.border}`, background:t.cardBg, color:t.gold, fontSize:12, fontWeight:800, cursor:cvPackageSelectionLocked?"not-allowed":"pointer", opacity:cvPackageSelectionLocked?0.4:1, flexShrink:0 }}
+                  >
+                    <span style={{ fontSize:15 }}>{lang==="ar"?"›":"‹"}</span>
+                    <span>{lang==="ar" ? "الباقات" : "Packages"}</span>
+                  </button>
+                  <span style={{ fontSize:13, fontWeight:900, color:t.text, lineHeight:1.3 }}>
+                    {cvMode==="builder" ? (lang==="ar"?"مستخدم عادي":"Regular User") : selectedCvPackage==="premium" ? (lang==="ar"?"باقة بريميم":"Premium Package") : (lang==="ar"?"باقة البحث والتوظيف":"Job Search Package")}
+                  </span>
+                </div>
+              )}
 
               {!cvMode ? (
                 cvJobSitesCard
@@ -12813,7 +12853,71 @@ export default function App() {
                         >
                           📋 {lang==="ar" ? `طلبات سابقة (${cvBuilderOrders.length})` : `Previous Requests (${cvBuilderOrders.length})`}
                         </button>
+                        {isAdminUser && (
+                          <button
+                            onClick={() => setCvBuilderScreen("adminOrders")}
+                            style={{ ...cvActionBtnStyle("#1e1b4b18", "#7c3aed"), border:`1px solid #7c3aed55`, boxShadow:"none", marginBottom:0 }}
+                          >
+                            🔑 {lang==="ar" ? `طلبات الأدمن — مستخدم عادي (${cvRealBuilderCount})` : `Admin Orders — Regular (${cvRealBuilderCount})`}
+                          </button>
+                        )}
                       </div>
+                    </div>
+                  </div>
+                ) : cvBuilderScreen === "adminOrders" ? (
+                  <div style={{ display:"grid", gap:14, marginTop:16 }}>
+                    <div style={{ ...cardStyle, padding:"14px" }}>
+                      <div style={{ fontSize:15, fontWeight:900, color:"#7c3aed", fontFamily:"'Cairo',sans-serif", marginBottom:10 }}>
+                        🔑 {lang==="ar" ? "طلبات المستخدمين العاديين" : "Regular Users Orders"}
+                      </div>
+                      <div style={{ fontSize:10, color:t.subText, fontFamily:"'Cairo',sans-serif", marginBottom:12 }}>
+                        {lang==="ar" ? `إجمالي الطلبات: ${cvAdminBuilderOrders.length}` : `Total orders: ${cvAdminBuilderOrders.length}`}
+                      </div>
+                      {cvAdminBuilderOrders.length ? (
+                        <div style={{ display:"grid", gap:10 }}>
+                          {[...cvAdminBuilderOrders].sort((a,b) => new Date(b.date||b.createdAt||0) - new Date(a.date||a.createdAt||0)).map((order, idx) => (
+                            <div key={order.id||order.firebaseId||idx} style={{ background:t.inputBg, border:`1px solid ${t.border}`, borderRadius:14, padding:"12px 14px" }}>
+                              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, marginBottom:6, flexWrap:"wrap" }}>
+                                <div style={{ fontSize:12, fontWeight:900, color:t.text, fontFamily:"'Cairo',sans-serif" }}>
+                                  {String(order.name||order.fullName||"—")}
+                                </div>
+                                <div style={{ fontSize:10, color:"#7c3aed", fontWeight:800, fontFamily:"'Cairo',sans-serif" }}>
+                                  {String(order.orderNumber||order.serial||"")}
+                                </div>
+                              </div>
+                              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4 }}>
+                                {[
+                                  [lang==="ar"?"الهاتف":"Phone", String(order.phone||"—")],
+                                  [lang==="ar"?"واتساب":"WhatsApp", String(order.whatsapp||"—")],
+                                  [lang==="ar"?"الدولة":"Country", String(order.country||"—")],
+                                  [lang==="ar"?"التاريخ":"Date", String(order.dateStr||order.date?.slice?.(0,10)||"—")],
+                                ].map(([label,value],i) => (
+                                  <div key={i} style={{ fontSize:10, color:t.subText, fontFamily:"'Cairo',sans-serif" }}>
+                                    <span style={{ fontWeight:700 }}>{label}: </span>{value}
+                                  </div>
+                                ))}
+                              </div>
+                              {order.email && (
+                                <div style={{ fontSize:10, color:t.subText, marginTop:4, fontFamily:"'Cairo',sans-serif" }}>
+                                  {lang==="ar"?"الإيميل":"Email"}: {order.email}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize:12, color:t.subText, textAlign:"center", padding:"14px 0", fontFamily:"'Cairo',sans-serif" }}>
+                          {lang==="ar" ? "لا توجد طلبات بعد." : "No orders yet."}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display:"flex", justifyContent:"center" }}>
+                      <button
+                        onClick={() => setCvBuilderScreen("menu")}
+                        style={{ ...cvActionBtnStyle(t.inputBg, t.gold), border:`1px solid ${t.gold}`, boxShadow:"none", maxWidth:220 }}
+                      >
+                        {lang==="ar" ? "رجوع" : "Back"}
+                      </button>
                     </div>
                   </div>
                 ) : cvBuilderScreen === "previousOrders" ? (
