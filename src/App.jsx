@@ -10745,7 +10745,7 @@ export default function App() {
             })}
           </div>
         </div>
-        {authPreviewMode === "login" && (
+        {authPreviewMode !== "otp" && (
           <div style={{ marginTop: -2, width: "min(100%, 270px)", marginInline: "auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <a
               href={`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
