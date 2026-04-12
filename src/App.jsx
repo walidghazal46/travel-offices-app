@@ -6662,8 +6662,13 @@ export default function App() {
 
   const navigateBackFromAccountPanel = useCallback(() => {
     closeAccountPanel();
-    goToEgyptMenu();
-  }, [closeAccountPanel, goToEgyptMenu]);
+    setMainTab("home");
+    setSelectedCountry("مصر");
+    setShowOtherDropdown(false);
+    setSelectedGov(null);
+    setActiveTab("ministry");
+    setView("egyptMenu");
+  }, [closeAccountPanel]);
 
   const handleAccountBackAction = useCallback(() => {
     if (accountDeleteConfirm) {
@@ -8716,6 +8721,7 @@ export default function App() {
     setActiveTab("ministry");
     setView("egyptMenu");
   };
+
   const goToCountryLanding = () => {
     if (!closeSelectedOfficeView()) return;
     setMainTab("home");
