@@ -6660,6 +6660,11 @@ export default function App() {
     setAccountDeleteConfirm(false);
   }, [clearAccountPhoneVerifier]);
 
+  const navigateBackFromAccountPanel = useCallback(() => {
+    closeAccountPanel();
+    goToEgyptMenu();
+  }, [closeAccountPanel, goToEgyptMenu]);
+
   const handleAccountBackAction = useCallback(() => {
     if (accountDeleteConfirm) {
       setAccountDeleteConfirm(false);
@@ -6673,8 +6678,8 @@ export default function App() {
       setAccountProfileSuccess("");
       return;
     }
-    closeAccountPanel();
-  }, [accountDeleteConfirm, accountPhoneVerificationId, closeAccountPanel]);
+    navigateBackFromAccountPanel();
+  }, [accountDeleteConfirm, accountPhoneVerificationId, navigateBackFromAccountPanel]);
 
   const closeSignOutConfirm = useCallback(() => {
     setSignOutConfirmOpen(false);
@@ -8766,7 +8771,7 @@ export default function App() {
         setAccountProfileSuccess("");
         return;
       }
-      closeAccountPanel();
+      navigateBackFromAccountPanel();
       return;
     }
 
@@ -8901,7 +8906,7 @@ export default function App() {
     accountPanelOpen,
     accountDeleteConfirm,
     accountPhoneVerificationId,
-    closeAccountPanel,
+    navigateBackFromAccountPanel,
     adminPanelOpen,
     closeAdminPanel,
     closeSelectedOfficeView,
@@ -14108,58 +14113,54 @@ export default function App() {
               <div style={{ fontSize: 10, color: t.subText, fontFamily: "sans-serif", lineHeight: 1.6 }}>{tx.discEn}</div>
             </div>
 
-            <button
-              onClick={isAdminUser ? openAdminSecurityModal : goToCountryLanding}
-              style={{
-                width: "100%",
-                marginTop: 14,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 10,
-                padding: "12px 18px",
-                borderRadius: 18,
-                border: `1.5px solid ${isAdminUser ? "rgba(74,222,128,0.7)" : t.gold}`,
-                background: isAdminUser
-                  ? (dark ? "rgba(6,78,59,0.22)" : "rgba(240,253,244,0.96)")
-                  : (dark ? "rgba(10,22,40,0.92)" : "rgba(255,251,240,0.96)"),
-                color: isAdminUser ? (dark ? "#bbf7d0" : "#166534") : t.gold,
-                fontSize: 13,
-                fontWeight: 800,
-                cursor: "pointer",
-                fontFamily: "'Cairo',sans-serif",
-                boxShadow: isAdminUser
-                  ? (dark
+            {isAdminUser && (
+              <button
+                onClick={openAdminSecurityModal}
+                style={{
+                  width: "100%",
+                  marginTop: 14,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  padding: "12px 18px",
+                  borderRadius: 18,
+                  border: "1.5px solid rgba(74,222,128,0.7)",
+                  background: dark ? "rgba(6,78,59,0.22)" : "rgba(240,253,244,0.96)",
+                  color: dark ? "#bbf7d0" : "#166534",
+                  fontSize: 13,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  fontFamily: "'Cairo',sans-serif",
+                  boxShadow: dark
                     ? "0 0 0 4px rgba(74,222,128,0.12), 0 0 18px rgba(74,222,128,0.18)"
-                    : "0 0 0 4px rgba(34,197,94,0.12), 0 10px 22px rgba(34,197,94,0.14)")
-                  : (dark
-                    ? `0 0 0 4px ${t.gold}14, 0 0 18px ${t.gold}20`
-                    : `0 0 0 4px ${t.gold}14, 0 10px 22px rgba(212,175,55,0.16)`),
-                backdropFilter: "blur(12px)",
-              }}
-            >
-              <span style={{
-                width: 24,
-                height: 24,
-                borderRadius: "50%",
-                background: isAdminUser ? "rgba(74,222,128,0.18)" : `${t.gold}22`,
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 14,
-              }}>
-                {isAdminUser ? "👑" : (lang === "ar" ? "‹" : "›")}
-              </span>
-              <span>{isAdminUser ? (lang === "ar" ? "حساب الأدمن" : "Admin Account") : (lang === "ar" ? "العودة للصفحة الرئيسية" : "Back to Main Page")}</span>
-              <span style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: isAdminUser ? "#4ade80" : t.gold,
-                boxShadow: `0 0 8px ${isAdminUser ? "#4ade80" : t.gold}`,
-                animation: "goldPulse 1.8s ease-in-out infinite",
-              }} />
-            </button>
+                    : "0 0 0 4px rgba(34,197,94,0.12), 0 10px 22px rgba(34,197,94,0.14)",
+                  backdropFilter: "blur(12px)",
+                }}
+              >
+                <span style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  background: "rgba(74,222,128,0.18)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 14,
+                }}>
+                  👑
+                </span>
+                <span>{lang === "ar" ? "حساب الأدمن" : "Admin Account"}</span>
+                <span style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: "#4ade80",
+                  boxShadow: "0 0 8px #4ade80",
+                  animation: "goldPulse 1.8s ease-in-out infinite",
+                }} />
+              </button>
+            )}
           </div>
         )}
 
