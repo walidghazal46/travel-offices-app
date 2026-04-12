@@ -5884,6 +5884,9 @@ export default function App() {
     elite: createEmptyCvPackageStats(),
   });
   const [cvAdminAllOrders, setCvAdminAllOrders] = useState([]);
+  const [cvAdminOrdersQuery, setCvAdminOrdersQuery] = useState("");
+  const [cvAdminOrdersStageFilter, setCvAdminOrdersStageFilter] = useState("all");
+  const [cvAdminOrdersSortMode, setCvAdminOrdersSortMode] = useState("newest");
   const [officeReviewSubmitting, setOfficeReviewSubmitting] = useState(false);
   const [officeReviewError, setOfficeReviewError] = useState("");
   const [officeReviewEditingId, setOfficeReviewEditingId] = useState("");
@@ -12606,6 +12609,52 @@ export default function App() {
           const cvAdminPremiumOrders = cvAdminOrdersByPackage.premium || [];
           const cvAdminEliteOrders = cvAdminOrdersByPackage.elite || [];
 
+          const getCvOrderTimestamp = (order) => {
+            const createdAtValue = order?.createdAt;
+            if (createdAtValue?.toDate) {
+              return createdAtValue.toDate().getTime();
+            }
+            const raw = order?.date || order?.createdAt || "";
+            const ts = new Date(raw).getTime();
+            return Number.isFinite(ts) ? ts : 0;
+          };
+
+          const normalizedCvAdminQuery = String(cvAdminOrdersQuery || "").trim().toLowerCase();
+          const cvAdminBuilderOrdersFiltered = cvAdminBuilderOrders
+            .filter((order) => {
+              const orderStage = Number(order?.statusIndex);
+              if (cvAdminOrdersStageFilter === "active" && orderStage >= 4) return false;
+              if (cvAdminOrdersStageFilter === "done" && orderStage < 4) return false;
+              if (!normalizedCvAdminQuery) return true;
+
+              const searchBlob = [
+                order?.name,
+                order?.fullName,
+                order?.phone,
+                order?.whatsapp,
+                order?.email,
+                order?.orderNumber,
+                order?.serial,
+                order?.country,
+                order?.city,
+                order?.dateStr,
+              ]
+                .map((v) => String(v || "").toLowerCase())
+                .join(" ");
+
+              return searchBlob.includes(normalizedCvAdminQuery);
+            })
+            .sort((a, b) => {
+              if (cvAdminOrdersSortMode === "oldest") {
+                return getCvOrderTimestamp(a) - getCvOrderTimestamp(b);
+              }
+              if (cvAdminOrdersSortMode === "name") {
+                return String(a?.name || a?.fullName || "")
+                  .localeCompare(String(b?.name || b?.fullName || ""), lang === "ar" ? "ar" : "en");
+              }
+              return getCvOrderTimestamp(b) - getCvOrderTimestamp(a);
+            });
+
           const cvRealBuilderCount = isAdminUser ? cvAdminBuilderOrders.length : cvBuilderStats.requestsCount;
           const cvRealPremiumCount = isAdminUser ? cvAdminPremiumOrders.length : cvPremiumStats.requestsCount;
           const cvRealEliteCount = isAdminUser ? cvAdminEliteOrders.length : cvEliteStats.requestsCount;
@@ -12942,44 +12991,78 @@ export default function App() {
                       <div style={{ fontSize:15, fontWeight:900, color:"#7c3aed", fontFamily:"'Cairo',sans-serif", marginBottom:10 }}>
                         🔑 {lang==="ar" ? "طلبات المستخدمين العاديين" : "Regular Users Orders"}
                       </div>
-                      <div style={{ fontSize:10, color:t.subText, fontFamily:"'Cairo',sans-serif", marginBottom:12 }}>
-                        {lang==="ar" ? `إجمالي الطلبات: ${cvAdminBuilderOrders.length}` : `Total orders: ${cvAdminBuilderOrders.length}`}
+                      <div style={{ fontSize:10, color:t.subText, fontFamily:"'Cairo',sans-serif", marginBottom:10 }}>
+                        {lang==="ar"
+                          ? `إجمالي الطلبات: ${cvAdminBuilderOrders.length} • بعد الفلتر: ${cvAdminBuilderOrdersFiltered.length}`
+                          : `Total orders: ${cvAdminBuilderOrders.length} • Filtered: ${cvAdminBuilderOrdersFiltered.length}`}
                       </div>
-                      {cvAdminBuilderOrders.length ? (
-                        <div style={{ display:"grid", gap:10 }}>
-                          {[...cvAdminBuilderOrders].sort((a,b) => new Date(b.date||b.createdAt||0) - new Date(a.date||a.createdAt||0)).map((order, idx) => (
-                            <div key={order.id||order.firebaseId||idx} style={{ background:t.inputBg, border:`1px solid ${t.border}`, borderRadius:14, padding:"12px 14px" }}>
-                              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, marginBottom:6, flexWrap:"wrap" }}>
+                      <div style={{ display:"grid", gridTemplateColumns:isCompactPhone ? "1fr" : "1.6fr .8fr .8fr", gap:8, marginBottom:10 }}>
+                        <input
+                          value={cvAdminOrdersQuery}
+                          onChange={(e) => setCvAdminOrdersQuery(e.target.value)}
+                          placeholder={lang==="ar" ? "فلتر بالاسم أو الرقم أو الهاتف" : "Filter by name, number, or phone"}
+                          style={{ width:"100%", height:36, borderRadius:10, border:`1px solid ${t.border}`, background:t.inputBg, color:t.text, padding:"0 10px", fontSize:11, fontFamily:"'Cairo',sans-serif", outline:"none" }}
+                        />
+                        <select
+                          value={cvAdminOrdersStageFilter}
+                          onChange={(e) => setCvAdminOrdersStageFilter(e.target.value)}
+                          style={{ width:"100%", height:36, borderRadius:10, border:`1px solid ${t.border}`, background:t.inputBg, color:t.text, padding:"0 8px", fontSize:11, fontFamily:"'Cairo',sans-serif", outline:"none" }}
+                        >
+                          <option value="all">{lang==="ar" ? "كل الحالات" : "All statuses"}</option>
+                          <option value="active">{lang==="ar" ? "قيد التنفيذ" : "Active"}</option>
+                          <option value="done">{lang==="ar" ? "مكتمل" : "Done"}</option>
+                        </select>
+                        <select
+                          value={cvAdminOrdersSortMode}
+                          onChange={(e) => setCvAdminOrdersSortMode(e.target.value)}
+                          style={{ width:"100%", height:36, borderRadius:10, border:`1px solid ${t.border}`, background:t.inputBg, color:t.text, padding:"0 8px", fontSize:11, fontFamily:"'Cairo',sans-serif", outline:"none" }}
+                        >
+                          <option value="newest">{lang==="ar" ? "الأحدث" : "Newest"}</option>
+                          <option value="oldest">{lang==="ar" ? "الأقدم" : "Oldest"}</option>
+                          <option value="name">{lang==="ar" ? "الاسم" : "Name"}</option>
+                        </select>
+                      </div>
+
+                      {cvAdminBuilderOrdersFiltered.length ? (
+                        <div style={{ display:"grid", gap:8, maxHeight:470, overflowY:"auto", paddingRight:4 }}>
+                          {cvAdminBuilderOrdersFiltered.map((order, idx) => {
+                            const orderStage = Number(order?.statusIndex);
+                            const stageText = orderStage >= 4
+                              ? (lang==="ar" ? "مكتمل" : "Done")
+                              : (lang==="ar" ? "قيد التنفيذ" : "Active");
+                            const stageColor = orderStage >= 4 ? "#16a34a" : "#f59e0b";
+                            return (
+                            <div key={order.id||order.firebaseId||idx} style={{ minHeight:86, background:t.inputBg, border:`1px solid ${t.border}`, borderRadius:12, padding:"10px 12px", display:"grid", gap:4 }}>
+                              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                                 <div style={{ fontSize:12, fontWeight:900, color:t.text, fontFamily:"'Cairo',sans-serif" }}>
                                   {String(order.name||order.fullName||"—")}
                                 </div>
-                                <div style={{ fontSize:10, color:"#7c3aed", fontWeight:800, fontFamily:"'Cairo',sans-serif" }}>
-                                  {String(order.orderNumber||order.serial||"")}
+                                <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                                  <span style={{ fontSize:10, color:"#7c3aed", fontWeight:800, fontFamily:"'Cairo',sans-serif" }}>
+                                    {String(order.orderNumber||order.serial||"")}
+                                  </span>
+                                  <span style={{ fontSize:9, fontWeight:800, color:stageColor, border:`1px solid ${stageColor}44`, borderRadius:999, padding:"2px 7px", background:`${stageColor}18` }}>
+                                    {stageText}
+                                  </span>
                                 </div>
                               </div>
-                              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4 }}>
-                                {[
-                                  [lang==="ar"?"الهاتف":"Phone", String(order.phone||"—")],
-                                  [lang==="ar"?"واتساب":"WhatsApp", String(order.whatsapp||"—")],
-                                  [lang==="ar"?"الدولة":"Country", String(order.country||"—")],
-                                  [lang==="ar"?"التاريخ":"Date", String(order.dateStr||order.date?.slice?.(0,10)||"—")],
-                                ].map(([label,value],i) => (
-                                  <div key={i} style={{ fontSize:10, color:t.subText, fontFamily:"'Cairo',sans-serif" }}>
-                                    <span style={{ fontWeight:700 }}>{label}: </span>{value}
-                                  </div>
-                                ))}
+                              <div style={{ fontSize:10, color:t.subText, fontFamily:"'Cairo',sans-serif", lineHeight:1.65 }}>
+                                {lang==="ar" ? "الهاتف" : "Phone"}: {String(order.phone||"—")} | {lang==="ar" ? "واتساب" : "WhatsApp"}: {String(order.whatsapp||"—")}
                               </div>
-                              {order.email && (
-                                <div style={{ fontSize:10, color:t.subText, marginTop:4, fontFamily:"'Cairo',sans-serif" }}>
-                                  {lang==="ar"?"الإيميل":"Email"}: {order.email}
+                              <div style={{ fontSize:10, color:t.subText, fontFamily:"'Cairo',sans-serif", lineHeight:1.65 }}>
+                                {lang==="ar" ? "الدولة" : "Country"}: {String(order.country||"—")} | {lang==="ar" ? "التاريخ" : "Date"}: {String(order.dateStr||order.date?.slice?.(0,10)||"—")}
+                              </div>
+                              {!!order.email && (
+                                <div style={{ fontSize:10, color:t.subText, fontFamily:"'Cairo',sans-serif", lineHeight:1.65 }}>
+                                  {lang==="ar" ? "الإيميل" : "Email"}: {order.email}
                                 </div>
                               )}
                             </div>
-                          ))}
+                          );})}
                         </div>
                       ) : (
                         <div style={{ fontSize:12, color:t.subText, textAlign:"center", padding:"14px 0", fontFamily:"'Cairo',sans-serif" }}>
-                          {lang==="ar" ? "لا توجد طلبات بعد." : "No orders yet."}
+                          {lang==="ar" ? "لا توجد نتائج مطابقة للفلتر." : "No orders match the current filter."}
                         </div>
                       )}
                     </div>
