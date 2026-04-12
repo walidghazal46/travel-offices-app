@@ -3748,6 +3748,40 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
     </div>
   ) : null;
 
+  const renderCancelCurrentPaidRequestButton = () => {
+    if (isCvPaidFlow) {
+      return (
+        <div style={{ display:"flex", justifyContent:"center" }}>
+          <button
+            onClick={cancelCurrentPaidRequest}
+            style={{
+              maxWidth:260,
+              width:"100%",
+              padding:"11px 18px",
+              borderRadius:12,
+              border:"1px solid #dc262655",
+              background:"linear-gradient(135deg,#fff8e6,#fff1f2)",
+              color:"#dc2626",
+              fontSize:13,
+              fontWeight:800,
+              cursor:"pointer",
+              fontFamily:"'Cairo',sans-serif",
+              boxShadow:"0 8px 22px rgba(220,38,38,0.08)",
+            }}
+          >
+            {isAr ? "إلغاء الطلب الحالي" : "Cancel Current Request"}
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <button onClick={cancelCurrentPaidRequest} style={{ ...btnStyle(t.inputBg, t.gold), boxShadow:"none", border:`1px solid ${t.gold}` }}>
+        {isAr ? "إلغاء الطلب الحالي" : "Cancel Current Request"}
+      </button>
+    );
+  };
+
   // ── SCREEN: list ──────────────────────────────────────────────────────────
   if (screen === "list") return (
     <div dir={dir} style={{ fontFamily:"'Cairo',sans-serif", color:t.text }}>
@@ -4370,12 +4404,7 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
             >
               {isAr?"التالي — اختر طريقة الدفع ←":"Next — Choose Payment →"}
             </button>
-            <button
-              onClick={cancelCurrentPaidRequest}
-              style={{ ...btnStyle(t.inputBg, t.gold), boxShadow:"none", border:`1px solid ${t.gold}` }}
-            >
-              {isAr ? "إلغاء الطلب الحالي" : "Cancel Current Request"}
-            </button>
+            {renderCancelCurrentPaidRequestButton()}
           </div>
         )}
 
@@ -4461,7 +4490,7 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
             )}
             <div style={{ display:"grid", gap:10 }}>
               <button onClick={() => setStep(1)} style={{ ...btnStyle(t.inputBg, t.text), boxShadow:"none", border:`1px solid ${t.border}` }}>{isAr?"→ السابق":"← Back"}</button>
-              <button onClick={cancelCurrentPaidRequest} style={{ ...btnStyle(t.inputBg, t.gold), boxShadow:"none", border:`1px solid ${t.gold}` }}>{isAr ? "إلغاء الطلب الحالي" : "Cancel Current Request"}</button>
+              {renderCancelCurrentPaidRequestButton()}
             </div>
           </div>
         )}
@@ -4503,9 +4532,7 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
                 ))}
               </div>
             </div>
-            <button onClick={cancelCurrentPaidRequest} style={{ ...btnStyle(t.inputBg, t.gold), boxShadow:"none", border:`1px solid ${t.gold}` }}>
-              {isAr ? "إلغاء الطلب الحالي" : "Cancel Current Request"}
-            </button>
+            {renderCancelCurrentPaidRequestButton()}
           </>
         ) : (
           <>
@@ -4548,9 +4575,7 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
                     : (isAr ? "جارٍ حفظ الطلب..." : "Saving order..."))
                 : (isAr?"تأكيد الدفع وإرسال الطلب":"Confirm Payment & Submit Request")}
             </button>
-            <button onClick={cancelCurrentPaidRequest} style={{ ...btnStyle(t.inputBg, t.gold), boxShadow:"none", border:`1px solid ${t.gold}` }}>
-              {isAr ? "إلغاء الطلب الحالي" : "Cancel Current Request"}
-            </button>
+            {renderCancelCurrentPaidRequestButton()}
           </>
         )}
       </div>
