@@ -13870,26 +13870,28 @@ export default function App() {
                 <div style={{ marginTop:16 }}>
                   {selectedCvService && (
                     <>
-                      <div style={{ ...cardStyle, border:`1px solid ${selectedCvService.price === 20 ? "#c8960c44" : "#7c3aed44"}`, background:selectedCvService.price === 20 ? "rgba(200,150,12,0.08)" : "rgba(124,58,237,0.08)" }}>
-                        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, marginBottom:8, flexWrap:"wrap" }}>
-                          <div style={{ fontSize:14, fontWeight:800, color:selectedCvService.price === 20 ? "#c8960c" : "#7c3aed", fontFamily:"'Cairo',sans-serif" }}>
-                            {selectedCvPackageIntro?.title}
-                          </div>
-                          <div style={{ fontSize:11, fontWeight:800, color:"#e53e3e", background:"#fee2e2", borderRadius:999, padding:"3px 9px" }}>
-                            {lang==="ar" ? "خصم 50٪" : "50% OFF"}
-                          </div>
-                        </div>
-                        <div style={{ fontSize:12, color:t.text, lineHeight:1.9, fontFamily:"'Cairo',sans-serif", marginBottom:12 }}>
-                          {selectedCvPackageIntro?.body}
-                        </div>
-                        <div style={{ display:"grid", gap:8 }}>
-                          {selectedCvService.features.map((feature, idx) => (
-                            <div key={idx} style={{ fontSize:11, color:t.text, fontFamily:"'Cairo',sans-serif" }}>
-                              ✓ {feature}
+                      {cvPaidScreen === "list" && (
+                        <div style={{ ...cardStyle, border:`1px solid ${selectedCvService.price === 20 ? "#c8960c44" : "#7c3aed44"}`, background:selectedCvService.price === 20 ? "rgba(200,150,12,0.08)" : "rgba(124,58,237,0.08)" }}>
+                          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, marginBottom:8, flexWrap:"wrap" }}>
+                            <div style={{ fontSize:14, fontWeight:800, color:selectedCvService.price === 20 ? "#c8960c" : "#7c3aed", fontFamily:"'Cairo',sans-serif" }}>
+                              {selectedCvPackageIntro?.title}
                             </div>
-                          ))}
+                            <div style={{ fontSize:11, fontWeight:800, color:"#e53e3e", background:"#fee2e2", borderRadius:999, padding:"3px 9px" }}>
+                              {lang==="ar" ? "خصم 50٪" : "50% OFF"}
+                            </div>
+                          </div>
+                          <div style={{ fontSize:12, color:t.text, lineHeight:1.9, fontFamily:"'Cairo',sans-serif", marginBottom:12 }}>
+                            {selectedCvPackageIntro?.body}
+                          </div>
+                          <div style={{ display:"grid", gap:8 }}>
+                            {selectedCvService.features.map((feature, idx) => (
+                              <div key={idx} style={{ fontSize:11, color:t.text, fontFamily:"'Cairo',sans-serif" }}>
+                                ✓ {feature}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
                       <PaidFlowErrorBoundary lang={lang} resetKey={`cv-${selectedCvService.key}-${cvPaidBackRequest}`}>
                         <PaidServicesFlow
                           key={selectedCvService.key}
