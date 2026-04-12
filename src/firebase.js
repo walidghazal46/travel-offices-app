@@ -4,6 +4,7 @@ import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 import {
   createUserWithEmailAndPassword,
   deleteUser,
+  getRedirectResult,
   getAuth,
   GoogleAuthProvider,
   linkWithCredential,
@@ -16,6 +17,7 @@ import {
   signInWithPhoneNumber,
   signInWithCredential,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
   updateEmail,
   updatePhoneNumber,
@@ -476,26 +478,72 @@ export async function signInWithGooglePopup() {
   }
 
   if (Capacitor.getPlatform() === "android") {
-    const nativeResult = await FirebaseAuthentication.signInWithGoogle({
-      skipNativeAuth: true,
-      scopes: ["email", "profile"],
-      useCredentialManager: false,
-    });
-    const nativeIdToken = String(nativeResult?.credential?.idToken || "").trim();
-    const nativeAccessToken = String(nativeResult?.credential?.accessToken || "").trim();
-    if (!nativeIdToken && !nativeAccessToken) {
-      throw new Error("google-native-missing-credential");
+    let lastNativeError = null;
+    const nativeModes = [false, true];
+
+    for (const useCredentialManager of nativeModes) {
+      try {
+        const nativeResult = await FirebaseAuthentication.signInWithGoogle({
+          skipNativeAuth: true,
+          scopes: ["email", "profile"],
+          useCredentialManager,
+        });
+        const nativeIdToken = String(nativeResult?.credential?.idToken || "").trim();
+        const nativeAccessToken = String(nativeResult?.credential?.accessToken || "").trim();
+        if (!nativeIdToken && !nativeAccessToken) {
+          throw new Error("google-native-missing-credential");
+        }
+        const googleCredential = GoogleAuthProvider.credential(
+          nativeIdToken || null,
+          nativeAccessToken || null
+        );
+        const authResult = await signInWithCredential(firebaseAuth, googleCredential);
+        return authResult.user;
+      } catch (error) {
+        lastNativeError = error;
+      }
     }
-    const googleCredential = GoogleAuthProvider.credential(
-      nativeIdToken || null,
-      nativeAccessToken || null
+
+    const nativeError = new Error(
+      String(lastNativeError?.message || "google-native-signin-failed")
     );
-    const authResult = await signInWithCredential(firebaseAuth, googleCredential);
-    return authResult.user;
+    nativeError.code = String(lastNativeError?.code || "google-native-signin-failed");
+    nativeError.details = {
+      nativeMessage: String(lastNativeError?.message || ""),
+    };
+    throw nativeError;
   }
 
-  const result = await signInWithPopup(firebaseAuth, cachedGoogleProvider);
-  return result.user;
+  try {
+    const result = await signInWithPopup(firebaseAuth, cachedGoogleProvider);
+    return result.user;
+  } catch (error) {
+    const code = String(error?.code || "").toLowerCase();
+    if (
+      code.includes("popup-blocked") ||
+      code.includes("cancelled-popup-request") ||
+      code.includes("popup-closed-by-user")
+    ) {
+      await signInWithRedirect(firebaseAuth, cachedGoogleProvider);
+      const redirectError = new Error("google-redirect-started");
+      redirectError.code = "google-redirect-started";
+      throw redirectError;
+    }
+    throw error;
+  }
+}
+
+export async function consumeGoogleRedirectResult() {
+  if (Capacitor.getPlatform() === "android") {
+    return null;
+  }
+
+  const result = await getRedirectResult(firebaseAuth);
+  if (!result?.user) {
+    return null;
+  }
+
+  return enforceUserNotBlocked(result.user);
 }
 
 export async function signOutCurrentUser() {

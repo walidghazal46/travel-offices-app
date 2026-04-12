@@ -10,6 +10,7 @@ import {
   deleteAddedOfficeInFirebase,
   deleteAuthUserByAdminInFirebase,
   createOrderViaFirebaseFunction,
+  consumeGoogleRedirectResult,
   fetchOfficeCustomizationsFromFirebase,
   fetchCvPackageStatsFromFirebase,
   fetchOfficeReviewsFromFirebase,
@@ -6225,6 +6226,38 @@ export default function App() {
     resetAuthPreviewForm();
   }, [resetAuthPreviewForm]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const redirectUser = await consumeGoogleRedirectResult();
+        if (cancelled || !redirectUser) return;
+
+        setModal({
+          type: "info",
+          title: lang === "ar" ? "تم تسجيل الدخول" : "Login successful",
+          msg: lang === "ar"
+            ? "تم تسجيل دخولك عبر Google بنجاح."
+            : "You have signed in successfully with Google.",
+        });
+        closeAuthPreview();
+      } catch (error) {
+        if (cancelled) return;
+        const detail = String(error?.message || error?.code || "unknown");
+        setAuthPreviewError(
+          lang === "ar"
+            ? `تعذر إكمال تسجيل Google بعد الرجوع من المتصفح. (${detail})`
+            : `Unable to complete Google sign-in after returning from the browser. (${detail})`
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [closeAuthPreview, lang]);
+
   const authPreviewIdentifierType = useMemo(() => {
     const value = String(authPreviewIdentifier || "").trim();
     if (!value) return "";
@@ -6398,8 +6431,18 @@ export default function App() {
   const handleAuthPreviewGoogle = useCallback(async () => {
     setAuthPreviewBusy(true);
     clearAuthPreviewFeedback();
+    let timeoutId = null;
     try {
-      await signInWithGooglePopup();
+      const timeoutMs = 25000;
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          const timeoutError = new Error("google-signin-timeout");
+          timeoutError.code = "google-signin-timeout";
+          reject(timeoutError);
+        }, timeoutMs);
+      });
+      await Promise.race([signInWithGooglePopup(), timeoutPromise]);
+      if (timeoutId) clearTimeout(timeoutId);
       setModal({
         type: "info",
         title: lang === "ar" ? "تم تسجيل الدخول" : "Login successful",
@@ -6409,13 +6452,65 @@ export default function App() {
       });
       closeAuthPreview();
     } catch (error) {
+      if (String(error?.code || "") === "google-redirect-started") {
+        setAuthPreviewError(
+          lang === "ar"
+            ? "تم التحويل لطريقة تسجيل Google البديلة. أكمل تسجيل الدخول في الصفحة المفتوحة."
+            : "Switched to Google redirect sign-in. Complete sign-in on the opened page."
+        );
+        return;
+      }
+      if (String(error?.code || "") === "google-signin-timeout") {
+        setAuthPreviewError(
+          lang === "ar"
+            ? "انتهت مهلة تسجيل Google. أغلق المتصفح الخارجي ثم أعد المحاولة."
+            : "Google sign-in timed out. Close the external browser and try again."
+        );
+        return;
+      }
       console.error("Google sign-in failed", error);
-      setAuthPreviewError(
-        lang === "ar"
-          ? "تعذر تسجيل الدخول عبر Google الآن. حاول مرة أخرى."
-          : "Unable to continue with Google right now. Please try again."
+      const rawCode = String(error?.code || "").toLowerCase();
+      const rawMessage = String(error?.message || "").toLowerCase();
+      const details = String(
+        error?.details?.nativeMessage ||
+        error?.details?.popupMessage ||
+        error?.message ||
+        error?.code ||
+        "unknown"
       );
+
+      if (
+        rawCode.includes("app-not-authorized") ||
+        rawCode.includes("developer_error") ||
+        rawCode.includes("unauthorized") ||
+        rawMessage.includes("app not authorized") ||
+        rawMessage.includes("sha")
+      ) {
+        setAuthPreviewError(
+          lang === "ar"
+            ? "تسجيل Google غير مصرح لهذا التطبيق. أضف SHA-1 و SHA-256 في Firebase ثم نزّل google-services.json الجديد."
+            : "Google sign-in is not authorized for this app. Add SHA-1 and SHA-256 in Firebase, then download the latest google-services.json."
+        );
+      } else if (
+        rawCode.includes("popup") ||
+        rawMessage.includes("popup") ||
+        rawCode.includes("cancel") ||
+        rawMessage.includes("cancel")
+      ) {
+        setAuthPreviewError(
+          lang === "ar"
+            ? "تم إغلاق نافذة Google أو تم حظرها. حاول مرة أخرى."
+            : "The Google window was blocked or closed. Please try again."
+        );
+      } else {
+        setAuthPreviewError(
+          lang === "ar"
+            ? `تعذر تسجيل الدخول عبر Google. (${details})`
+            : `Unable to continue with Google. (${details})`
+        );
+      }
     } finally {
+      if (timeoutId) clearTimeout(timeoutId);
       setAuthPreviewBusy(false);
     }
   }, [clearAuthPreviewFeedback, closeAuthPreview, lang]);
