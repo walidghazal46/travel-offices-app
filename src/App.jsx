@@ -5890,6 +5890,8 @@ export default function App() {
     premium: createEmptyCvPackageStats(),
     elite: createEmptyCvPackageStats(),
   });
+  const [cvRealtimeOrders, setCvRealtimeOrders] = useState([]);
+  const [cvRealtimeOrdersFetched, setCvRealtimeOrdersFetched] = useState(false);
   const [cvAdminAllOrders, setCvAdminAllOrders] = useState([]);
   const [cvAdminOrdersQuery, setCvAdminOrdersQuery] = useState("");
   const [cvAdminOrdersStageFilter, setCvAdminOrdersStageFilter] = useState("all");
@@ -7760,6 +7762,19 @@ export default function App() {
     }));
   }, []);
 
+  const refreshCvOrdersFromFirebase = useCallback(async () => {
+    const orders = await fetchServiceOrdersFromFirebase();
+    const cvOrders = (orders || []).filter(isCvOrderRecord);
+    setCvRealtimeOrders(cvOrders);
+    setCvRealtimeOrdersFetched(true);
+    if (isAdminUser) {
+      setCvAdminAllOrders(cvOrders);
+    } else {
+      setCvAdminAllOrders([]);
+    }
+    return cvOrders;
+  }, [isAdminUser]);
+
   const ensureCvBuilderOrderForCurrentRequestAsync = useCallback(async () => {
     const ensuredOrder = ensureCvBuilderOrderForCurrentRequest();
     let nextOrder = ensuredOrder;
@@ -8196,24 +8211,55 @@ export default function App() {
       const payload = event?.detail;
       if (!payload?.packageKey || !payload?.stats) return;
       applyCvPackageStatsUpdate(payload.packageKey, payload.stats);
+      refreshCvOrdersFromFirebase().catch((error) => {
+        console.error("CV orders refresh after stats event failed", error);
+      });
     };
 
     window.addEventListener("cv-package-stats-updated", handleCvPackageStatsUpdated);
     return () => {
       window.removeEventListener("cv-package-stats-updated", handleCvPackageStatsUpdated);
     };
-  }, [applyCvPackageStatsUpdate]);
+  }, [applyCvPackageStatsUpdate, refreshCvOrdersFromFirebase]);
 
   useEffect(() => {
-    if (!isAdminUser) return undefined;
     let isMounted = true;
-    fetchServiceOrdersFromFirebase()
-      .then(orders => {
+
+    const loadCvOrders = async () => {
+      try {
+        const orders = await fetchServiceOrdersFromFirebase();
         if (!isMounted) return;
-        setCvAdminAllOrders((orders || []).filter(isCvOrderRecord));
-      })
-      .catch(err => console.error("CV admin orders fetch failed", err));
-    return () => { isMounted = false; };
+        const cvOrders = (orders || []).filter(isCvOrderRecord);
+        setCvRealtimeOrders(cvOrders);
+        setCvRealtimeOrdersFetched(true);
+        if (isAdminUser) {
+          setCvAdminAllOrders(cvOrders);
+        } else {
+          setCvAdminAllOrders([]);
+        }
+      } catch (error) {
+        if (!isMounted) return;
+        setCvRealtimeOrdersFetched(false);
+        if (!isAdminUser) {
+          setCvAdminAllOrders([]);
+        }
+        console.error("CV orders fetch failed", error);
+      }
+    };
+
+    const handleVisibilityRefresh = () => {
+      if (document.visibilityState !== "visible") return;
+      loadCvOrders();
+    };
+
+    loadCvOrders();
+    window.addEventListener("focus", loadCvOrders);
+    document.addEventListener("visibilitychange", handleVisibilityRefresh);
+    return () => {
+      isMounted = false;
+      window.removeEventListener("focus", loadCvOrders);
+      document.removeEventListener("visibilitychange", handleVisibilityRefresh);
+    };
   }, [isAdminUser]);
 
   // 3. تعريف المتغيرات المشتقة (لإصلاح خطأ dir is not defined)
@@ -12592,6 +12638,14 @@ export default function App() {
           const cvBuilderStats = cvPackageStats.builder || createEmptyCvPackageStats();
           const cvPremiumStats = cvPackageStats.premium || createEmptyCvPackageStats();
           const cvEliteStats = cvPackageStats.elite || createEmptyCvPackageStats();
+          const cvRealtimeOrdersByPackage = cvRealtimeOrders.reduce((acc, order) => {
+            const packageKey = detectCvPackageKeyFromOrder(order);
+            if (!packageKey) return acc;
+            if (!acc[packageKey]) acc[packageKey] = [];
+            acc[packageKey].push(order);
+            return acc;
+          }, { builder: [], premium: [], elite: [] });
+
           const cvAdminOrdersByPackage = isAdminUser
             ? cvAdminAllOrders.reduce((acc, order) => {
                 const packageKey = detectCvPackageKeyFromOrder(order);
@@ -12603,7 +12657,7 @@ export default function App() {
             : { builder: [], premium: [], elite: [] };
 
           const getRealAvgRating = (orders, fallbackAvg) => {
-            if (!isAdminUser) return Number(fallbackAvg || 0).toFixed(1);
+            if (!cvRealtimeOrdersFetched) return Number(fallbackAvg || 0).toFixed(1);
             const ratingValues = (orders || [])
               .map((order) => Number(order?.rating) || 0)
               .filter((value) => value > 0);
@@ -12611,6 +12665,10 @@ export default function App() {
             const avg = ratingValues.reduce((sum, value) => sum + value, 0) / ratingValues.length;
             return Number(avg || 0).toFixed(1);
           };
+
+          const cvRealtimeBuilderOrders = cvRealtimeOrdersByPackage.builder || [];
+          const cvRealtimePremiumOrders = cvRealtimeOrdersByPackage.premium || [];
+          const cvRealtimeEliteOrders = cvRealtimeOrdersByPackage.elite || [];
 
           const cvAdminBuilderOrders = cvAdminOrdersByPackage.builder || [];
           const cvAdminPremiumOrders = cvAdminOrdersByPackage.premium || [];
@@ -12662,9 +12720,9 @@ export default function App() {
               return getCvOrderTimestamp(b) - getCvOrderTimestamp(a);
             });
 
-          const cvRealBuilderCount = isAdminUser ? cvAdminBuilderOrders.length : cvBuilderStats.requestsCount;
-          const cvRealPremiumCount = isAdminUser ? cvAdminPremiumOrders.length : cvPremiumStats.requestsCount;
-          const cvRealEliteCount = isAdminUser ? cvAdminEliteOrders.length : cvEliteStats.requestsCount;
+          const cvRealBuilderCount = cvRealtimeOrdersFetched ? cvRealtimeBuilderOrders.length : cvBuilderStats.requestsCount;
+          const cvRealPremiumCount = cvRealtimeOrdersFetched ? cvRealtimePremiumOrders.length : cvPremiumStats.requestsCount;
+          const cvRealEliteCount = cvRealtimeOrdersFetched ? cvRealtimeEliteOrders.length : cvEliteStats.requestsCount;
 
           const cvPackageStatsCards = [
             {
@@ -12672,21 +12730,21 @@ export default function App() {
               accent: "#0f766e",
               icon: "📄",
               users: cvRealBuilderCount,
-              avg: getRealAvgRating(cvAdminBuilderOrders, cvBuilderStats.averageRating),
+              avg: getRealAvgRating(cvRealtimeBuilderOrders, cvBuilderStats.averageRating),
             },
             {
               key: "premium",
               accent: "#c8960c",
               icon: "👑",
               users: cvRealPremiumCount,
-              avg: getRealAvgRating(cvAdminPremiumOrders, cvPremiumStats.averageRating),
+              avg: getRealAvgRating(cvRealtimePremiumOrders, cvPremiumStats.averageRating),
             },
             {
               key: "elite",
               accent: "#7c3aed",
               icon: "🚀",
               users: cvRealEliteCount,
-              avg: getRealAvgRating(cvAdminEliteOrders, cvEliteStats.averageRating),
+              avg: getRealAvgRating(cvRealtimeEliteOrders, cvEliteStats.averageRating),
             },
           ];
           const cvPackages = [
