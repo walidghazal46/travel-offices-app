@@ -39,7 +39,7 @@ import {
   where,
   getFirestore,
 } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDr4xrvIrZw3FOd4cMpjVZ-d7E0g1q_3Oo",
