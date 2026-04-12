@@ -4245,8 +4245,8 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
               )}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                 <PaidFieldWrap label={isAr?"رقم الهاتف *":"Phone *"} labelStyle={labelStyle}>
-                  <div style={{ display:"grid", gridTemplateColumns:"80px 1fr", gap:6, direction:"ltr" }}>
-                    <input style={{ ...inputStyle, textAlign:"center", fontWeight:800 }} value={defaultDialCode} readOnly dir="ltr" />
+                  <div style={{ display:"grid", gridTemplateColumns:"40px minmax(0, 1.4fr)", gap:6, direction:"ltr" }}>
+                    <input style={{ ...inputStyle, textAlign:"center", fontWeight:800, padding:"9px 4px" }} value={defaultDialCode} readOnly dir="ltr" />
                     <input
                       style={{ ...inputStyle, direction:"ltr", textAlign:"left" }}
                       value={phoneNationalDigits}
@@ -4263,8 +4263,8 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
                   {!!phoneFieldError && <div style={{ marginTop:6, fontSize:11, color:"#dc2626", fontWeight:800 }}>{phoneFieldError}</div>}
                 </PaidFieldWrap>
                 <PaidFieldWrap label={isAr?"واتساب *":"WhatsApp *"} labelStyle={labelStyle}>
-                  <div style={{ display:"grid", gridTemplateColumns:"80px 1fr", gap:6, direction:"ltr" }}>
-                    <input style={{ ...inputStyle, textAlign:"center", fontWeight:800 }} value={defaultDialCode} readOnly dir="ltr" />
+                  <div style={{ display:"grid", gridTemplateColumns:"40px minmax(0, 1.4fr)", gap:6, direction:"ltr" }}>
+                    <input style={{ ...inputStyle, textAlign:"center", fontWeight:800, padding:"9px 4px" }} value={defaultDialCode} readOnly dir="ltr" />
                     <input
                       style={{ ...inputStyle, direction:"ltr", textAlign:"left" }}
                       value={whatsappNationalDigits}
