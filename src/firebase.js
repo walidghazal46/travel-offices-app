@@ -303,6 +303,15 @@ export async function updateOrderInFirebase(firebaseId, updates) {
   }));
 }
 
+export async function deleteOrderInFirebase(firebaseId) {
+  const cleanOrderId = String(firebaseId || "").trim();
+  if (!cleanOrderId) {
+    throw new Error("order-id-required");
+  }
+
+  await withRetry(async () => deleteDoc(doc(firestoreDb, "orders", cleanOrderId)));
+}
+
 export async function saveOfficeReviewToFirebase(reviewData) {
   const payload = {
     ...removeUndefined(reviewData),
@@ -1028,6 +1037,43 @@ export async function updateUserProfileStatusInFirebase(uid, status) {
       { merge: true }
     )
   );
+}
+
+export async function adjustUserRequestCreditsInFirebase(uid, bucket, delta) {
+  const cleanUid = String(uid || "").trim();
+  const cleanBucket = String(bucket || "").trim();
+  const numericDelta = Number(delta);
+  if (!cleanUid) {
+    throw new Error("auth-user-profile-uid-required");
+  }
+  if (!cleanBucket) {
+    throw new Error("request-credits-bucket-required");
+  }
+  if (!Number.isFinite(numericDelta) || numericDelta === 0) {
+    throw new Error("request-credits-delta-invalid");
+  }
+
+  const profileRef = doc(firestoreDb, "users", cleanUid);
+  const snapshot = await withRetry(async () => getDoc(profileRef));
+  const existingData = snapshot.exists() ? (snapshot.data() || {}) : {};
+  const currentCredits = Number(existingData?.requestCredits?.[cleanBucket]) || 0;
+  const nextCredits = Math.max(0, currentCredits + numericDelta);
+
+  await withRetry(async () =>
+    setDoc(
+      profileRef,
+      {
+        requestCredits: {
+          ...(existingData?.requestCredits || {}),
+          [cleanBucket]: nextCredits,
+        },
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    )
+  );
+
+  return nextCredits;
 }
 
 export async function deleteUserProfileInFirebase(uid) {

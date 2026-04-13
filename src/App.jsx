@@ -8,6 +8,7 @@ import {
   createAccountPhoneRecaptcha,
   createPhoneRecaptcha,
   deleteAddedOfficeInFirebase,
+  deleteOrderInFirebase,
   deleteAuthUserByAdminInFirebase,
   createOrderViaFirebaseFunction,
   consumeGoogleRedirectResult,
@@ -6072,11 +6073,14 @@ export default function App() {
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminUsersLoading, setAdminUsersLoading] = useState(false);
   const [adminUsersError, setAdminUsersError] = useState("");
+  const [adminUsersQuery, setAdminUsersQuery] = useState("");
   const [adminActionBusyUid, setAdminActionBusyUid] = useState("");
   const [adminActionConfirm, setAdminActionConfirm] = useState(null);
   const [adminOrders, setAdminOrders] = useState([]);
   const [adminOrdersLoading, setAdminOrdersLoading] = useState(false);
   const [adminOrdersError, setAdminOrdersError] = useState("");
+  const [adminOrdersQuery, setAdminOrdersQuery] = useState("");
+  const [adminOrderActionBusyId, setAdminOrderActionBusyId] = useState("");
   const [adminOrdersFilter, setAdminOrdersFilter] = useState("30d");
   const [adminOpsFilter, setAdminOpsFilter] = useState("all");
   const [adminDelayedStageKey, setAdminDelayedStageKey] = useState("contact48");
@@ -6967,9 +6971,12 @@ export default function App() {
   const closeAdminPanel = useCallback(() => {
     setAdminPanelOpen(false);
     setAdminUsersError("");
+    setAdminUsersQuery("");
     setAdminActionBusyUid("");
     setAdminActionConfirm(null);
     setAdminOrdersError("");
+    setAdminOrdersQuery("");
+    setAdminOrderActionBusyId("");
     setAdminExpandedOrderId("");
   }, []);
 
@@ -7042,6 +7049,187 @@ export default function App() {
       );
     } finally {
       setAdminOrdersLoading(false);
+    }
+  }, [lang]);
+
+  const syncAdminOrderLocally = useCallback((orderId, updater) => {
+    const cleanOrderId = String(orderId || "").trim();
+    if (!cleanOrderId) return;
+    setAdminOrders((prev) => prev.map((entry) => {
+      const entryId = String(entry?.firebaseId || entry?.id || "").trim();
+      if (entryId !== cleanOrderId) return entry;
+      return typeof updater === "function"
+        ? updater(entry)
+        : { ...entry, ...(updater || {}) };
+    }));
+  }, []);
+
+  const handleAdminOrderSetStage = useCallback(async (orderItem, targetIndex) => {
+    const orderId = String(orderItem?.firebaseId || orderItem?.id || "").trim();
+    if (!orderId) {
+      setAdminOrdersError(lang === "ar" ? "لا يمكن تعديل هذا الطلب الآن." : "Cannot update this order right now.");
+      return;
+    }
+
+    const safeIndex = Math.max(0, Math.min(STATUS_STEP_KEYS.length - 1, Number(targetIndex) || 0));
+    const nextStageMap = { ...createInitialStageConfirmations() };
+    STATUS_STEP_KEYS.forEach((key, idx) => {
+      nextStageMap[key] = idx <= safeIndex;
+    });
+    const nextStatusText = safeIndex >= STATUS_STEP_KEYS.length - 1 ? "done" : "in-progress";
+
+    setAdminOrderActionBusyId(orderId);
+    setAdminOrdersError("");
+    try {
+      await updateOrderInFirebase(orderId, {
+        statusIndex: safeIndex,
+        stageConfirmations: nextStageMap,
+        status: nextStatusText,
+        orderStatus: nextStatusText,
+      });
+      syncAdminOrderLocally(orderId, {
+        statusIndex: safeIndex,
+        stageConfirmations: nextStageMap,
+        status: nextStatusText,
+        orderStatus: nextStatusText,
+      });
+    } catch (error) {
+      console.error("Failed to update admin order stage", error);
+      setAdminOrdersError(lang === "ar" ? "تعذر تعديل مرحلة الطلب." : "Unable to update order stage.");
+    } finally {
+      setAdminOrderActionBusyId("");
+    }
+  }, [lang, syncAdminOrderLocally]);
+
+  const handleAdminOrderClearReview = useCallback(async (orderItem) => {
+    const orderId = String(orderItem?.firebaseId || orderItem?.id || "").trim();
+    if (!orderId) {
+      setAdminOrdersError(lang === "ar" ? "لا يمكن تعديل هذا الطلب الآن." : "Cannot update this order right now.");
+      return;
+    }
+
+    setAdminOrderActionBusyId(orderId);
+    setAdminOrdersError("");
+    try {
+      await updateOrderInFirebase(orderId, {
+        reviewed: false,
+        rating: 0,
+        reviewText: "",
+        reviewSavedAt: null,
+      });
+      syncAdminOrderLocally(orderId, {
+        reviewed: false,
+        rating: 0,
+        reviewText: "",
+        reviewedFlag: false,
+        ratingValue: 0,
+        reviewTextValue: "",
+      });
+    } catch (error) {
+      console.error("Failed to clear order review", error);
+      setAdminOrdersError(lang === "ar" ? "تعذر حذف التقييم والتعليق." : "Unable to remove rating and comment.");
+    } finally {
+      setAdminOrderActionBusyId("");
+    }
+  }, [lang, syncAdminOrderLocally]);
+
+  const handleAdminOrderEditDetails = useCallback(async (orderItem) => {
+    const orderId = String(orderItem?.firebaseId || orderItem?.id || "").trim();
+    if (!orderId) {
+      setAdminOrdersError(lang === "ar" ? "لا يمكن تعديل هذا الطلب الآن." : "Cannot update this order right now.");
+      return;
+    }
+
+    const nextName = window.prompt(
+      lang === "ar" ? "اسم العميل" : "Customer name",
+      String(orderItem?.customerName || orderItem?.name || orderItem?.fullName || "")
+    );
+    if (nextName === null) return;
+
+    const nextPhone = window.prompt(
+      lang === "ar" ? "رقم الهاتف" : "Phone number",
+      String(orderItem?.customerPhone || orderItem?.phone || "")
+    );
+    if (nextPhone === null) return;
+
+    const nextWhatsapp = window.prompt(
+      lang === "ar" ? "رقم واتساب" : "WhatsApp number",
+      String(orderItem?.whatsapp || orderItem?.customerPhone || orderItem?.phone || "")
+    );
+    if (nextWhatsapp === null) return;
+
+    const nextCountry = window.prompt(
+      lang === "ar" ? "الدولة" : "Country",
+      String(orderItem?.countryName || orderItem?.country || "")
+    );
+    if (nextCountry === null) return;
+
+    const nextService = window.prompt(
+      lang === "ar" ? "اسم الخدمة" : "Service name",
+      String(orderItem?.serviceName || orderItem?.service || "")
+    );
+    if (nextService === null) return;
+
+    const payload = {
+      name: String(nextName || "").trim(),
+      fullName: String(nextName || "").trim(),
+      phone: String(nextPhone || "").trim(),
+      whatsapp: String(nextWhatsapp || "").trim(),
+      country: String(nextCountry || "").trim(),
+      service: String(nextService || "").trim(),
+    };
+
+    setAdminOrderActionBusyId(orderId);
+    setAdminOrdersError("");
+    try {
+      await updateOrderInFirebase(orderId, payload);
+      syncAdminOrderLocally(orderId, (entry) => {
+        const rawPhone = String(payload.phone || entry.customerPhone || "").trim();
+        const digitsOnly = rawPhone.replace(/\D+/g, "");
+        const whatsappDigits = String(payload.whatsapp || "").replace(/\D+/g, "");
+        return {
+          ...entry,
+          ...payload,
+          customerName: payload.name,
+          customerPhone: payload.phone,
+          countryName: payload.country,
+          serviceName: payload.service,
+          whatsappNumber: (whatsappDigits || digitsOnly || "").replace(/^00/, ""),
+        };
+      });
+    } catch (error) {
+      console.error("Failed to edit order details", error);
+      setAdminOrdersError(lang === "ar" ? "تعذر تعديل بيانات الطلب." : "Unable to edit order details.");
+    } finally {
+      setAdminOrderActionBusyId("");
+    }
+  }, [lang, syncAdminOrderLocally]);
+
+  const handleAdminDeleteOrder = useCallback(async (orderItem) => {
+    const orderId = String(orderItem?.firebaseId || orderItem?.id || "").trim();
+    if (!orderId) {
+      setAdminOrdersError(lang === "ar" ? "لا يمكن حذف هذا الطلب الآن." : "Cannot delete this order right now.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      lang === "ar"
+        ? "تأكيد حذف هذا الطلب نهائيًا؟"
+        : "Confirm permanent deletion for this order?"
+    );
+    if (!confirmed) return;
+
+    setAdminOrderActionBusyId(orderId);
+    setAdminOrdersError("");
+    try {
+      await deleteOrderInFirebase(orderId);
+      setAdminOrders((prev) => prev.filter((entry) => String(entry?.firebaseId || entry?.id || "").trim() !== orderId));
+      setAdminExpandedOrderId((prev) => (prev === orderId ? "" : prev));
+    } catch (error) {
+      console.error("Failed to delete order", error);
+      setAdminOrdersError(lang === "ar" ? "تعذر حذف الطلب الآن." : "Unable to delete this order right now.");
+    } finally {
+      setAdminOrderActionBusyId("");
     }
   }, [lang]);
 
@@ -8890,6 +9078,22 @@ export default function App() {
     return lang === "ar" ? "كل الحالات" : "All statuses";
   }, [adminOpsFilter, lang]);
 
+  const filteredAdminUsers = useMemo(() => {
+    const q = String(adminUsersQuery || "").trim().toLowerCase();
+    if (!q) return adminUsers;
+    return adminUsers.filter((entry) => {
+      const haystack = [
+        entry?.displayName,
+        entry?.email,
+        entry?.phoneNumber,
+        entry?.uid,
+        entry?.country,
+        entry?.nationality,
+      ].map((value) => String(value || "").toLowerCase()).join(" ");
+      return haystack.includes(q);
+    });
+  }, [adminUsers, adminUsersQuery]);
+
   const filteredAdminOrdersByOps = useMemo(() => {
     if (adminOpsFilter === "no-review") {
       return filteredAdminOrders.filter((entry) => !(entry.reviewedFlag && Number(entry.ratingValue) > 0));
@@ -8952,6 +9156,23 @@ export default function App() {
       "email-failed": emailFailedCount,
     };
   }, [adminDelayedStageKey, adminStageSlaHours, filteredAdminOrders]);
+
+  const filteredAdminOrdersForView = useMemo(() => {
+    const q = String(adminOrdersQuery || "").trim().toLowerCase();
+    if (!q) return filteredAdminOrdersByOps;
+
+    return filteredAdminOrdersByOps.filter((entry) => {
+      const haystack = [
+        entry?.serialLabel,
+        entry?.customerName,
+        entry?.customerPhone,
+        entry?.serviceName,
+        entry?.countryName,
+        entry?.nationalityName,
+      ].map((value) => String(value || "").toLowerCase()).join(" ");
+      return haystack.includes(q);
+    });
+  }, [adminOrdersQuery, filteredAdminOrdersByOps]);
 
   const adminCriticalCount = useMemo(() => {
     const nowMs = Date.now();
@@ -10452,21 +10673,34 @@ export default function App() {
           </div>
         )}
 
-        <div style={{ marginTop: 10, marginBottom: 6, color: "#f8fafc", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif" }}>
-          {lang === "ar" ? "حسابات المستخدمين" : "User Accounts"}
-        </div>
-
-        {!canManageAdminUsers && (
-          <div style={{ marginTop: 6, marginBottom: 8, borderRadius: 14, border: "1px solid rgba(34,197,94,0.38)", background: "rgba(22,163,74,0.14)", padding: "10px 12px", color: "#bbf7d0", textAlign: "center", fontSize: 11, lineHeight: 1.8, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
-            {lang === "ar"
-              ? "أنت أدمن متابعة فقط: يمكنك متابعة الطلبات والتواصل مع العملاء، ولا تملك صلاحيات إدارة المستخدمين."
-              : "You are a tracking admin only: you can follow orders and contact clients, but cannot manage users."}
+        <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(212,175,55,0.28)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px" }}>
+          <div style={{ marginBottom: 8, color: "#f8fafc", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+            <span>{lang === "ar" ? "المستخدمون" : "Users"}</span>
+            <span style={{ color: "#cbd5e1", fontSize: 10, fontWeight: 800 }}>
+              {lang === "ar"
+                ? `${filteredAdminUsers.length} / ${adminUsers.length}`
+                : `${filteredAdminUsers.length} / ${adminUsers.length}`}
+            </span>
           </div>
-        )}
 
-        {canManageAdminUsers && (
-        <div style={{ display: "grid", gap: 8, marginTop: 6 }}>
-          {adminUsers.map((entry) => {
+          <input
+            value={adminUsersQuery}
+            onChange={(event) => setAdminUsersQuery(event.target.value)}
+            placeholder={lang === "ar" ? "بحث بالاسم أو الإيميل أو الهاتف" : "Search by name, email, or phone"}
+            style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(212,175,55,0.30)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", marginBottom: 8, fontFamily: "'Cairo',sans-serif" }}
+          />
+
+          {!canManageAdminUsers && (
+            <div style={{ marginTop: 2, marginBottom: 8, borderRadius: 14, border: "1px solid rgba(34,197,94,0.38)", background: "rgba(22,163,74,0.14)", padding: "10px 12px", color: "#bbf7d0", textAlign: "center", fontSize: 11, lineHeight: 1.8, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              {lang === "ar"
+                ? "أنت أدمن متابعة فقط: يمكنك متابعة الطلبات والتواصل مع العملاء، ولا تملك صلاحيات إدارة المستخدمين."
+                : "You are a tracking admin only: you can follow orders and contact clients, but cannot manage users."}
+            </div>
+          )}
+
+          {canManageAdminUsers && (
+          <div style={{ display: "grid", gap: 8, marginTop: 2 }}>
+            {filteredAdminUsers.map((entry) => {
             const entryUid = String(entry.uid || entry.id || "").trim();
             const entryEmail = String(entry.email || "").trim().toLowerCase();
             const isBlocked = String(entry.status || "active").trim() === "blocked";
@@ -10609,15 +10843,17 @@ export default function App() {
             );
           })}
 
-          {!adminUsersLoading && adminUsers.length === 0 && (
+          {!adminUsersLoading && filteredAdminUsers.length === 0 && (
             <div style={{ borderRadius: 18, border: "1px dashed rgba(212,175,55,0.28)", background: "rgba(255,255,255,0.04)", padding: "18px 14px", textAlign: "center", color: "rgba(255,255,255,0.82)", fontSize: 13, lineHeight: 1.8, fontWeight: 700, fontFamily: "'Cairo',sans-serif" }}>
-              {lang === "ar" ? "لا يوجد مستخدمون محفوظون بعد." : "No saved users were found yet."}
+              {lang === "ar" ? "لا توجد نتائج مطابقة للمستخدمين." : "No matching users were found."}
             </div>
           )}
         </div>
         )}
+        </div>
 
-        <div style={{ marginTop: 12, marginBottom: 6, color: "#f8fafc", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(212,175,55,0.28)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px" }}>
+        <div style={{ marginBottom: 6, color: "#f8fafc", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <span>{lang === "ar" ? "الطلبات" : "Orders"}</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 9px", borderRadius: 999, background: adminCriticalCount > 0 ? "rgba(239,68,68,0.18)" : "rgba(34,197,94,0.16)", border: adminCriticalCount > 0 ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(34,197,94,0.35)", color: adminCriticalCount > 0 ? "#fecaca" : "#bbf7d0", fontSize: 10, fontWeight: 900 }}>
             <span>{lang === "ar" ? "حالات حرجة" : "Critical"}</span>
@@ -10713,6 +10949,13 @@ export default function App() {
           </div>
         )}
 
+        <input
+          value={adminOrdersQuery}
+          onChange={(event) => setAdminOrdersQuery(event.target.value)}
+          placeholder={lang === "ar" ? "بحث برقم الطلب أو اسم العميل أو الهاتف" : "Search by order ID, customer, or phone"}
+          style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(212,175,55,0.30)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", marginBottom: 8, fontFamily: "'Cairo',sans-serif" }}
+        />
+
         {!!adminOrdersError && (
           <div style={{ marginTop: 8, color: "#fecaca", background: "rgba(127,29,29,0.24)", border: "1px solid rgba(248,113,113,0.32)", borderRadius: 14, padding: "8px 10px", textAlign: "center", fontSize: 11, lineHeight: 1.6, fontWeight: 700, fontFamily: "'Cairo',sans-serif" }}>
             {adminOrdersError}
@@ -10720,9 +10963,13 @@ export default function App() {
         )}
 
         <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
-          {filteredAdminOrdersByOps.map((orderItem, index) => {
+          {filteredAdminOrdersForView.map((orderItem, index) => {
             const orderId = String(orderItem.id || orderItem.firebaseId || orderItem.serialLabel || `order-${index + 1}`);
             const isExpanded = adminExpandedOrderId === orderId;
+            const busy = adminOrderActionBusyId === orderId;
+            const currentStageIndex = Number.isInteger(orderItem?.statusIndex)
+              ? orderItem.statusIndex
+              : Math.max(0, STATUS_STEP_KEYS.findIndex((key) => !(orderItem?.stageConfirmations || {})[key]) - 1);
             const orderTitle = lang === "ar"
               ? `طلب رقم ${index + 1}`
               : `Order #${index + 1}`;
@@ -10794,31 +11041,75 @@ export default function App() {
                 </div>
 
                 {isExpanded && (
-                  <div style={{ marginTop: 7, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                    {[
-                      [lang === "ar" ? "الدولة" : "Country", orderItem.countryName || "—"],
-                      [lang === "ar" ? "الجنسية" : "Nationality", orderItem.nationalityName || "—"],
-                      [lang === "ar" ? "التاريخ" : "Date", orderItem.createdAtLabel || "—"],
-                      [lang === "ar" ? "الحالة" : "Status", String(orderItem.status || orderItem.orderStatus || "new")],
-                    ].map(([label, value]) => (
-                      <div key={`${orderId}-${label}`} style={{ borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", padding: "5px 7px" }}>
-                        <div style={{ color: "rgba(255,255,255,0.56)", fontSize: 9, fontWeight: 700, marginBottom: 2 }}>{label}</div>
-                        <div style={{ color: "#f8fafc", fontSize: 10, fontWeight: 800, wordBreak: "break-word", lineHeight: 1.25 }}>{value}</div>
-                      </div>
-                    ))}
-                  </div>
+                  <>
+                    <div style={{ marginTop: 7, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                      {[
+                        [lang === "ar" ? "الدولة" : "Country", orderItem.countryName || "—"],
+                        [lang === "ar" ? "الجنسية" : "Nationality", orderItem.nationalityName || "—"],
+                        [lang === "ar" ? "التاريخ" : "Date", orderItem.createdAtLabel || "—"],
+                        [lang === "ar" ? "الحالة" : "Status", String(orderItem.status || orderItem.orderStatus || "new")],
+                        [lang === "ar" ? "التقييم" : "Rating", `${Number(orderItem.ratingValue || orderItem.rating || 0)}/5`],
+                        [lang === "ar" ? "التعليق" : "Comment", String(orderItem.reviewTextValue || orderItem.reviewText || "—")],
+                      ].map(([label, value]) => (
+                        <div key={`${orderId}-${label}`} style={{ borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", padding: "5px 7px" }}>
+                          <div style={{ color: "rgba(255,255,255,0.56)", fontSize: 9, fontWeight: 700, marginBottom: 2 }}>{label}</div>
+                          <div style={{ color: "#f8fafc", fontSize: 10, fontWeight: 800, wordBreak: "break-word", lineHeight: 1.25 }}>{value}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{ marginTop: 7, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                      <button
+                        onClick={() => handleAdminOrderSetStage(orderItem, Math.min(STATUS_STEP_KEYS.length - 1, (Number(currentStageIndex) || 0) + 1))}
+                        disabled={busy}
+                        style={{ padding: "7px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#22c55e,#166534)", color: "#fff", fontSize: 10, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1 }}
+                      >
+                        {busy ? (lang === "ar" ? "جارٍ التنفيذ..." : "Updating...") : (lang === "ar" ? "المرحلة التالية" : "Next Stage")}
+                      </button>
+                      <button
+                        onClick={() => handleAdminOrderSetStage(orderItem, 0)}
+                        disabled={busy}
+                        style={{ padding: "7px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#f59e0b,#b45309)", color: "#fff", fontSize: 10, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1 }}
+                      >
+                        {lang === "ar" ? "إرجاع للبداية" : "Reset Stage"}
+                      </button>
+                      <button
+                        onClick={() => handleAdminOrderEditDetails(orderItem)}
+                        disabled={busy}
+                        style={{ padding: "7px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#0ea5e9,#0369a1)", color: "#fff", fontSize: 10, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1 }}
+                      >
+                        {lang === "ar" ? "تعديل بيانات الطلب" : "Edit Order Data"}
+                      </button>
+                      <button
+                        onClick={() => handleAdminOrderClearReview(orderItem)}
+                        disabled={busy}
+                        style={{ padding: "7px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#7c3aed,#4c1d95)", color: "#fff", fontSize: 10, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1 }}
+                      >
+                        {lang === "ar" ? "حذف التقييم والتعليق" : "Delete Rating & Comment"}
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => handleAdminDeleteOrder(orderItem)}
+                      disabled={busy}
+                      style={{ marginTop: 6, width: "100%", padding: "8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#ef4444,#7f1d1d)", color: "#fff", fontSize: 10, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1 }}
+                    >
+                      {lang === "ar" ? "حذف الطلب نهائيًا" : "Delete Order Permanently"}
+                    </button>
+                  </>
                 )}
               </div>
             );
           })}
 
-          {!adminOrdersLoading && filteredAdminOrdersByOps.length === 0 && (
+          {!adminOrdersLoading && filteredAdminOrdersForView.length === 0 && (
             <div style={{ borderRadius: 14, border: "1px dashed rgba(212,175,55,0.28)", background: "rgba(255,255,255,0.04)", padding: "12px 10px", textAlign: "center", color: "rgba(255,255,255,0.82)", fontSize: 11, lineHeight: 1.7, fontWeight: 700, fontFamily: "'Cairo',sans-serif" }}>
               {lang === "ar"
                 ? `لا توجد طلبات ضمن الفلتر: ${adminOrdersFilterLabel} | ${adminOpsFilterLabel}.`
                 : `No orders found for filter: ${adminOrdersFilterLabel} | ${adminOpsFilterLabel}.`}
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

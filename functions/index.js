@@ -125,6 +125,36 @@ async function getRecentDeviceOrderCountForWindow(deviceId, windowDays, bucket) 
   }).length;
 }
 
+async function consumeUserRequestCredit(userUid, bucket) {
+  const cleanUid = String(userUid || "").trim();
+  const cleanBucket = String(bucket || "").trim();
+  if (!cleanUid || !cleanBucket) {
+    return {consumed: false, remaining: 0};
+  }
+
+  const userRef = firestoreDb.collection("users").doc(cleanUid);
+  return firestoreDb.runTransaction(async (transaction) => {
+    const userSnap = await transaction.get(userRef);
+    const userData = userSnap.exists ? (userSnap.data() || {}) : {};
+    const requestCredits = userData.requestCredits || {};
+    const current = Number(requestCredits[cleanBucket]) || 0;
+    if (current <= 0) {
+      return {consumed: false, remaining: 0};
+    }
+
+    const next = Math.max(0, current - 1);
+    transaction.set(userRef, {
+      requestCredits: {
+        ...requestCredits,
+        [cleanBucket]: next,
+      },
+      updatedAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+
+    return {consumed: true, remaining: next};
+  });
+}
+
 function buildAdminHtml(order, orderId, customerEmail) {
   return `
     <div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.8;color:#111827;">
@@ -188,6 +218,7 @@ exports.createOrder = onRequest(
     }
 
     const customerEmail = String(order.email || "").trim();
+    const userUid = String(order.userUid || order.uid || "").trim();
     const deviceId = String(order.deviceId || "").trim();
     if (!customerEmail || !isValidEmail(customerEmail)) {
       res.status(400).json({ok: false, error: "invalid-email"});
@@ -210,22 +241,33 @@ exports.createOrder = onRequest(
         limitConfig.windowDays,
         limitConfig.bucket
       );
+      let consumedCredit = false;
+      let remainingUserCredits = 0;
       if (recentDeviceOrdersCount >= limitConfig.limit) {
-        res.status(429).json({
-          ok: false,
-          error: "device-request-limit-exceeded",
-          message: "device-request-limit-exceeded",
-          limit: limitConfig.limit,
-          windowDays: limitConfig.windowDays,
-          remainingRequests: 0,
-        });
-        return;
+        const creditResult = await consumeUserRequestCredit(userUid, limitConfig.bucket);
+        consumedCredit = !!creditResult?.consumed;
+        remainingUserCredits = Number(creditResult?.remaining) || 0;
+        if (!consumedCredit) {
+          res.status(429).json({
+            ok: false,
+            error: "device-request-limit-exceeded",
+            message: "device-request-limit-exceeded",
+            limit: limitConfig.limit,
+            windowDays: limitConfig.windowDays,
+            remainingRequests: 0,
+            remainingUserCredits,
+          });
+          return;
+        }
       }
 
       const payload = {
         ...removeUndefined(order),
         deviceId,
+        userUid,
         email: customerEmail,
+        requestCreditConsumed: consumedCredit,
+        requestCreditBucket: consumedCredit ? limitConfig.bucket : "",
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       };
