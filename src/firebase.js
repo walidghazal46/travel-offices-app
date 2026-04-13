@@ -489,6 +489,62 @@ export async function fetchServiceOrdersFromFirebase() {
   }));
 }
 
+export async function submitServiceProviderRequestToFirebase(requestData = {}) {
+  const payload = {
+    ...removeUndefined(requestData),
+    status: String(requestData?.status || "pending").trim() || "pending",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  const docRef = await withRetry(async () =>
+    addDoc(collection(firestoreDb, "service_providers"), payload)
+  );
+
+  return docRef.id;
+}
+
+export async function fetchServiceProviderRequestsFromFirebase() {
+  const snapshot = await withRetry(async () =>
+    getDocs(query(collection(firestoreDb, "service_providers"), orderBy("createdAt", "desc")))
+  );
+
+  return snapshot.docs.map((entryDoc) => ({
+    id: entryDoc.id,
+    ...entryDoc.data(),
+  }));
+}
+
+export async function fetchServiceProviderRequestsByUserFromFirebase(userUid) {
+  const cleanUid = String(userUid || "").trim();
+  if (!cleanUid) return [];
+
+  const snapshot = await withRetry(async () =>
+    getDocs(query(collection(firestoreDb, "service_providers"), where("userUid", "==", cleanUid)))
+  );
+
+  return snapshot.docs.map((entryDoc) => ({
+    id: entryDoc.id,
+    ...entryDoc.data(),
+  }));
+}
+
+export async function updateServiceProviderRequestInFirebase(requestId, updates = {}) {
+  const cleanRequestId = String(requestId || "").trim();
+  if (!cleanRequestId) {
+    throw new Error("service-provider-request-id-required");
+  }
+
+  const payload = removeUndefined({
+    ...updates,
+    updatedAt: serverTimestamp(),
+  });
+
+  await withRetry(async () =>
+    updateDoc(doc(firestoreDb, "service_providers", cleanRequestId), payload)
+  );
+}
+
 export async function saveServiceReviewToFirebase(reviewData) {
   const payload = {
     ...removeUndefined(reviewData),

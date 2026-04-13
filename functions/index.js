@@ -192,6 +192,79 @@ function buildCustomerHtml(order, orderId) {
   `;
 }
 
+function buildProviderSubmissionAdminHtml(requestPayload = {}) {
+  const services = Array.isArray(requestPayload?.services)
+    ? requestPayload.services.join("، ")
+    : String(requestPayload?.services || "");
+  return `
+    <div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.8;color:#111827;">
+      <h2 style="margin:0 0 16px;color:#166534;">طلب جديد لإضافة مكتب</h2>
+      ${formatField("رقم الطلب", requestPayload.serial || requestPayload.requestId || "-")}
+      ${formatField("اسم مقدم الطلب", requestPayload.providerName || requestPayload.officeName || "-")}
+      ${formatField("اسم المكتب", requestPayload.officeName || "-")}
+      ${formatField("البريد الإلكتروني", requestPayload.email || requestPayload.userEmail || "-")}
+      ${formatField("الهاتف", requestPayload.phone || "-")}
+      ${formatField("واتساب", requestPayload.whatsapp || "-")}
+      ${formatField("الدولة", requestPayload.country || "-")}
+      ${formatField("المدينة", requestPayload.city || "-")}
+      ${formatField("الجنسية", requestPayload.nationality || "-")}
+      ${formatField("الخدمات المقدمة", services || "-")}
+      ${formatField("السجل التجاري", requestPayload.commercialRegister || "-")}
+      ${formatField("البطاقة الضريبية", requestPayload.taxCard || "-")}
+      ${formatField("رابط البورتفوليو", requestPayload.portfolioLink || requestPayload.portalLink || "-")}
+      ${formatField("وصف المكتب", requestPayload.notes || "-")}
+      <p style="margin:16px 0 0;color:#92400e;">تنبيه: المستندات المطلوبة من مقدم الطلب: السجل التجاري + البطاقة الضريبية + بورتفوليو المكتب/الشركة (إن وجد).</p>
+    </div>
+  `;
+}
+
+function buildProviderSubmissionCustomerHtml(requestPayload = {}) {
+  const services = Array.isArray(requestPayload?.services)
+    ? requestPayload.services.join("، ")
+    : String(requestPayload?.services || "");
+  return `
+    <div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.8;color:#111827;">
+      <h2 style="margin:0 0 16px;color:#16a34a;">تم استلام طلب إضافة مكتبك</h2>
+      <p style="margin:0 0 12px;">تم تسجيل طلبك بنجاح، وهذه نسخة كاملة من بيانات الطلب. سيتم مراجعته من الإدارة ثم إشعارك بالقرار عبر البريد الإلكتروني.</p>
+      ${formatField("رقم الطلب", requestPayload.serial || requestPayload.requestId || "-")}
+      ${formatField("اسم مقدم الطلب", requestPayload.providerName || requestPayload.officeName || "-")}
+      ${formatField("اسم المكتب", requestPayload.officeName || "-")}
+      ${formatField("البريد الإلكتروني", requestPayload.email || requestPayload.userEmail || "-")}
+      ${formatField("الهاتف", requestPayload.phone || "-")}
+      ${formatField("واتساب", requestPayload.whatsapp || "-")}
+      ${formatField("الدولة", requestPayload.country || "-")}
+      ${formatField("المدينة", requestPayload.city || "-")}
+      ${formatField("الجنسية", requestPayload.nationality || "-")}
+      ${formatField("الخدمات المقدمة", services || "-")}
+      ${formatField("السجل التجاري", requestPayload.commercialRegister || "-")}
+      ${formatField("البطاقة الضريبية", requestPayload.taxCard || "-")}
+      ${formatField("رابط البورتفوليو", requestPayload.portfolioLink || requestPayload.portalLink || "-")}
+      ${formatField("وصف المكتب", requestPayload.notes || "-")}
+      <p style="margin:16px 0 0;color:#92400e;">يرجى تجهيز وإرفاق المستندات المطلوبة عند التواصل: السجل التجاري، البطاقة الضريبية، وبورتفوليو الشركة/المكتب إن كان متاحًا.</p>
+    </div>
+  `;
+}
+
+function buildProviderDecisionCustomerHtml(requestPayload = {}) {
+  const statusValue = String(requestPayload?.status || "pending").trim().toLowerCase();
+  const approved = statusValue === "approved";
+  const title = approved ? "تم اعتماد طلبك" : "نتيجة مراجعة طلبك";
+  const statusLabel = approved ? "معتمد" : "مرفوض";
+  const color = approved ? "#16a34a" : "#b91c1c";
+  return `
+    <div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.8;color:#111827;">
+      <h2 style="margin:0 0 16px;color:${color};">${escapeHtml(title)}</h2>
+      ${formatField("رقم الطلب", requestPayload.serial || requestPayload.requestId || "-")}
+      ${formatField("الحالة", statusLabel)}
+      ${formatField("ملاحظة الإدارة", requestPayload.adminDecisionNote || "-")}
+      ${formatField("رابط البوابة", requestPayload.portalLink || "-")}
+      <p style="margin:18px 0 0;color:#92400e;">
+        تم إرسال هذا التحديث تلقائيًا من نظام المنصة.
+      </p>
+    </div>
+  `;
+}
+
 exports.createOrder = onRequest(
   {
     region: "us-central1",
@@ -340,6 +413,68 @@ exports.sendOrderEmails = onRequest(
     } catch (error) {
       logger.error("Failed to send order emails", {orderId, error: error?.message || error});
       res.status(500).json({ok: false, error: error?.message || "email-send-failed"});
+    }
+  }
+);
+
+exports.sendServiceProviderEmails = onRequest(
+  {
+    region: "us-central1",
+    secrets: [RESEND_API_KEY],
+  },
+  async (req, res) => {
+    setCorsHeaders(res);
+
+    if (req.method === "OPTIONS") {
+      res.status(204).send("");
+      return;
+    }
+
+    if (req.method !== "POST") {
+      res.status(405).json({ok: false, error: "method-not-allowed"});
+      return;
+    }
+
+    const eventType = String(req.body?.type || "submission").trim().toLowerCase();
+    const requestPayload = req.body?.request || {};
+    const requestId = String(requestPayload?.serial || requestPayload?.requestId || "UNKNOWN-REQUEST").trim();
+    const customerEmail = String(requestPayload?.email || requestPayload?.userEmail || "").trim();
+
+    if (!customerEmail || !isValidEmail(customerEmail)) {
+      res.status(400).json({ok: false, error: "invalid-email"});
+      return;
+    }
+
+    const resend = new Resend(RESEND_API_KEY.value());
+
+    try {
+      if (eventType === "submission") {
+        await resend.emails.send({
+          from: `Trusted Travel Offices <${FROM_EMAIL}>`,
+          to: [ADMIN_EMAIL],
+          subject: `طلب إضافة مكتب جديد - ${requestId}`,
+          html: buildProviderSubmissionAdminHtml(requestPayload),
+        });
+
+        await resend.emails.send({
+          from: `Trusted Travel Offices <${FROM_EMAIL}>`,
+          to: [customerEmail],
+          subject: `تم استلام طلب إضافة مكتبك - ${requestId}`,
+          html: buildProviderSubmissionCustomerHtml(requestPayload),
+        });
+      } else {
+        await resend.emails.send({
+          from: `Trusted Travel Offices <${FROM_EMAIL}>`,
+          to: [customerEmail],
+          subject: `تحديث حالة طلب مزود الخدمات - ${requestId}`,
+          html: buildProviderDecisionCustomerHtml(requestPayload),
+        });
+      }
+
+      res.status(200).json({ok: true, requestId, eventType});
+    } catch (error) {
+      logger.error("Failed to send service provider emails", {eventType, requestId, error: error?.message || error});
+      res.status(500).json({ok: false, error: error?.message || "provider-email-send-failed"});
     }
   }
 );
