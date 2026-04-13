@@ -2508,6 +2508,7 @@ async function sendOrderEmailsViaFirebase(orderData) {
     body: JSON.stringify({
       order: {
         firebaseId: orderData?.firebaseId || "",
+        orderNumber: orderData?.orderNumber || "",
         serial: orderData?.serial || "",
         service: orderData?.service || "",
         name: orderData?.name || "",
@@ -2832,6 +2833,7 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
   const [daysPassed, setDaysPassed] = useState(0);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [firebaseSubmitError, setFirebaseSubmitError] = useState("");
+  const [firebaseFallbackTicket, setFirebaseFallbackTicket] = useState(null);
   const [sharedServiceReviews, setSharedServiceReviews] = useState({});
   const [emailFieldError, setEmailFieldError] = useState("");
   const [confirmCountdown, setConfirmCountdown] = useState(10);
@@ -2858,6 +2860,45 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
     const hydratedOrders = orders.map(hydratePaidOrder);
     setExistingOrders(hydratedOrders);
     try { localStorage.setItem(storageKey, JSON.stringify(hydratedOrders)); } catch {}
+  };
+
+  const createFirebaseFallbackTicket = (orderLike) => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    const rand = Math.floor(1000 + Math.random() * 9000);
+    const serial = `SUP-${y}${m}${d}-${rand}`;
+    const safeName = String(orderLike?.name || form?.name || "-").trim() || "-";
+    const safeCountry = String(orderLike?.country || form?.country || "-").trim() || "-";
+    const safeService = String(orderLike?.providedService || orderLike?.service || selectedService?.label || "-").trim() || "-";
+    const msg = isAr
+      ? [
+          "السلام عليكم",
+          "واجهتني مشكلة في تسجيل طلبي ورفع الإيصال.",
+          "مرفق إيصال الدفع.",
+          `الاسم: ${safeName}`,
+          `الدولة: ${safeCountry}`,
+          `الخدمة المطلوبة: ${safeService}`,
+          `رقم الطلب الخاص: ${serial}`,
+        ].join("\n")
+      : [
+          "Hello,",
+          "I faced an issue while submitting my order and uploading the receipt.",
+          "Payment receipt is attached.",
+          `Name: ${safeName}`,
+          `Country: ${safeCountry}`,
+          `Requested Service: ${safeService}`,
+          `Support Order Number: ${serial}`,
+        ].join("\n");
+
+    return {
+      serial,
+      name: safeName,
+      country: safeCountry,
+      service: safeService,
+      whatsappHref: `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`,
+    };
   };
 
   useEffect(() => {
@@ -3536,8 +3577,11 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
     if (isSubmittingOrder) return;
     setIsSubmittingOrder(true);
     setFirebaseSubmitError("");
+    setFirebaseFallbackTicket(null);
     setSubmitStage("save");
+    let submitStageTracker = "save";
     let nextOrder = hydratePaidOrder(order);
+    let receiptUploadStartedAt = 0;
 
     try {
       const orderPayload = {
@@ -3571,11 +3615,23 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
       nextOrder = hydratePaidOrder({ ...nextOrder, firebaseId, uploadStatus: "pending" });
 
       setSubmitStage("receipt");
-      const uploadedReceipt = await withTimeout(
-        uploadReceiptToFirebase(form.receiptFile, order.serial),
-        60000,
-        "receipt upload"
-      );
+      submitStageTracker = "receipt";
+      receiptUploadStartedAt = Date.now();
+      let uploadedReceipt = null;
+      try {
+        uploadedReceipt = await withTimeout(
+          uploadReceiptToFirebase(form.receiptFile, order.serial),
+          120000,
+          "receipt upload"
+        );
+      } catch (uploadError) {
+        console.warn("Receipt upload timed out or failed, deferring", uploadError);
+        uploadedReceipt = {
+          path: "", url: "", name: form.receiptFile?.name || "",
+          type: form.receiptFile?.type || "", size: form.receiptFile?.size || 0,
+          deferred: true, errorCode: String(uploadError?.message || "receipt-upload-deferred"),
+        };
+      }
       if (!uploadedReceipt?.url && !uploadedReceipt?.deferred) {
         throw new Error("receipt-upload-failed");
       }
@@ -3614,6 +3670,7 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
       );
 
       setSubmitStage("email");
+      submitStageTracker = "email";
 
       let nextStats = null;
       try {
@@ -3690,11 +3747,20 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
         setIsSubmittingOrder(false);
         return;
       }
+
+      const receiptStageElapsedMs = receiptUploadStartedAt ? (Date.now() - receiptUploadStartedAt) : 0;
+      const shouldCreateFallbackTicket =
+        submitStageTracker === "receipt" && receiptStageElapsedMs >= 120000;
+      if (shouldCreateFallbackTicket) {
+        const nextTicket = createFirebaseFallbackTicket(nextOrder);
+        setFirebaseFallbackTicket(nextTicket);
+      }
+
       const errorCode = error?.code ? ` [${error.code}]` : "";
       const errorMessage = error?.message ? ` ${error.message}` : "";
-      const stageLabel = submitStage === "receipt"
+      const stageLabel = submitStageTracker === "receipt"
         ? (isAr ? "مرحلة رفع الإيصال" : "Receipt upload stage")
-        : submitStage === "email"
+        : submitStageTracker === "email"
           ? (isAr ? "مرحلة إرسال الإيميل" : "Email sending stage")
           : (isAr ? "مرحلة حفظ الطلب" : "Order save stage");
       setFirebaseSubmitError(
@@ -4507,6 +4573,33 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
           <div style={{ ...card, background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.24)", color:"#b91c1c" }}>
             <div style={{ fontSize:13, fontWeight:800, marginBottom:4 }}>{isAr?"تعذر إكمال الطلب على Firebase":"Firebase submission failed"}</div>
             <div style={{ fontSize:12, lineHeight:1.8 }}>{firebaseSubmitError}</div>
+            {!!firebaseFallbackTicket && (
+              <div style={{ marginTop:10, borderTop:"1px dashed rgba(185,28,28,0.35)", paddingTop:10 }}>
+                <div style={{ fontSize:12, fontWeight:900, marginBottom:6 }}>
+                  {isAr ? `رقم الطلب الخاص: ${firebaseFallbackTicket.serial}` : `Support order number: ${firebaseFallbackTicket.serial}`}
+                </div>
+                <a
+                  href={firebaseFallbackTicket.whatsappHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display:"inline-flex",
+                    alignItems:"center",
+                    justifyContent:"center",
+                    gap:6,
+                    padding:"9px 12px",
+                    borderRadius:10,
+                    textDecoration:"none",
+                    fontSize:12,
+                    fontWeight:900,
+                    background:"#16a34a",
+                    color:"#fff",
+                  }}
+                >
+                  {isAr ? "واتساب الدعم وإرسال المشكلة" : "Contact support on WhatsApp"}
+                </a>
+              </div>
+            )}
           </div>
         )}
         {paymentMethodConfig.soonOptions ? (
@@ -5184,9 +5277,14 @@ function normalizeCvForPdf(cvData) {
     maritalStatus: String(cvData?.maritalStatus || "").trim(),
     iqama: String(cvData?.iqama || "").trim(),
     iqamaStatus: String(cvData?.iqamaStatus || "").trim(),
-    sceNumber: String(cvData?.sceNumber || "").trim(),
-    egSyndicate: String(cvData?.egSyndicate || "").trim(),
-    extraMemberships: sanitizeCvList(cvData?.extraMemberships),
+    memberships: (cvData?.memberships || []).filter(m => !m.hasNo && String(m?.name || "").trim().length > 0).map(m => ({
+      name: String(m?.name || "").trim(),
+      number: String(m?.number || "").trim(),
+    })),
+    extraMemberships: (cvData?.memberships || []).filter(m => !m.hasNo && String(m?.name || "").trim().length > 0).map(m => {
+      const num = String(m?.number || "").trim();
+      return `${String(m?.name || "").trim()}${num ? `: ${num}` : ""}`;
+    }),
     summaryLines: splitSummaryIntoLines(cvData?.summary),
     summaryBullets: splitSummaryIntoBullets(cvData?.summary),
     firstPageExperiences: experiences.slice(0, firstPageCount),
@@ -5246,9 +5344,7 @@ function buildCvPdfDocument(cvData, exportLang = "en") {
 
   const identityLines = [
     data.nationality ? `${labels.nationality}: ${data.nationality}` : "",
-    data.iqama ? `${data.iqamaStatus === "transferable" ? labels.transferableIqama : labels.iqama}: ${data.iqama}` : "",
-    data.sceNumber ? `${labels.sce}: ${data.sceNumber}` : "",
-    data.egSyndicate ? `${labels.syndicate}: ${data.egSyndicate}` : "",
+    data.iqama && data.iqamaStatus !== "none" ? `${data.iqamaStatus === "transferable" ? labels.transferableIqama : labels.iqama}: ${data.iqama}` : "",
     ...data.extraMemberships,
   ].filter(Boolean);
 
@@ -5607,9 +5703,7 @@ function createCvPdfDocument(JsPdfCtor, cvData) {
 
   [
     data.nationality ? `Nationality: ${data.nationality}` : "",
-    data.iqama ? `${data.iqamaStatus === "transferable" ? "Transferable Iqama" : "Iqama"}: ${data.iqama}` : "",
-    data.sceNumber ? `Saudi Council of Engineers No: ${data.sceNumber}` : "",
-    data.egSyndicate ? `Egyptian Syndicate No: ${data.egSyndicate}` : "",
+    data.iqama && data.iqamaStatus !== "none" ? `${data.iqamaStatus === "transferable" ? "Transferable Iqama" : "Iqama"}: ${data.iqama}` : "",
     ...data.extraMemberships,
   ].filter(Boolean).forEach((line) => {
     writeWrapped(line, { fontSize: 10, lineHeight: 13, gapAfter: 1 });
@@ -5690,10 +5784,18 @@ function createCvPdfDocument(JsPdfCtor, cvData) {
   return pdf;
 }
 
-function buildCvSubmissionEmail(cvData) {
+function buildCvSubmissionEmail(cvData, orderMeta = {}) {
   const data = normalizeCvForPdf(cvData);
   const experiences = [...data.firstPageExperiences, ...data.secondPageExperiences];
   const sections = [];
+
+  const orderNumber = String(orderMeta?.orderNumber || "").trim();
+  const orderSerial = String(orderMeta?.serial || "").trim();
+  if (orderNumber || orderSerial) {
+    sections.push(`رقم الطلب: ${orderNumber || "-"}`);
+    sections.push(`السيريال: ${orderSerial || "-"}`);
+    sections.push("");
+  }
 
   sections.push(`الاسم الكامل: ${data.fullName || "-"}`);
   sections.push(`المسمى الوظيفي: ${data.jobTitle || "-"}`);
@@ -5704,10 +5806,14 @@ function buildCvSubmissionEmail(cvData) {
   sections.push(`البريد الإلكتروني: ${data.email || "-"}`);
   sections.push(`الجنسية: ${data.nationality || "-"}`);
   sections.push(`الحالة الاجتماعية: ${data.maritalStatus || "-"}`);
-  sections.push(`رقم الإقامة / الهوية: ${data.iqama || "-"}`);
-  sections.push(`حالة الإقامة: ${data.iqamaStatus === "transferable" ? "قابلة للنقل" : data.iqamaStatus === "non-transferable" ? "غير قابلة للنقل" : "-"}`);
-  sections.push(`هيئة المهندسين السعوديين: ${data.sceNumber || "-"}`);
-  sections.push(`نقابة المهندسين المصريين: ${data.egSyndicate || "-"}`);
+  if (data.iqamaStatus !== "none") {
+    sections.push(`رقم الإقامة / الهوية: ${data.iqama || "-"}`);
+    sections.push(`حالة الإقامة: ${data.iqamaStatus === "transferable" ? "قابلة للنقل" : "غير قابلة للنقل"}`);
+  }
+  if (data.memberships && data.memberships.length > 0) {
+    sections.push("العضويات المهنية:");
+    sections.push(data.memberships.map(m => `${m.name}${m.number ? ` (${m.number})` : ""}`).join("\n"));
+  }
   sections.push("");
   sections.push("الملخص المهني:");
   sections.push(data.summaryLines.length ? data.summaryLines.join("\n") : "-");
@@ -5763,9 +5869,7 @@ function buildCvWordDocument(cvData, exportLang = "en") {
   const contactLines = [data.country, data.location, data.phone, data.whatsapp ? `WhatsApp: ${data.whatsapp}` : "", data.email].filter(Boolean);
   const identityLines = [
     data.nationality ? `${labels.nationality}: ${data.nationality}` : "",
-    data.iqama ? `${data.iqamaStatus === "transferable" ? labels.transferableIqama : labels.iqama}: ${data.iqama}` : "",
-    data.sceNumber ? `${labels.sce}: ${data.sceNumber}` : "",
-    data.egSyndicate ? `${labels.syndicate}: ${data.egSyndicate}` : "",
+    data.iqama && data.iqamaStatus !== "none" ? `${data.iqamaStatus === "transferable" ? labels.transferableIqama : labels.iqama}: ${data.iqama}` : "",
     ...data.extraMemberships,
   ].filter(Boolean);
   const experiences = [...data.firstPageExperiences, ...data.secondPageExperiences];
@@ -5856,7 +5960,7 @@ export default function App() {
   const createInitialCvData = () => ({
     fullName: "", jobTitle: "", country: "", location: "", phone: "", whatsapp: "", email: "",
     nationality: "", maritalStatus: "", iqama: "", iqamaStatus: "transferable",
-    sceNumber: "", egSyndicate: "", extraMemberships: [],
+    memberships: [{ id: Date.now(), name: "", number: "", hasNo: false }],
     summary: "",
     experiences: [{ id: 1, jobTitle: "", company: "", location: "", startDate: "", endDate: "", current: false, responsibilities: [""], projects: [] }],
     coreCompetencies: [],
@@ -6036,11 +6140,91 @@ export default function App() {
   const [cvBuilderReviewSavedAt, setCvBuilderReviewSavedAt] = useState("");
   const [cvBuilderReviewEditMode, setCvBuilderReviewEditMode] = useState(false);
   const [cvBuilderLimitNotice, setCvBuilderLimitNotice] = useState("");
+  const [cvStepValidationError, setCvStepValidationError] = useState("");
+  const [cvBuilderOrderSyncBusy, setCvBuilderOrderSyncBusy] = useState(false);
   const [compTag, setCompTag] = useState("");
   const [toolTag, setToolTag] = useState("");
   const [cvData, setCvData] = useState(createInitialCvData);
+  const [cvSectionsSaved, setCvSectionsSaved] = useState({
+    step0: false,
+    step1: false,
+    step2: false,
+    step3: false,
+  });
 
   const cvUpdate = (field, value) => setCvData(p => ({ ...p, [field]: value }));
+
+  const hasValue = useCallback((value) => String(value || "").trim().length > 0, []);
+
+  const isCvStepComplete = useCallback((stepIndex) => {
+    if (stepIndex === 0) {
+      const requiredStep0 = [
+        cvData.fullName,
+        cvData.jobTitle,
+        cvData.country,
+        cvData.location,
+        cvData.phone,
+        cvData.whatsapp,
+        cvData.email,
+        cvData.nationality,
+        cvData.iqama,
+        cvData.maritalStatus,
+        cvData.iqamaStatus,
+        cvData.summary,
+      ];
+      return requiredStep0.every(hasValue);
+    }
+
+    if (stepIndex === 1) {
+      return (cvData.experiences || []).every((exp) => {
+        const baseValid = hasValue(exp?.jobTitle) && hasValue(exp?.company) && hasValue(exp?.location) && hasValue(exp?.startDate);
+        const endValid = exp?.current ? true : hasValue(exp?.endDate);
+        const hasResponsibilities = (exp?.responsibilities || []).some((item) => hasValue(item));
+        return baseValid && endValid && hasResponsibilities;
+      });
+    }
+
+    if (stepIndex === 2) {
+      const hasCore = (cvData.coreCompetencies || []).filter(x => String(x).trim().length > 0).length > 0;
+      const hasTools = (cvData.toolsSoftware || []).filter(x => String(x).trim().length > 0).length > 0;
+      const hasAchievements = (cvData.achievements || []).filter(x => String(x).trim().length > 0).length > 0;
+      const hasKeywords = String(cvData.keywords || "").trim().length > 0;
+      return hasCore && hasTools && hasAchievements && hasKeywords;
+    }
+
+    if (stepIndex === 3) {
+      const eduValid = (cvData.education || []).every((item) => hasValue(item?.degree) && hasValue(item?.major) && hasValue(item?.university) && hasValue(item?.year));
+      const certValid = (cvData.certifications || []).every((item) => hasValue(item?.name) && hasValue(item?.issuer) && hasValue(item?.year));
+      const langValid = (cvData.languages || []).every((item) => hasValue(item?.lang) && hasValue(item?.level));
+      return eduValid && certValid && langValid;
+    }
+
+    return true;
+  }, [cvData, hasValue]);
+
+  const getCvStepValidationMessage = useCallback((stepIndex) => {
+    if (stepIndex === 0) {
+      return lang === "ar"
+        ? "من فضلك أكمل جميع حقول البيانات الشخصية والعضويات والملخص قبل المتابعة."
+        : "Please complete all personal info, memberships, and summary fields before continuing.";
+    }
+    if (stepIndex === 1) {
+      return lang === "ar"
+        ? "من فضلك أكمل جميع حقول الخبرات وأضف مسؤولية واحدة على الأقل لكل خبرة قبل المتابعة."
+        : "Please complete all experience fields and add at least one responsibility per experience before continuing.";
+    }
+    if (stepIndex === 2) {
+      return lang === "ar"
+        ? "من فضلك أكمل المهارات والأدوات والإنجازات والكلمات المفتاحية قبل المتابعة."
+        : "Please complete skills, tools, achievements, and keywords before continuing.";
+    }
+    if (stepIndex === 3) {
+      return lang === "ar"
+        ? "من فضلك أكمل جميع حقول التعليم والشهادات واللغات قبل المتابعة."
+        : "Please complete all education, certification, and language fields before continuing.";
+    }
+    return "";
+  }, [lang]);
 
   const cvAddExp = () => setCvData(p => ({ ...p, experiences: [...p.experiences, { id: Date.now(), jobTitle: "", company: "", location: "", startDate: "", endDate: "", current: false, responsibilities: [""], projects: [] }] }));
   const cvRemoveExp = (id) => setCvData(p => ({ ...p, experiences: p.experiences.filter(e => e.id !== id) }));
@@ -6056,6 +6240,30 @@ export default function App() {
 
   const cvAddAchievement = () => cvUpdate("achievements", [...cvData.achievements, ""]);
   const cvUpdateAchievement = (i, v) => cvUpdate("achievements", cvData.achievements.map((a, idx) => idx === i ? v : a));
+  const cvRemoveAchievement = (i) => cvUpdate("achievements", cvData.achievements.filter((_, idx) => idx !== i));
+
+  const cvRemoveResp = (id, idx) => setCvData(p => ({ ...p, experiences: p.experiences.map(e => e.id === id ? { ...e, responsibilities: e.responsibilities.filter((_, i) => i !== idx) } : e) }));
+
+  // Membership functions
+  const cvAddMembership = () => setCvData(p => ({ ...p, memberships: [...p.memberships, { id: Date.now(), name: "", number: "", hasNo: false }] }));
+  const cvUpdateMembership = (id, field, value) => setCvData(p => ({ ...p, memberships: p.memberships.map(m => m.id === id ? { ...m, [field]: value } : m) }));
+  const cvRemoveMembership = (id) => setCvData(p => ({ ...p, memberships: p.memberships.filter(m => m.id !== id) }));
+
+  const cvSaveSection = (sectionName) => {
+    if (sectionName === "step2") {
+      const hasCore = (cvData.coreCompetencies || []).filter(x => String(x).trim().length > 0).length > 0;
+      const hasTools = (cvData.toolsSoftware || []).filter(x => String(x).trim().length > 0).length > 0;
+      const hasAchievements = (cvData.achievements || []).filter(x => String(x).trim().length > 0).length > 0;
+      const hasKeywords = String(cvData.keywords || "").trim().length > 0;
+      if (hasCore && hasTools && hasAchievements && hasKeywords) {
+        setCvSectionsSaved(p => ({ ...p, step2: true }));
+        return true;
+      }
+      setCvStepValidationError(lang === "ar" ? "من فضلك أكمل جميع الحقول في هذا القسم" : "Please complete all fields in this section");
+      return false;
+    }
+    return true;
+  };
 
   const cvAddEdu = () => cvUpdate("education", [...cvData.education, { degree: "", major: "", university: "", year: "" }]);
   const cvUpdateEdu = (i, field, val) => cvUpdate("education", cvData.education.map((e, idx) => idx === i ? { ...e, [field]: val } : e));
@@ -7728,6 +7936,8 @@ export default function App() {
     setCvBuilderReviewSavedAt("");
     setCvBuilderReviewError("");
     setCvBuilderReviewEditMode(false);
+    setCvStepValidationError("");
+    setCvBuilderOrderSyncBusy(false);
     setCvBuilderScreen("form");
   };
 
@@ -7743,6 +7953,8 @@ export default function App() {
     setCvBuilderReviewSavedAt("");
     setCvBuilderReviewError("");
     setCvBuilderReviewEditMode(false);
+    setCvStepValidationError("");
+    setCvBuilderOrderSyncBusy(false);
     setCvBuilderScreen("menu");
   };
 
@@ -7875,6 +8087,42 @@ export default function App() {
     lang,
     mergeCvBuilderOrder,
     selectedCountry,
+  ]);
+
+  const handleCvStepChange = useCallback(async (targetStep) => {
+    if (targetStep <= cvStep) {
+      setCvStepValidationError("");
+      setCvStep(targetStep);
+      return;
+    }
+
+    for (let idx = cvStep; idx < targetStep; idx += 1) {
+      if (!isCvStepComplete(idx)) {
+        setCvStepValidationError(getCvStepValidationMessage(idx));
+        return;
+      }
+    }
+
+    setCvStepValidationError("");
+    setCvStep(targetStep);
+
+    if (targetStep === 4 && !selectedCvBuilderOrder?.firebaseId && !cvBuilderOrderSyncBusy) {
+      setCvBuilderOrderSyncBusy(true);
+      try {
+        await ensureCvBuilderOrderForCurrentRequestAsync();
+      } catch (error) {
+        console.error("CV builder order provisioning failed", error);
+      } finally {
+        setCvBuilderOrderSyncBusy(false);
+      }
+    }
+  }, [
+    cvStep,
+    cvBuilderOrderSyncBusy,
+    ensureCvBuilderOrderForCurrentRequestAsync,
+    getCvStepValidationMessage,
+    isCvStepComplete,
+    selectedCvBuilderOrder?.firebaseId,
   ]);
 
   const blobToBase64 = (blob) => new Promise((resolve, reject) => {
@@ -8030,35 +8278,85 @@ export default function App() {
   };
 
   const openCvServiceEmailConfirm = async () => {
-    const requiredFields = [
-      cvData.fullName.trim(),
-      cvData.jobTitle.trim(),
-      cvData.country.trim(),
-      cvData.phone.trim(),
-      cvData.whatsapp.trim(),
-    ];
-    if (requiredFields.some((value) => !value)) {
-      alert(lang === "ar"
-        ? "أدخل الاسم والمسمى الوظيفي والدولة ورقم الموبايل ورقم الواتساب أولاً قبل الإرسال."
-        : "Please enter name, job title, country, mobile number, and WhatsApp number before sending.");
-      return;
+    for (let idx = 0; idx < 4; idx += 1) {
+      if (!isCvStepComplete(idx)) {
+        setCvStep(idx);
+        setCvStepValidationError(getCvStepValidationMessage(idx));
+        return;
+      }
     }
+
+    setCvStepValidationError("");
+
+    let ensuredOrder = null;
     try {
-      await ensureCvBuilderOrderForCurrentRequestAsync();
+      ensuredOrder = await ensureCvBuilderOrderForCurrentRequestAsync();
     } catch (error) {
       console.error("CV builder request save failed", error);
       if (isDeviceRequestLimitError(error)) {
         showDeviceRequestLimitNotice(error?.details);
         return;
       }
+      alert(lang === "ar"
+        ? "تعذر حفظ طلب السيرة الذاتية الآن. حاول مرة أخرى."
+        : "Unable to save your CV request right now. Please try again.");
+      return;
     }
-    sendCvDataByEmail();
+
+    const cvOrderEmailPayload = {
+      firebaseId: ensuredOrder?.firebaseId || "",
+      orderNumber: ensuredOrder?.orderNumber || "",
+      serial: ensuredOrder?.orderNumber || ensuredOrder?.serial || "",
+      service: lang === "ar" ? "طلب سيرة ذاتية - مستخدم عادي" : "CV Builder Request - Regular User",
+      name: cvData.fullName || "",
+      phone: cvData.phone || "",
+      email: cvData.email || "",
+      country: cvData.country || selectedCountry || "",
+      city: cvData.location || "",
+      paymentMethod: lang === "ar" ? "نموذج بيانات السيرة الذاتية" : "CV Data Form",
+      billingLabel: lang === "ar" ? "إرسال بيانات السيرة الذاتية" : "CV data submission",
+      dateStr: ensuredOrder?.dateStr || new Date().toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US"),
+      receiptName: "cv-data-form",
+    };
+
+    setOrderEmailStatus("sending");
+    const emailResult = await sendOrderEmails(cvOrderEmailPayload);
+    const nextStatus = emailResult?.ok ? "sent" : "failed";
+    setOrderEmailStatus(nextStatus);
+
+    const emailUpdatedAt = new Date().toISOString();
+    if (ensuredOrder?.id) {
+      mergeCvBuilderOrder(ensuredOrder.id, {
+        emailDeliveryStatus: nextStatus,
+        emailDeliveryUpdatedAt: emailUpdatedAt,
+      });
+    }
+    if (ensuredOrder?.firebaseId) {
+      await updateOrderInFirebase(ensuredOrder.firebaseId, {
+        emailDeliveryStatus: nextStatus,
+        emailDeliveryUpdatedAt: emailUpdatedAt,
+        emailDeliveryError: nextStatus === "failed" ? "background-send-failed" : "",
+      }).catch((error) => {
+        console.error("CV builder email delivery status update failed", error);
+      });
+    }
+
+    setModal({
+      type: "success",
+      title: lang === "ar" ? "تم إرسال الطلب" : "Request sent",
+      msg: lang === "ar"
+        ? `تم إنشاء الطلب رقم ${ensuredOrder?.orderNumber || "-"} وإرسال الإشعار بالبريد.`
+        : `Request ${ensuredOrder?.orderNumber || "-"} was created and email notification was sent.`,
+    });
   };
 
-  const sendCvDataByEmail = (customSubject, customBody) => {
+  const sendCvDataByEmail = (customSubject, customBody, customOrderMeta = null) => {
     const { subject, body } = customSubject && customBody
       ? { subject: customSubject, body: customBody }
-      : buildCvSubmissionEmail(cvData);
+      : buildCvSubmissionEmail(cvData, customOrderMeta || {
+          orderNumber: selectedCvBuilderOrder?.orderNumber || "",
+          serial: selectedCvBuilderOrder?.serial || "",
+        });
     setModal(null);
     window.open(`mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, "_blank");
   };
@@ -12765,6 +13063,7 @@ export default function App() {
               key: "builder",
               accent: "#0f766e",
               icon: "📄",
+              metric: lang === "ar" ? "عدد التنزيلات" : "Downloads",
               users: cvRealBuilderCount,
               avg: getRealAvgRating(cvRealtimeBuilderOrders, cvBuilderStats.averageRating),
             },
@@ -12772,6 +13071,7 @@ export default function App() {
               key: "premium",
               accent: "#c8960c",
               icon: "👑",
+              metric: lang === "ar" ? "عدد المشتركين" : "Subscribers",
               users: cvRealPremiumCount,
               avg: getRealAvgRating(cvRealtimePremiumOrders, cvPremiumStats.averageRating),
             },
@@ -12779,6 +13079,7 @@ export default function App() {
               key: "elite",
               accent: "#7c3aed",
               icon: "🚀",
+              metric: lang === "ar" ? "عدد قصص النجاح" : "Success Stories",
               users: cvRealEliteCount,
               avg: getRealAvgRating(cvRealtimeEliteOrders, cvEliteStats.averageRating),
             },
@@ -12794,6 +13095,12 @@ export default function App() {
               desc: lang==="ar" ? "أنشئ سيرتك الذاتية بنفسك بخطوات واضحة واحصل على نسخة جاهزة للتصدير." : "Build your CV yourself with a clean guided flow and get an export-ready version.",
               cta: lang==="ar" ? "ابدأ الآن" : "Start Now",
               accent: "#0f766e",
+              cardBg: dark ? "linear-gradient(155deg,#123e45,#0f766e)" : "linear-gradient(155deg,#dff5f1,#b8e7df)",
+              titleColor: dark ? "#e6fffb" : "#083b36",
+              textColor: dark ? "#dcfdf7" : "#0f4d45",
+              chipBg: dark ? "rgba(15,118,110,0.35)" : "rgba(255,255,255,0.72)",
+              ctaBg: "linear-gradient(135deg,#0f766e,#0d9488)",
+              ctaColor: "#ffffff",
             },
             {
               key: "premium",
@@ -12805,6 +13112,12 @@ export default function App() {
               desc: lang==="ar" ? "سيرة ذاتية ممتازة مع عدد 16 فرصة مناسبة لتخصصك تُرسل إلى واتسابك الشخصي." : "Premium CV with 16 relevant opportunities sent to your WhatsApp.",
               cta: lang==="ar" ? "اطلب بريميوم" : "Choose Premium",
               accent: "#c8960c",
+              cardBg: dark ? "linear-gradient(155deg,#113965,#1d5f9e)" : "linear-gradient(155deg,#b8d9f6,#6ea9dd)",
+              titleColor: dark ? "#f9e7b7" : "#3a2a07",
+              textColor: dark ? "#eff6ff" : "#16324f",
+              chipBg: dark ? "rgba(200,150,12,0.30)" : "rgba(255,255,255,0.74)",
+              ctaBg: "linear-gradient(135deg,#c8960c,#a97706)",
+              ctaColor: "#fff9eb",
             },
             {
               key: "elite",
@@ -12816,6 +13129,12 @@ export default function App() {
               desc: lang==="ar" ? "بحث فعلي عن وظائف مناسبة مع سيرة ذاتية ممتازة وإرسال 32 فرصة مرتبطة بمجالك." : "Real job search support with a premium CV and 32 relevant opportunities.",
               cta: lang==="ar" ? "اطلب الباقة الكاملة" : "Get Full Package",
               accent: "#7c3aed",
+              cardBg: dark ? "linear-gradient(155deg,#2b174f,#3f216f)" : "linear-gradient(155deg,#32215e,#1f1440)",
+              titleColor: "#efe7ff",
+              textColor: "#dfd4ff",
+              chipBg: "rgba(255,255,255,0.12)",
+              ctaBg: "linear-gradient(135deg,#6d4ec7,#8a67eb)",
+              ctaColor: "#f8f4ff",
             }
           ];
           const cvPaidServices = [
@@ -12930,104 +13249,97 @@ export default function App() {
                 </div>
               )}
               {!cvMode && (
-              <div style={{ ...cardStyle, padding:isCompactPhone ? "9px" : "12px", marginTop:6, background: dark ? "linear-gradient(135deg, rgba(15,23,42,0.96), rgba(30,41,59,0.88))" : "linear-gradient(135deg, #fff8e6, #eef4ff)", border:`1px solid ${t.gold}44`, boxShadow: dark ? "0 18px 38px rgba(0,0,0,0.24)" : "0 18px 38px rgba(15,23,42,0.08)" }}>
+              <div style={{ ...cardStyle, padding:isCompactPhone ? "11px" : "16px", marginTop:6, background: dark ? "linear-gradient(135deg, rgba(15,23,42,0.97), rgba(30,41,59,0.92), rgba(14,116,144,0.22))" : "linear-gradient(135deg, #f8f4ea, #edf5ff, #d8f3ef)", border:`1px solid ${t.gold}3f`, boxShadow: dark ? "0 18px 38px rgba(0,0,0,0.24)" : "0 18px 38px rgba(15,23,42,0.09)", borderRadius:24 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, marginBottom:isCompactPhone ? 5 : 6, flexWrap:"wrap" }}>
                   <span style={{ ...tagStyle, background:"#e53e3e18", color:"#e53e3e" }}>🔥 {lang==="ar" ? "خصم 50٪ لفترة محدودة" : "50% OFF for a limited time"}</span>
                   <span style={{ fontSize:11, color:t.subText, fontFamily:"'Cairo',sans-serif" }}>{lang==="ar" ? `ينتهي العرض في ${cvOfferEndsText}` : `Offer ends on ${cvOfferEndsText}`}</span>
                 </div>
                 <div style={{ fontSize:isCompactPhone ? 17.5 : 22, fontWeight:900, color:t.text, lineHeight:isCompactPhone ? 1.16 : 1.24, marginBottom:isCompactPhone ? 3 : 4, fontFamily:"'Cairo',sans-serif" }}>
-                  {lang==="ar" ? "اصنع سيرة ذاتية تفتح لك باب المقابلات وتختصر عليك طريق التقديم" : "Create a CV that opens interview doors faster"}
+                  {lang==="ar" ? "امتلك السيرة الذاتية التي تضمن لك المقابلات وتحقق لك الوظيفة التي تستحقها" : "Own the CV that gets interviews and lands your ideal role"}
                 </div>
                 <div style={{ fontSize:isCompactPhone ? 10.5 : 12, color:t.subText, lineHeight:isCompactPhone ? 1.52 : 1.62, marginBottom:isCompactPhone ? 6 : 8, fontFamily:"'Cairo',sans-serif" }}>
-                  {lang==="ar" ? "اختر المسار المناسب لك: نسخة مجانية، أو باقة احترافية، أو خدمة متكاملة للبحث عن وظيفة مع متابعة منظمة." : "Choose the path that fits you: a free option, a premium plan, or a complete job-search package with organized delivery."}
+                  {lang==="ar" ? "اختر مسارك المهني من بين خياراتنا المتكاملة للنجاح." : "Choose your career path from our complete success options."}
                 </div>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(3, minmax(0, 1fr))", gap:isCompactPhone ? 6 : 8 }}>
-                  {cvPackages.map(pkg => (
-                    <button
-                      key={pkg.key}
-                      onClick={() => {
-                        if (cvPackageSelectionLocked) {
-                          return;
-                        }
-                        if (pkg.key === "builder") {
-                          if (cvMode === "builder") {
-                            setCvMode(null);
-                            setSelectedCvPackage(null);
-                            setCvBuilderScreen("menu");
-                            setSelectedCvBuilderOrder(null);
-                            setCvStep(0);
-                            setCvUnlocked(false);
-                            return;
-                          }
-                          setCvMode("builder");
-                          setSelectedCvPackage(null);
-                          setCvBuilderScreen("menu");
-                          setSelectedCvBuilderOrder(null);
-                          setCvStep(0);
-                          setCvUnlocked(false);
-                          return;
-                        }
-                        if (cvMode === "services" && selectedCvPackage === pkg.key) {
-                          setCvMode(null);
-                          setSelectedCvPackage(null);
-                          return;
-                        }
-                        setCvMode("services");
-                        setSelectedCvPackage(pkg.key);
-                      }}
-                      style={{
-                        borderRadius:14,
-                        padding:isCompactPhone ? "10px 6px" : "12px 8px",
-                        border:`1px solid ${((pkg.key === "builder" && cvMode === "builder") || (pkg.key !== "builder" && cvMode === "services" && selectedCvPackage === pkg.key)) ? pkg.accent : t.border}`,
-                        background:((pkg.key === "builder" && cvMode === "builder") || (pkg.key !== "builder" && cvMode === "services" && selectedCvPackage === pkg.key)) ? `${pkg.accent}12` : t.cardBg,
-                        textAlign: "center",
-                        cursor:cvPackageSelectionLocked ? "not-allowed" : "pointer",
-                        fontFamily:"'Cairo',sans-serif",
-                        opacity:cvPackageSelectionLocked && !((pkg.key === "builder" && cvMode === "builder") || (pkg.key !== "builder" && cvMode === "services" && selectedCvPackage === pkg.key)) ? 0.45 : 1,
-                        filter:cvPackageSelectionLocked && !((pkg.key === "builder" && cvMode === "builder") || (pkg.key !== "builder" && cvMode === "services" && selectedCvPackage === pkg.key)) ? "grayscale(0.1)" : "none"
-                      }}>
-                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:isCompactPhone ? 5 : 8 }}>
-                        {pkg.oldPrice ? <span style={{ fontSize:9, color:"#e53e3e", background:"#fee2e2", borderRadius:999, padding:"2px 6px", fontWeight:700 }}>50%</span> : <span />}
-                        <span style={{ fontSize:isCompactPhone ? 14 : 16 }}>{pkg.icon}</span>
+                <div style={{ display:"grid", gridTemplateColumns:isCompactPhone ? "1fr" : "repeat(3, minmax(0, 1fr))", gap:isCompactPhone ? 8 : 12 }}>
+                  {cvPackages.map(pkg => {
+                    const statsItem = cvPackageStatsCards.find(s => s.key === pkg.key);
+                    const isActive = (pkg.key === "builder" && cvMode === "builder") || (pkg.key !== "builder" && cvMode === "services" && selectedCvPackage === pkg.key);
+                    return (
+                      <div key={pkg.key} style={{ display:"flex", flexDirection:"column", gap:isCompactPhone ? 6 : 8 }}>
+                        <button
+                          onClick={() => {
+                            if (cvPackageSelectionLocked) return;
+                            if (pkg.key === "builder") {
+                              if (cvMode === "builder") {
+                                setCvMode(null); setSelectedCvPackage(null); setCvBuilderScreen("menu"); setSelectedCvBuilderOrder(null); setCvStep(0); setCvUnlocked(false);
+                                return;
+                              }
+                              setCvMode("builder"); setSelectedCvPackage(null); setCvBuilderScreen("menu"); setSelectedCvBuilderOrder(null); setCvStep(0); setCvUnlocked(false);
+                                try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
+                                return;
+                            }
+                            if (cvMode === "services" && selectedCvPackage === pkg.key) {
+                              setCvMode(null); setSelectedCvPackage(null);
+                              return;
+                            }
+                            setCvMode("services"); setSelectedCvPackage(pkg.key);
+                              try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
+                          }}
+                          style={{
+                            borderRadius:24,
+                            padding:isCompactPhone ? "12px 10px" : "14px 12px",
+                            border:`1px solid ${isActive ? `${pkg.accent}aa` : `${pkg.accent}55`}`,
+                            background:pkg.cardBg,
+                            textAlign:"center",
+                            cursor:cvPackageSelectionLocked ? "not-allowed" : "pointer",
+                            fontFamily:"'Cairo',sans-serif",
+                            minHeight:isCompactPhone ? "unset" : 288,
+                            position:"relative",
+                            display:"flex",
+                            flexDirection:"column",
+                            justifyContent:"space-between",
+                            width:"100%",
+                            boxShadow:isActive ? `0 0 0 3px ${pkg.accent}33, 0 20px 32px ${pkg.accent}28` : "0 14px 26px rgba(15,23,42,0.14)",
+                            opacity:cvPackageSelectionLocked && !isActive ? 0.45 : 1,
+                            filter:cvPackageSelectionLocked && !isActive ? "grayscale(0.1)" : "none"
+                          }}>
+                          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:isCompactPhone ? 6 : 10 }}>
+                            {pkg.oldPrice ? <span style={{ fontSize:9, color:dark ? "#fff0f0" : "#7f1d1d", background:dark ? "rgba(127,29,29,0.45)" : "#fee2e2", borderRadius:999, padding:"3px 8px", fontWeight:800 }}>50%</span> : <span />}
+                            <span style={{ fontSize:isCompactPhone ? 23 : 31, lineHeight:1 }}>{pkg.icon}</span>
+                          </div>
+                          <div style={{ fontSize:isCompactPhone ? 16 : 18, fontWeight:900, color:pkg.titleColor, marginBottom:5, lineHeight:1.35 }}>{pkg.title}</div>
+                          <div style={{ fontSize:isCompactPhone ? 11 : 12, color:pkg.textColor, marginBottom:isCompactPhone ? 7 : 9, lineHeight:1.45, fontWeight:700 }}>{pkg.summary}</div>
+                          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, marginBottom:isCompactPhone ? 8 : 10, flexWrap:"wrap" }}>
+                            {pkg.oldPrice && <span style={{ fontSize:20, color:pkg.textColor, textDecoration:"line-through", opacity:0.8, fontWeight:900 }}>{pkg.oldPrice}</span>}
+                            <span style={{ fontSize:isCompactPhone ? 32 : 40, fontWeight:900, color:pkg.titleColor, lineHeight:1 }}>{pkg.price}</span>
+                          </div>
+                          <div style={{ width:"100%", borderRadius:999, padding:isCompactPhone ? "9px 10px" : "11px 12px", background:pkg.ctaBg, color:pkg.ctaColor, fontSize:isCompactPhone ? 12 : 13, fontWeight:900, marginTop:8, boxShadow:"0 10px 20px rgba(0,0,0,0.16)", border:`1px solid ${pkg.chipBg}` }}>{pkg.cta}</div>
+                        </button>
+                        {statsItem && (
+                          <div style={{
+                            borderRadius:18,
+                            padding:isCompactPhone ? "10px 8px" : "12px 10px",
+                            border:`1px solid ${statsItem.accent}33`,
+                            background:dark ? "linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))" : "linear-gradient(145deg, rgba(255,255,255,0.78), rgba(255,255,255,0.55))",
+                            textAlign:"center",
+                            display:"flex",
+                            flexDirection:"column",
+                            justifyContent:"center",
+                            gap:3,
+                          }}>
+                            <div style={{ fontSize:isCompactPhone ? 16 : 18, lineHeight:1 }}>{statsItem.icon}</div>
+                            <div style={{ fontSize:isCompactPhone ? 11 : 13, color:t.text, fontWeight:900, fontFamily:"'Cairo',sans-serif", lineHeight:1.5 }}>
+                              {statsItem.metric}: <span style={{ color:statsItem.accent, fontWeight:900 }}>{statsItem.users}</span>
+                            </div>
+                            <div style={{ fontSize:isCompactPhone ? 11 : 13, color:t.text, fontWeight:900, fontFamily:"'Cairo',sans-serif", lineHeight:1.5 }}>
+                              {lang==="ar" ? "متوسط التقييم:" : "Avg Rating:"}{" "}
+                              <span style={{ color:t.subText, fontWeight:900 }}>{statsItem.avg}/5</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div style={{ fontSize:isCompactPhone ? 10.5 : 12, fontWeight:800, color:t.text, marginBottom:4, lineHeight:1.35 }}>{pkg.title}</div>
-                      <div style={{ fontSize:isCompactPhone ? 9 : 10, color:t.subText, marginBottom:isCompactPhone ? 5 : 7, lineHeight:1.35 }}>{pkg.summary}</div>
-                      <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:5, marginBottom:isCompactPhone ? 4 : 6, flexWrap:"wrap" }}>
-                        <span style={{ fontSize:isCompactPhone ? 16 : 18, fontWeight:900, color:pkg.accent }}>{pkg.price}</span>
-                        {pkg.oldPrice && <span style={{ fontSize:10, color:t.subText, textDecoration:"line-through" }}>{pkg.oldPrice}</span>}
-                      </div>
-                      <div style={{ fontSize:isCompactPhone ? 9 : 10, color:pkg.accent, fontWeight:800, marginTop:isCompactPhone ? 3 : 6 }}>{pkg.cta}</div>
-                    </button>
-                  ))}
-                </div>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(3, minmax(0, 1fr))", gap:isCompactPhone ? 6 : 8, marginTop:isCompactPhone ? 8 : 10 }}>
-                  {cvPackageStatsCards.map((item) => (
-                    <div
-                      key={item.key}
-                      style={{
-                        borderRadius:10,
-                        padding:isCompactPhone ? "6px 5px" : "7px 6px",
-                        border:`1px solid ${item.accent}33`,
-                        background:dark ? "rgba(255,255,255,0.04)" : `${item.accent}0f`,
-                        textAlign:"center",
-                        minHeight:isCompactPhone ? 44 : 50,
-                        display:"flex",
-                        flexDirection:"column",
-                        justifyContent:"center",
-                        gap:2,
-                      }}
-                    >
-                      <div style={{ fontSize:isCompactPhone ? 11 : 12, lineHeight:1 }}>{item.icon}</div>
-                      <div style={{ fontSize:isCompactPhone ? 9 : 10, color:t.text, fontWeight:800, fontFamily:"'Cairo',sans-serif", lineHeight:1.5 }}>
-                        {lang==="ar" ? "عدد الطلبات:" : "Requests:"}{" "}
-                        <span style={{ color:item.accent, fontWeight:900 }}>{item.users}</span>
-                      </div>
-                      <div style={{ fontSize:isCompactPhone ? 9 : 10, color:t.text, fontWeight:800, fontFamily:"'Cairo',sans-serif", lineHeight:1.5 }}>
-                        {lang==="ar" ? "متوسط التقييم:" : "Avg Rating:"}{" "}
-                        <span style={{ color:t.subText, fontWeight:900 }}>{item.avg}/5</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
               )}
@@ -13322,15 +13634,16 @@ export default function App() {
                             {selectedCvBuilderOrder.data?.summary || "—"}
                           </div>
                           <div style={{ display:"grid", gap:8 }}>
-                            {[
-                              [lang==="ar" ? "هيئة المهندسين السعوديين" : "Saudi Council of Engineers", selectedCvBuilderOrder.data?.sceNumber],
-                              [lang==="ar" ? "نقابة المهندسين المصريين" : "Egyptian Engineers Syndicate", selectedCvBuilderOrder.data?.egSyndicate],
-                            ].map(([label, value], idx) => (
-                              <div key={idx} style={{ display:"flex", justifyContent:"space-between", gap:12, padding:"7px 0", borderBottom:`1px solid ${t.border}` }}>
-                                <span style={{ fontSize:12, color:t.subText, fontFamily:"'Cairo',sans-serif" }}>{label}</span>
-                                <span style={{ fontSize:12, fontWeight:800, color:t.text, fontFamily:"'Cairo',sans-serif" }}>{value || "—"}</span>
-                              </div>
-                            ))}
+                            {(selectedCvBuilderOrder.data?.memberships || []).length > 0 ? (
+                              (selectedCvBuilderOrder.data?.memberships || []).map(([name, number], idx) => (
+                                <div key={idx} style={{ display:"flex", justifyContent:"space-between", gap:12, padding:"7px 0", borderBottom:`1px solid ${t.border}` }}>
+                                  <span style={{ fontSize:12, color:t.subText, fontFamily:"'Cairo',sans-serif" }}>{name}</span>
+                                  <span style={{ fontSize:12, fontWeight:800, color:t.text, fontFamily:"'Cairo',sans-serif" }}>{number || "—"}</span>
+                                </div>
+                              ))
+                            ) : (
+                              <div style={{ fontSize:12, color:t.subText, fontFamily:"'Cairo',sans-serif" }} >{lang==="ar" ? "لا توجد عضويات مضافة" : "No memberships added"}</div>
+                            )}
                           </div>
                         </div>
 
@@ -13414,7 +13727,7 @@ export default function App() {
               <div style={{ display:"flex", alignItems:"center", marginBottom:20, gap:0 }}>
                 {cvSteps.map((s, i) => (
                   <React.Fragment key={i}>
-                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3, flex:1, cursor:"pointer" }} onClick={() => setCvStep(i)}>
+                    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3, flex:1, cursor:"pointer" }} onClick={() => { void handleCvStepChange(i); }}>
                       <div style={{ width:28, height:28, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, border:`2px solid ${i <= cvStep ? t.gold : t.border}`, background: i < cvStep ? t.gold : i === cvStep ? `${t.gold}22` : t.inputBg, color: i <= cvStep ? (i < cvStep ? "#fff" : t.gold) : t.subText, transition:"all .2s", fontFamily:"'Cairo',sans-serif" }}>
                         {i < cvStep ? "✓" : cvIcons[i]}
                       </div>
@@ -13426,6 +13739,11 @@ export default function App() {
                   </React.Fragment>
                 ))}
               </div>
+              {!!cvStepValidationError && (
+                <div style={{ ...cardStyle, marginBottom:12, background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.24)", color:"#b91c1c", fontSize:12, fontWeight:800, lineHeight:1.8 }}>
+                  {cvStepValidationError}
+                </div>
+              )}
 
               {/* ═══ STEP 0: PERSONAL ════════════════════════ */}
               {cvStep === 0 && (
@@ -13462,6 +13780,7 @@ export default function App() {
                         <select style={inputStyle} value={cvData.iqamaStatus} onChange={e => cvUpdate("iqamaStatus", e.target.value)}>
                           <option value="transferable">{lang==="ar" ? "قابلة للنقل" : "Transferable"}</option>
                           <option value="non-transferable">{lang==="ar" ? "غير قابلة للنقل" : "Non-Transferable"}</option>
+                          <option value="none">{lang==="ar" ? "لا يوجد" : "None"}</option>
                         </select>
                       </div>
                     </div>
@@ -13469,17 +13788,36 @@ export default function App() {
 
                   {/* Memberships */}
                   <div style={cardStyle}>
-                    <div style={secHeadStyle}>🏛️ {lang==="ar" ? "العضويات المهنية" : "Professional Memberships"}</div>
-                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                      <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                        <label style={labelStyle}>{lang==="ar" ? "هيئة المهندسين السعوديين" : "Saudi Council of Engineers"}</label>
-                        <input style={inputStyle} value={cvData.sceNumber} placeholder="00000" onChange={e => cvUpdate("sceNumber", e.target.value)} />
-                      </div>
-                      <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                        <label style={labelStyle}>{lang==="ar" ? "نقابة المهندسين المصريين" : "Egyptian Engineers Syndicate"}</label>
-                        <input style={inputStyle} value={cvData.egSyndicate} placeholder="00000000" onChange={e => cvUpdate("egSyndicate", e.target.value)} />
-                      </div>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                      <div style={secHeadStyle}>🏛️ {lang==="ar" ? "العضويات المهنية" : "Professional Memberships"}</div>
+                      <button onClick={cvAddMembership} style={{ background:t.gold, border:"none", borderRadius:8, padding:"6px 12px", color:"white", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"'Cairo',sans-serif" }}>+</button>
                     </div>
+                    {cvData.memberships.map((mem, i) => (
+                      <div key={mem.id} style={{ background:t.inputBg, borderRadius:10, padding:"12px", marginBottom:10, border:`1px solid ${t.border}` }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+                          <div style={{ fontSize:11, fontWeight:700, color:t.gold, fontFamily:"'Cairo',sans-serif" }}>🏢 {lang==="ar" ? `عضوية ${i+1}` : `Membership ${i+1}`}</div>
+                          {cvData.memberships.length > 1 && <button onClick={() => cvRemoveMembership(mem.id)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:14, color:t.subText }}>✕</button>}
+                        </div>
+                        <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:10 }}>
+                          <input type="radio" id={`has-yes-${mem.id}`} name={`has-${mem.id}`} checked={!mem.hasNo} onChange={() => cvUpdateMembership(mem.id, "hasNo", false)} style={{ accentColor:t.gold, width:16, height:16, cursor:"pointer" }} />
+                          <label htmlFor={`has-yes-${mem.id}`} style={{ ...labelStyle, marginBottom:0, cursor:"pointer" }}>{lang==="ar" ? "يوجد عضوية" : "Has Membership"}</label>
+                          <input type="radio" id={`has-no-${mem.id}`} name={`has-${mem.id}`} checked={mem.hasNo} onChange={() => cvUpdateMembership(mem.id, "hasNo", true)} style={{ accentColor:t.gold, width:16, height:16, cursor:"pointer", marginLeft:20 }} />
+                          <label htmlFor={`has-no-${mem.id}`} style={{ ...labelStyle, marginBottom:0, cursor:"pointer" }}>{lang==="ar" ? "لا توجد عضوية" : "No Membership"}</label>
+                        </div>
+                        {!mem.hasNo && (
+                          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                            <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                              <label style={labelStyle}>{lang==="ar" ? "اسم النقابة / الهيئة" : "Membership Name"}</label>
+                              <input style={inputStyle} value={mem.name} placeholder={lang==="ar" ? "مثلاً: هيئة المهندسين السعوديين" : "e.g., Saudi Council of Engineers"} onChange={e => cvUpdateMembership(mem.id, "name", e.target.value)} />
+                            </div>
+                            <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                              <label style={labelStyle}>{lang==="ar" ? "رقم العضوية" : "Membership Number"}</label>
+                              <input style={inputStyle} value={mem.number} placeholder={lang==="ar" ? "0000000" : "000000"} onChange={e => cvUpdateMembership(mem.id, "number", e.target.value)} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
 
                   {/* Summary */}
@@ -13542,6 +13880,9 @@ export default function App() {
                             <input style={{ ...inputStyle, flex:1 }} value={r}
                               placeholder={lang==="ar" ? "أدخل مسؤولية أو مهمة..." : "Enter a responsibility or task..."}
                               onChange={e => cvUpdateResp(exp.id, ri, e.target.value)} />
+                            {exp.responsibilities.length > 1 && (
+                              <button onClick={() => cvRemoveResp(exp.id, ri)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:16, color:t.subText, padding:0, width:20, height:20, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+                            )}
                           </div>
                         ))}
                         <button style={addBtnStyle} onClick={() => cvAddRespLine(exp.id)}>+ {lang==="ar" ? "أضف مسؤولية" : "Add responsibility"}</button>
@@ -13636,10 +13977,48 @@ export default function App() {
                         <input style={{ ...inputStyle, flex:1 }} value={a}
                           placeholder={lang==="ar" ? "خفضت وقت إعداد العطاءات بنسبة 20%..." : "Reduced tender preparation time by ~20%..."}
                           onChange={e => cvUpdateAchievement(i, e.target.value)} />
+                        {cvData.achievements.length > 1 && (
+                          <button onClick={() => cvRemoveAchievement(i)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:16, color:t.subText, padding:0, width:20, height:20, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+                        )}
                       </div>
                     ))}
                     <button style={addBtnStyle} onClick={cvAddAchievement}>+ {lang==="ar" ? "أضف إنجاز" : "Add achievement"}</button>
                   </div>
+
+                  {/* ATS Keywords */}
+                  <div style={cardStyle}>
+                    <div style={secHeadStyle}>🔑 {lang==="ar" ? "الكلمات المفتاحية ATS" : "ATS Keywords"}</div>
+                    <textarea style={{ ...inputStyle, minHeight:60, resize:"vertical", lineHeight:1.7 }}
+                      placeholder={lang==="ar" ? "أضف كلمات مفتاحية موضوعة بفواصل (يوصى به للبحث عن الوظائف)..." : "Add keywords separated by commas (recommended for job search)..."}
+                      value={cvData.keywords} onChange={e => cvUpdate("keywords", e.target.value)} />
+                  </div>
+
+                  {/* Save Button */}
+                  <button 
+                    onClick={() => cvSaveSection("step2")}
+                    style={{ 
+                      width:"100%", 
+                      padding:"12px 16px", 
+                      background: cvSectionsSaved.step2 ? "#10b98122" : t.gold, 
+                      border:"none", 
+                      borderRadius:10, 
+                      color: cvSectionsSaved.step2 ? "#059669" : "white",
+                      fontSize:14, 
+                      fontWeight:700, 
+                      cursor:"pointer", 
+                      fontFamily:"'Cairo',sans-serif",
+                      display:"flex",
+                      alignItems:"center",
+                      justifyContent:"center",
+                      gap:8,
+                      marginTop:16
+                    }}>
+                    {cvSectionsSaved.step2 ? (
+                      <>✓ {lang==="ar" ? "تم الحفظ بنجاح" : "Saved Successfully"}</>
+                    ) : (
+                      <>💾 {lang==="ar" ? "احفظ البيانات" : "Save Section"}</>
+                    )}
+                  </button>
                 </div>
               )}
 
@@ -13757,26 +14136,53 @@ export default function App() {
                       </div>
                     ))}
                   </div>
+                  <div style={{ ...cardStyle, border:`1px solid ${t.border}`, background:t.cardBg }}>
+                    <div style={{ fontSize:13, fontWeight:900, color:t.gold, fontFamily:"'Cairo',sans-serif", marginBottom:8 }}>
+                      {lang==="ar" ? "بيان الطلب" : "Request Statement"}
+                    </div>
+                    <div style={{ display:"grid", gap:6 }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", gap:12, padding:"5px 0", borderBottom:`1px solid ${t.border}` }}>
+                        <span style={{ fontSize:12, color:t.subText, fontFamily:"'Cairo',sans-serif" }}>{lang==="ar" ? "رقم الطلب" : "Order Number"}</span>
+                        <span style={{ fontSize:12, fontWeight:900, color:t.text, fontFamily:"'Cairo',sans-serif" }}>{selectedCvBuilderOrder?.orderNumber || "—"}</span>
+                      </div>
+                      <div style={{ display:"flex", justifyContent:"space-between", gap:12, padding:"5px 0", borderBottom:`1px solid ${t.border}` }}>
+                        <span style={{ fontSize:12, color:t.subText, fontFamily:"'Cairo',sans-serif" }}>{lang==="ar" ? "السيريال" : "Serial"}</span>
+                        <span style={{ fontSize:12, fontWeight:900, color:t.text, fontFamily:"'Cairo',sans-serif" }}>{selectedCvBuilderOrder?.serial || "—"}</span>
+                      </div>
+                      <div style={{ display:"flex", justifyContent:"space-between", gap:12, padding:"5px 0" }}>
+                        <span style={{ fontSize:12, color:t.subText, fontFamily:"'Cairo',sans-serif" }}>{lang==="ar" ? "حالة الحفظ" : "Save Status"}</span>
+                        <span style={{ fontSize:12, fontWeight:900, color:cvBuilderOrderSyncBusy ? t.gold : (selectedCvBuilderOrder?.firebaseId ? "#16a34a" : "#dc2626"), fontFamily:"'Cairo',sans-serif" }}>
+                          {cvBuilderOrderSyncBusy
+                            ? (lang==="ar" ? "جاري الحفظ..." : "Saving...")
+                            : selectedCvBuilderOrder?.firebaseId
+                              ? (lang==="ar" ? "تم الحفظ على Firebase" : "Saved to Firebase")
+                              : (lang==="ar" ? "غير محفوظ بعد" : "Not saved yet")}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                   <div style={{ display:"grid", gap:12 }}>
-                    <button onClick={() => openCvExportLangModal("pdf")} disabled={cvPdfExporting} style={{ ...cardStyle, marginBottom:0, textAlign:"center", background:"linear-gradient(135deg,#fff1f2,#f8fafc)", border:"1px solid #fda4af", cursor:cvPdfExporting ? "wait" : "pointer", opacity:cvPdfExporting ? 0.75 : 1 }}>
-                      <div style={{ fontSize:28, marginBottom:8 }}>📄</div>
-                      <div style={{ fontSize:15, fontWeight:900, color:"#e11d48", fontFamily:"'Cairo',sans-serif", marginBottom:6 }}>
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:10 }}>
+                    <button onClick={() => openCvExportLangModal("pdf")} disabled={cvPdfExporting} style={{ ...cardStyle, marginBottom:0, textAlign:"center", background:"linear-gradient(135deg,#fff1f2,#f8fafc)", border:"1px solid #fda4af", cursor:cvPdfExporting ? "wait" : "pointer", opacity:cvPdfExporting ? 0.75 : 1, minHeight:96, padding:"10px" }}>
+                      <div style={{ fontSize:20, marginBottom:4 }}>📄</div>
+                      <div style={{ fontSize:13, fontWeight:900, color:"#e11d48", fontFamily:"'Cairo',sans-serif", marginBottom:3 }}>
                         {cvPdfExporting ? (lang==="ar" ? "جاري تجهيز ملف PDF..." : "Preparing PDF file...") : (lang==="ar" ? "تصدير ملف PDF" : "Export PDF File")}
                       </div>
-                      <div style={{ fontSize:11, color:t.subText, lineHeight:1.8, fontFamily:"'Cairo',sans-serif" }}>
+                      <div style={{ fontSize:10, color:t.subText, lineHeight:1.5, fontFamily:"'Cairo',sans-serif" }}>
                         {lang==="ar" ? "حمّل سيرة ذاتية جاهزة بصيغة PDF مباشرة من البيانات التي سجلتها." : "Export a ready PDF resume directly from your entered data."}
                       </div>
                     </button>
 
-                    <button onClick={() => openCvExportLangModal("word")} style={{ ...cardStyle, marginBottom:0, textAlign:"center", background:"linear-gradient(135deg,#eff6ff,#f8fafc)", border:"1px solid #93c5fd", cursor:"pointer" }}>
-                      <div style={{ fontSize:28, marginBottom:8 }}>📝</div>
-                      <div style={{ fontSize:15, fontWeight:900, color:"#2563eb", fontFamily:"'Cairo',sans-serif", marginBottom:6 }}>
+                    <button onClick={() => openCvExportLangModal("word")} style={{ ...cardStyle, marginBottom:0, textAlign:"center", background:"linear-gradient(135deg,#eff6ff,#f8fafc)", border:"1px solid #93c5fd", cursor:"pointer", minHeight:96, padding:"10px" }}>
+                      <div style={{ fontSize:20, marginBottom:4 }}>📝</div>
+                      <div style={{ fontSize:13, fontWeight:900, color:"#2563eb", fontFamily:"'Cairo',sans-serif", marginBottom:3 }}>
                         {lang==="ar" ? "تصدير ملف Word" : "Export Word File"}
                       </div>
-                      <div style={{ fontSize:11, color:t.subText, lineHeight:1.8, fontFamily:"'Cairo',sans-serif" }}>
+                      <div style={{ fontSize:10, color:t.subText, lineHeight:1.5, fontFamily:"'Cairo',sans-serif" }}>
                         {lang==="ar" ? "حمّل نفس البيانات بصيغة Word لتعديلها أو إرسالها بسهولة." : "Export the same information as a Word file for easy editing."}
                       </div>
                     </button>
+                    </div>
 
                     <button onClick={openCvServiceEmailConfirm} style={{ ...cardStyle, marginBottom:0, textAlign:"center", background:"linear-gradient(135deg,#fff8e6,#fffdf7)", border:`1px solid ${t.gold}66`, cursor:"pointer", boxShadow:`0 10px 26px ${t.gold}18` }}>
                       <div style={{ fontSize:28, marginBottom:8 }}>📨</div>
@@ -13882,12 +14288,12 @@ export default function App() {
               {/* ── Nav Buttons ───────────────────────────────── */}
               <div style={{ display:"flex", gap:10, marginTop:20, justifyContent:"space-between" }}>
                 {cvStep > 0 ? (
-                  <button onClick={() => setCvStep(s => s - 1)} style={{ padding:"11px 22px", borderRadius:12, border:`1px solid ${t.border}`, background:t.inputBg, color:t.text, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"'Cairo',sans-serif" }}>
+                  <button onClick={() => { setCvStepValidationError(""); setCvStep(s => s - 1); }} style={{ padding:"11px 22px", borderRadius:12, border:`1px solid ${t.border}`, background:t.inputBg, color:t.text, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"'Cairo',sans-serif" }}>
                     {lang==="ar" ? "→ السابق" : "← Back"}
                   </button>
                 ) : <div />}
                 {cvStep < 4 && (
-                  <button onClick={() => setCvStep(s => s + 1)} style={{ padding:"11px 28px", borderRadius:12, border:"none", background:`linear-gradient(135deg,${t.gold},#b8860b)`, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"'Cairo',sans-serif", boxShadow:`0 4px 14px ${t.gold}44`, flex:1 }}>
+                  <button onClick={() => { void handleCvStepChange(cvStep + 1); }} style={{ padding:"11px 28px", borderRadius:12, border:"none", background:`linear-gradient(135deg,${t.gold},#b8860b)`, color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"'Cairo',sans-serif", boxShadow:`0 4px 14px ${t.gold}44`, flex:1 }}>
                     {lang==="ar" ? `التالي: ${cvSteps[cvStep+1]} ←` : `Next: ${cvSteps[cvStep+1]} →`}
                   </button>
                 )}

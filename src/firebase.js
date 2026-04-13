@@ -218,7 +218,7 @@ export async function uploadReceiptToFirebase(file, orderSerial) {
       await uploadBytes(storageRef, file, {
         contentType: file.type || "application/octet-stream",
       });
-    });
+    }, 2, 500);
     const downloadUrl = await getDownloadURL(storageRef);
     return {
       path: storageRef.fullPath,
