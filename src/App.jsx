@@ -6142,6 +6142,7 @@ export default function App() {
   const [cvBuilderLimitNotice, setCvBuilderLimitNotice] = useState("");
   const [cvStepValidationError, setCvStepValidationError] = useState("");
   const [cvBuilderOrderSyncBusy, setCvBuilderOrderSyncBusy] = useState(false);
+  const [cvBuilderOrderSyncError, setCvBuilderOrderSyncError] = useState("");
   const [compTag, setCompTag] = useState("");
   const [toolTag, setToolTag] = useState("");
   const [cvData, setCvData] = useState(createInitialCvData);
@@ -7938,6 +7939,7 @@ export default function App() {
     setCvBuilderReviewEditMode(false);
     setCvStepValidationError("");
     setCvBuilderOrderSyncBusy(false);
+    setCvBuilderOrderSyncError("");
     setCvBuilderScreen("form");
   };
 
@@ -7955,6 +7957,7 @@ export default function App() {
     setCvBuilderReviewEditMode(false);
     setCvStepValidationError("");
     setCvBuilderOrderSyncBusy(false);
+    setCvBuilderOrderSyncError("");
     setCvBuilderScreen("menu");
   };
 
@@ -7962,6 +7965,7 @@ export default function App() {
     setSelectedCvBuilderOrder(null);
     setCvBuilderReviewError("");
     setCvBuilderReviewEditMode(false);
+    setCvBuilderOrderSyncError("");
     setCvBuilderScreen("previousOrders");
   };
 
@@ -8024,7 +8028,18 @@ export default function App() {
 
   const ensureCvBuilderOrderForCurrentRequestAsync = useCallback(async () => {
     const ensuredOrder = ensureCvBuilderOrderForCurrentRequest();
+    const latestCvSnapshot = JSON.parse(JSON.stringify(cvData));
     let nextOrder = ensuredOrder;
+
+    if (nextOrder?.id) {
+      nextOrder = {
+        ...nextOrder,
+        data: latestCvSnapshot,
+      };
+      mergeCvBuilderOrder(nextOrder.id, {
+        data: latestCvSnapshot,
+      });
+    }
 
     if (!nextOrder?.firebaseId) {
       const firebaseId = await createOrderViaFirebaseFunction({
@@ -8037,7 +8052,7 @@ export default function App() {
         packageName: nextOrder?.packageName || (lang === "ar" ? "مستخدم عادي" : "Regular User"),
         serviceCategory: "cv",
         country: cvData.country || selectedCountry || "",
-        city: cvData.city || "",
+        city: cvData.location || "",
         name: cvData.fullName || "",
         phone: cvData.phone || "",
         email: cvData.email || "",
@@ -8049,13 +8064,35 @@ export default function App() {
         rating: Number(nextOrder?.review?.rating) || 0,
         reviewText: nextOrder?.review?.text || "",
         statsCounted: !!nextOrder?.statsCounted,
-        cvData: JSON.parse(JSON.stringify(cvData)),
+        cvData: latestCvSnapshot,
       });
       nextOrder = {
         ...nextOrder,
         firebaseId,
+        data: latestCvSnapshot,
       };
-      mergeCvBuilderOrder(nextOrder.id, { firebaseId });
+      mergeCvBuilderOrder(nextOrder.id, {
+        firebaseId,
+        data: latestCvSnapshot,
+      });
+    } else {
+      await updateOrderInFirebase(nextOrder.firebaseId, {
+        orderNumber: nextOrder?.orderNumber || "",
+        serial: nextOrder?.serial || "",
+        service: nextOrder?.packageName || (lang === "ar" ? "مستخدم عادي" : "Regular User"),
+        packageName: nextOrder?.packageName || (lang === "ar" ? "مستخدم عادي" : "Regular User"),
+        providedService: nextOrder?.packageName || (lang === "ar" ? "مستخدم عادي" : "Regular User"),
+        serviceCategory: "cv",
+        country: cvData.country || selectedCountry || "",
+        city: cvData.location || "",
+        name: cvData.fullName || "",
+        phone: cvData.phone || "",
+        email: cvData.email || "",
+        whatsapp: cvData.whatsapp || "",
+        cvData: latestCvSnapshot,
+      }).catch((error) => {
+        console.error("CV builder order update failed", error);
+      });
     }
 
     if (!nextOrder?.statsCounted) {
@@ -8089,9 +8126,90 @@ export default function App() {
     selectedCountry,
   ]);
 
+  const getCvBuilderEmailStatusLabel = useCallback((status) => {
+    if (status === "sending") {
+      return lang === "ar" ? "جاري إرسال الإيميل..." : "Sending email...";
+    }
+    if (status === "sent") {
+      return lang === "ar" ? "تم إرسال الإيميل" : "Email sent";
+    }
+    if (status === "failed") {
+      return lang === "ar" ? "فشل إرسال الإيميل" : "Email failed";
+    }
+    return lang === "ar" ? "لم يُرسل بعد" : "Not sent yet";
+  }, [lang]);
+
+  const dispatchCvBuilderOrderEmail = useCallback(async (orderLike, options = {}) => {
+    const forceSend = !!options?.force;
+    if (!orderLike?.id) return { ok: false, skipped: true };
+    if (!forceSend && ["sending", "sent"].includes(String(orderLike?.emailDeliveryStatus || ""))) {
+      return { ok: true, skipped: true, status: orderLike?.emailDeliveryStatus };
+    }
+
+    const emailUpdatedAt = new Date().toISOString();
+    mergeCvBuilderOrder(orderLike.id, {
+      data: JSON.parse(JSON.stringify(cvData)),
+      emailDeliveryStatus: "sending",
+      emailDeliveryUpdatedAt: emailUpdatedAt,
+      emailDeliveryError: "",
+    });
+
+    if (orderLike?.firebaseId) {
+      await updateOrderInFirebase(orderLike.firebaseId, {
+        emailDeliveryStatus: "sending",
+        emailDeliveryUpdatedAt: emailUpdatedAt,
+        emailDeliveryError: "",
+        cvData: JSON.parse(JSON.stringify(cvData)),
+      }).catch((error) => {
+        console.error("CV builder email sending flag update failed", error);
+      });
+    }
+
+    const cvOrderEmailPayload = {
+      firebaseId: orderLike?.firebaseId || "",
+      orderNumber: orderLike?.orderNumber || "",
+      serial: orderLike?.serial || orderLike?.orderNumber || "",
+      service: lang === "ar" ? "طلب سيرة ذاتية - مستخدم عادي" : "CV Builder Request - Regular User",
+      name: cvData.fullName || "",
+      phone: cvData.phone || "",
+      email: cvData.email || "",
+      country: cvData.country || selectedCountry || "",
+      city: cvData.location || "",
+      paymentMethod: lang === "ar" ? "نموذج بيانات السيرة الذاتية" : "CV Data Form",
+      billingLabel: lang === "ar" ? "إرسال بيانات السيرة الذاتية" : "CV data submission",
+      dateStr: orderLike?.dateStr || new Date().toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US"),
+      receiptName: "cv-data-form",
+    };
+
+    const emailResult = await sendOrderEmails(cvOrderEmailPayload);
+    const nextStatus = emailResult?.ok ? "sent" : "failed";
+    const nextUpdatedAt = new Date().toISOString();
+
+    mergeCvBuilderOrder(orderLike.id, {
+      data: JSON.parse(JSON.stringify(cvData)),
+      emailDeliveryStatus: nextStatus,
+      emailDeliveryUpdatedAt: nextUpdatedAt,
+      emailDeliveryError: nextStatus === "failed" ? (emailResult?.fallback || "background-send-failed") : "",
+    });
+
+    if (orderLike?.firebaseId) {
+      await updateOrderInFirebase(orderLike.firebaseId, {
+        emailDeliveryStatus: nextStatus,
+        emailDeliveryUpdatedAt: nextUpdatedAt,
+        emailDeliveryError: nextStatus === "failed" ? (emailResult?.fallback || "background-send-failed") : "",
+        cvData: JSON.parse(JSON.stringify(cvData)),
+      }).catch((error) => {
+        console.error("CV builder email delivery status update failed", error);
+      });
+    }
+
+    return { ok: nextStatus === "sent", status: nextStatus };
+  }, [cvData, lang, mergeCvBuilderOrder, selectedCountry]);
+
   const handleCvStepChange = useCallback(async (targetStep) => {
     if (targetStep <= cvStep) {
       setCvStepValidationError("");
+      setCvBuilderOrderSyncError("");
       setCvStep(targetStep);
       return;
     }
@@ -8104,25 +8222,50 @@ export default function App() {
     }
 
     setCvStepValidationError("");
+    setCvBuilderOrderSyncError("");
     setCvStep(targetStep);
 
     if (targetStep === 4 && !selectedCvBuilderOrder?.firebaseId && !cvBuilderOrderSyncBusy) {
       setCvBuilderOrderSyncBusy(true);
       try {
-        await ensureCvBuilderOrderForCurrentRequestAsync();
+        const ensuredOrder = await ensureCvBuilderOrderForCurrentRequestAsync();
+        await dispatchCvBuilderOrderEmail(ensuredOrder);
       } catch (error) {
         console.error("CV builder order provisioning failed", error);
+        setCvBuilderOrderSyncError(
+          lang === "ar"
+            ? "تعذر حفظ الطلب أو إرسال الإيميل الآن. حاول مرة أخرى من نفس الشاشة."
+            : "Unable to save the request or send the email right now. Please retry from the same screen."
+        );
+      } finally {
+        setCvBuilderOrderSyncBusy(false);
+      }
+    } else if (targetStep === 4 && selectedCvBuilderOrder?.id && !cvBuilderOrderSyncBusy) {
+      setCvBuilderOrderSyncBusy(true);
+      try {
+        const ensuredOrder = await ensureCvBuilderOrderForCurrentRequestAsync();
+        await dispatchCvBuilderOrderEmail(ensuredOrder);
+      } catch (error) {
+        console.error("CV builder order refresh failed", error);
+        setCvBuilderOrderSyncError(
+          lang === "ar"
+            ? "تعذر تحديث الطلب أو إرسال الإيميل الآن. حاول مرة أخرى من نفس الشاشة."
+            : "Unable to refresh the request or send the email right now. Please retry from the same screen."
+        );
       } finally {
         setCvBuilderOrderSyncBusy(false);
       }
     }
   }, [
+    dispatchCvBuilderOrderEmail,
     cvStep,
     cvBuilderOrderSyncBusy,
     ensureCvBuilderOrderForCurrentRequestAsync,
     getCvStepValidationMessage,
     isCvStepComplete,
+    lang,
     selectedCvBuilderOrder?.firebaseId,
+    selectedCvBuilderOrder?.id,
   ]);
 
   const blobToBase64 = (blob) => new Promise((resolve, reject) => {
@@ -8287,6 +8430,7 @@ export default function App() {
     }
 
     setCvStepValidationError("");
+    setCvBuilderOrderSyncError("");
 
     let ensuredOrder = null;
     try {
@@ -8303,50 +8447,21 @@ export default function App() {
       return;
     }
 
-    const cvOrderEmailPayload = {
-      firebaseId: ensuredOrder?.firebaseId || "",
-      orderNumber: ensuredOrder?.orderNumber || "",
-      serial: ensuredOrder?.orderNumber || ensuredOrder?.serial || "",
-      service: lang === "ar" ? "طلب سيرة ذاتية - مستخدم عادي" : "CV Builder Request - Regular User",
-      name: cvData.fullName || "",
-      phone: cvData.phone || "",
-      email: cvData.email || "",
-      country: cvData.country || selectedCountry || "",
-      city: cvData.location || "",
-      paymentMethod: lang === "ar" ? "نموذج بيانات السيرة الذاتية" : "CV Data Form",
-      billingLabel: lang === "ar" ? "إرسال بيانات السيرة الذاتية" : "CV data submission",
-      dateStr: ensuredOrder?.dateStr || new Date().toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US"),
-      receiptName: "cv-data-form",
-    };
-
     setOrderEmailStatus("sending");
-    const emailResult = await sendOrderEmails(cvOrderEmailPayload);
+    const emailResult = await dispatchCvBuilderOrderEmail(ensuredOrder, { force: true });
     const nextStatus = emailResult?.ok ? "sent" : "failed";
     setOrderEmailStatus(nextStatus);
-
-    const emailUpdatedAt = new Date().toISOString();
-    if (ensuredOrder?.id) {
-      mergeCvBuilderOrder(ensuredOrder.id, {
-        emailDeliveryStatus: nextStatus,
-        emailDeliveryUpdatedAt: emailUpdatedAt,
-      });
-    }
-    if (ensuredOrder?.firebaseId) {
-      await updateOrderInFirebase(ensuredOrder.firebaseId, {
-        emailDeliveryStatus: nextStatus,
-        emailDeliveryUpdatedAt: emailUpdatedAt,
-        emailDeliveryError: nextStatus === "failed" ? "background-send-failed" : "",
-      }).catch((error) => {
-        console.error("CV builder email delivery status update failed", error);
-      });
-    }
 
     setModal({
       type: "success",
       title: lang === "ar" ? "تم إرسال الطلب" : "Request sent",
-      msg: lang === "ar"
-        ? `تم إنشاء الطلب رقم ${ensuredOrder?.orderNumber || "-"} وإرسال الإشعار بالبريد.`
-        : `Request ${ensuredOrder?.orderNumber || "-"} was created and email notification was sent.`,
+      msg: nextStatus === "sent"
+        ? (lang === "ar"
+          ? `تم إنشاء الطلب رقم ${ensuredOrder?.orderNumber || "-"} وإرسال الإشعار بالبريد.`
+          : `Request ${ensuredOrder?.orderNumber || "-"} was created and email notification was sent.`)
+        : (lang === "ar"
+          ? `تم إنشاء الطلب رقم ${ensuredOrder?.orderNumber || "-"} لكن تعذر إرسال الإيميل حالياً.`
+          : `Request ${ensuredOrder?.orderNumber || "-"} was created, but the email could not be sent right now.`),
     });
   };
 
@@ -13635,10 +13750,10 @@ export default function App() {
                           </div>
                           <div style={{ display:"grid", gap:8 }}>
                             {(selectedCvBuilderOrder.data?.memberships || []).length > 0 ? (
-                              (selectedCvBuilderOrder.data?.memberships || []).map(([name, number], idx) => (
+                              (selectedCvBuilderOrder.data?.memberships || []).map((membership, idx) => (
                                 <div key={idx} style={{ display:"flex", justifyContent:"space-between", gap:12, padding:"7px 0", borderBottom:`1px solid ${t.border}` }}>
-                                  <span style={{ fontSize:12, color:t.subText, fontFamily:"'Cairo',sans-serif" }}>{name}</span>
-                                  <span style={{ fontSize:12, fontWeight:800, color:t.text, fontFamily:"'Cairo',sans-serif" }}>{number || "—"}</span>
+                                  <span style={{ fontSize:12, color:t.subText, fontFamily:"'Cairo',sans-serif" }}>{membership?.name || "—"}</span>
+                                  <span style={{ fontSize:12, fontWeight:800, color:t.text, fontFamily:"'Cairo',sans-serif" }}>{membership?.number || "—"}</span>
                                 </div>
                               ))
                             ) : (
@@ -13742,6 +13857,11 @@ export default function App() {
               {!!cvStepValidationError && (
                 <div style={{ ...cardStyle, marginBottom:12, background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.24)", color:"#b91c1c", fontSize:12, fontWeight:800, lineHeight:1.8 }}>
                   {cvStepValidationError}
+                </div>
+              )}
+              {!!cvBuilderOrderSyncError && (
+                <div style={{ ...cardStyle, marginBottom:12, background:"rgba(251,191,36,0.10)", border:"1px solid rgba(217,119,6,0.28)", color:"#b45309", fontSize:12, fontWeight:800, lineHeight:1.8 }}>
+                  {cvBuilderOrderSyncError}
                 </div>
               )}
 
@@ -14157,6 +14277,12 @@ export default function App() {
                             : selectedCvBuilderOrder?.firebaseId
                               ? (lang==="ar" ? "تم الحفظ على Firebase" : "Saved to Firebase")
                               : (lang==="ar" ? "غير محفوظ بعد" : "Not saved yet")}
+                        </span>
+                      </div>
+                      <div style={{ display:"flex", justifyContent:"space-between", gap:12, padding:"5px 0", borderTop:`1px solid ${t.border}` }}>
+                        <span style={{ fontSize:12, color:t.subText, fontFamily:"'Cairo',sans-serif" }}>{lang==="ar" ? "حالة الإيميل" : "Email Status"}</span>
+                        <span style={{ fontSize:12, fontWeight:900, color:selectedCvBuilderOrder?.emailDeliveryStatus === "sent" ? "#16a34a" : selectedCvBuilderOrder?.emailDeliveryStatus === "failed" ? "#dc2626" : t.gold, fontFamily:"'Cairo',sans-serif" }}>
+                          {getCvBuilderEmailStatusLabel(selectedCvBuilderOrder?.emailDeliveryStatus)}
                         </span>
                       </div>
                     </div>
