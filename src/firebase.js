@@ -31,6 +31,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -527,6 +528,22 @@ export async function fetchServiceProviderRequestsByUserFromFirebase(userUid) {
     id: entryDoc.id,
     ...entryDoc.data(),
   }));
+}
+
+export function subscribeServiceProviderRequestsByUser(userUid, callback) {
+  const cleanUid = String(userUid || "").trim();
+  if (!cleanUid) {
+    callback([]);
+    return () => {};
+  }
+  const q = query(collection(firestoreDb, "service_providers"), where("userUid", "==", cleanUid));
+  return onSnapshot(q, (snapshot) => {
+    const requests = snapshot.docs.map((entryDoc) => ({
+      id: entryDoc.id,
+      ...entryDoc.data(),
+    }));
+    callback(requests);
+  }, () => callback([]));
 }
 
 export async function updateServiceProviderRequestInFirebase(requestId, updates = {}) {

@@ -19,6 +19,7 @@ import {
   fetchReviewedServiceOrdersFromFirebase,
   fetchServiceProviderRequestsByUserFromFirebase,
   fetchServiceProviderRequestsFromFirebase,
+  subscribeServiceProviderRequestsByUser,
   fetchUserProfileFromFirebase,
   fetchUserProfilesFromFirebase,
   getCurrentAuthUser,
@@ -5515,8 +5516,8 @@ function ServiceProviderPortalFlow({
 
       <div style={{ marginTop:10, borderRadius:12, border:`1px solid ${t.border}`, background:t.inputBg, padding:"10px 12px", fontSize:10.5, color:t.subText, lineHeight:1.8 }}>
         {isAr
-          ? "تنبيه: هذه الخدمة متاحة في كل الدول ما عدا مصر. المنصة مستقلة وغير تابعة لأي جهة حكومية، ويتم اعتماد الطلبات بعد مراجعة الأدمن فقط."
-          : "Notice: This service is available for all countries except Egypt. The portal is independent and not affiliated with any government entity, and requests are approved only after admin review."}
+          ? "المنصة مستقلة وغير تابعة لأي جهة حكومية، ويتم اعتماد الطلبات بعد مراجعة الأدمن فقط."
+          : "The portal is independent and not affiliated with any government entity, and requests are approved only after admin review."}
       </div>
     </div>
   );
@@ -6561,6 +6562,7 @@ export default function App() {
   const [adminSelectedProviderRequestId, setAdminSelectedProviderRequestId] = useState("");
   const [providerApprovalSnapshot, setProviderApprovalSnapshot] = useState(null);
   const [providerPortalMode, setProviderPortalMode] = useState("service");
+  const [providerPortalAddNew, setProviderPortalAddNew] = useState(false);
   const [officeOverrides, setOfficeOverrides] = useState(() => {
     try {
       const raw = localStorage.getItem("officeOverridesV1") || "{}";
@@ -7796,24 +7798,17 @@ export default function App() {
       return;
     }
 
-    let mounted = true;
-    fetchServiceProviderRequestsByUserFromFirebase(uid)
-      .then((requests) => {
-        if (!mounted) return;
-        const scoped = (requests || []).filter((entry) => {
-          const reqCountry = String(entry?.country || "").trim();
-          return !selectedCountry || !reqCountry || reqCountry === selectedCountry;
-        });
-        const latest = scoped.sort((a, b) => getProviderRequestTimestamp(b) - getProviderRequestTimestamp(a))[0] || null;
-        setProviderApprovalSnapshot(latest);
-      })
-      .catch((error) => {
-        console.error("Failed to load provider approval snapshot", error);
-        if (mounted) setProviderApprovalSnapshot(null);
+    const unsubscribe = subscribeServiceProviderRequestsByUser(uid, (requests) => {
+      const scoped = (requests || []).filter((entry) => {
+        const reqCountry = String(entry?.country || "").trim();
+        return !selectedCountry || !reqCountry || reqCountry === selectedCountry;
       });
+      const latest = scoped.sort((a, b) => getProviderRequestTimestamp(b) - getProviderRequestTimestamp(a))[0] || null;
+      setProviderApprovalSnapshot(latest);
+    });
 
     return () => {
-      mounted = false;
+      unsubscribe();
     };
   }, [authPreviewUser?.uid, getProviderRequestTimestamp, selectedCountry]);
 
@@ -13570,6 +13565,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       setProviderPortalMode("service");
+                      setProviderPortalAddNew(false);
                       setView("providerPortal");
                     }}
                     style={{
@@ -14073,6 +14069,7 @@ export default function App() {
                   <button
                     onClick={() => {
                       setProviderPortalMode("service");
+                      setProviderPortalAddNew(false);
                       setView("providerPortal");
                     }}
                     style={{
@@ -14138,6 +14135,7 @@ export default function App() {
                     <button
                       onClick={() => {
                         setProviderPortalMode("office");
+                        setProviderPortalAddNew(false);
                         setView("providerPortal");
                       }}
                       style={{
@@ -14363,6 +14361,60 @@ export default function App() {
                       ? "خدمة إضافة مكتب متاحة لكل الدول ماعدا مصر."
                       : "Add Office is available for all countries except Egypt."}
                   </div>
+                ) : String(providerApprovalSnapshot?.status || "").trim().toLowerCase() === "approved" && !providerPortalAddNew ? (
+                  <div style={{ padding: "0 0 16px" }}>
+                    {/* Box 1: Approved account info */}
+                    <div style={{ borderRadius: 20, border: "1px solid rgba(34,197,94,0.35)", background: dark ? "linear-gradient(135deg,rgba(22,163,74,0.22),rgba(34,197,94,0.10))" : "linear-gradient(135deg,#ecfdf5,#dcfce7)", padding: "14px 16px", marginBottom: 12, fontFamily: "'Cairo',sans-serif" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.06)" : "#ffffff", border: "1px solid rgba(34,197,94,0.28)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🧰</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <div style={{ fontSize: 13, fontWeight: 900, color: "#16a34a" }}>{lang === "ar" ? "حسابك كمزود خدمة" : "Your Service Provider Account"}</div>
+                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 10px #22c55e", flexShrink: 0 }} />
+                          </div>
+                          <div style={{ fontSize: 11, color: "#16a34a", fontWeight: 700, marginTop: 2 }}>✅ {lang === "ar" ? "تم اعتماد طلبك" : "Your request is approved"}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 12px", fontSize: 11, color: t.subText, lineHeight: 1.8 }}>
+                        {providerApprovalSnapshot?.providerName ? <div><span style={{ fontWeight: 700, color: t.text }}>{lang === "ar" ? "الاسم: " : "Name: "}</span>{providerApprovalSnapshot.providerName}</div> : null}
+                        {providerApprovalSnapshot?.officeName ? <div><span style={{ fontWeight: 700, color: t.text }}>{lang === "ar" ? "الخدمة: " : "Service: "}</span>{providerApprovalSnapshot.officeName}</div> : null}
+                        {providerApprovalSnapshot?.email ? <div><span style={{ fontWeight: 700, color: t.text }}>{lang === "ar" ? "الإيميل: " : "Email: "}</span>{providerApprovalSnapshot.email}</div> : null}
+                        {providerApprovalSnapshot?.phone ? <div><span style={{ fontWeight: 700, color: t.text }}>{lang === "ar" ? "الهاتف: " : "Phone: "}</span>{providerApprovalSnapshot.phone}</div> : null}
+                      </div>
+                      {(providerApprovalSnapshot?.decisionNote || providerApprovalSnapshot?.adminDecisionNote) ? (
+                        <div style={{ marginTop: 8, fontSize: 11, color: t.subText, lineHeight: 1.75, borderTop: "1px solid rgba(34,197,94,0.2)", paddingTop: 8 }}>
+                          {String(providerApprovalSnapshot?.decisionNote || providerApprovalSnapshot?.adminDecisionNote)}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {/* Box 2: Add another service */}
+                    <button
+                      type="button"
+                      onClick={() => setProviderPortalAddNew(true)}
+                      style={{
+                        width: "100%",
+                        textAlign: lang === "ar" ? "right" : "left",
+                        background: dark ? "linear-gradient(135deg,rgba(202,138,4,0.22),rgba(245,158,11,0.10))" : "linear-gradient(135deg,#fffbeb,#fef3c7)",
+                        border: "1px solid rgba(202,138,4,0.32)",
+                        borderRadius: 20,
+                        padding: "14px 16px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        fontFamily: "'Cairo',sans-serif",
+                        boxShadow: dark ? "0 0 18px rgba(202,138,4,0.16)" : "0 8px 20px rgba(202,138,4,0.12)",
+                      }}
+                    >
+                      <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.06)" : "#ffffff", border: "1px solid rgba(202,138,4,0.26)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>➕</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fde68a" : "#a16207", marginBottom: 2 }}>{lang === "ar" ? "ضيف خدمة أخرى" : "Add Another Service"}</div>
+                        <div style={{ fontSize: 11, color: t.subText, lineHeight: 1.6 }}>{lang === "ar" ? "أضف خدمة جديدة لمراجعتها من الأدمن." : "Submit a new service for admin review and approval."}</div>
+                      </div>
+                      <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                    </button>
+                  </div>
                 ) : (
                   <ServiceProviderPortalFlow
                     lang={lang}
@@ -14372,10 +14424,11 @@ export default function App() {
                     countryCities={country?.cities || []}
                     serviceOptions={providerServiceOptions}
                     currentUser={authPreviewUser}
-                    approvalSnapshot={providerApprovalSnapshot}
+                    approvalSnapshot={providerPortalAddNew ? null : providerApprovalSnapshot}
                     portalMode={providerPortalMode}
                     onSubmitted={(requestItem) => {
                       setProviderApprovalSnapshot(requestItem);
+                      setProviderPortalAddNew(false);
                     }}
                   />
                 )}
