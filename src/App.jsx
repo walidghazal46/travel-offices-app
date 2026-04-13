@@ -14411,30 +14411,30 @@ export default function App() {
               avg: getRealAvgRating(cvRealtimeEliteOrders, cvEliteStats.averageRating),
             },
           ];
-          const cvFontScale = 1.4;
+          const cvFontScale = 0.84;
           const cvScaleFont = (size) => Number((size * cvFontScale).toFixed(2));
           const cvPackageLayout = {
-            builder: { desktopMinHeight: 350, desktopStatsOffset: 14 },
-            premium: { desktopMinHeight: 430, desktopStatsOffset: -12 },
-            elite: { desktopMinHeight: 392, desktopStatsOffset: 10 },
+            elite: { desktopMinHeight: 440, desktopStatsOffset: 0 },
+            premium: { desktopMinHeight: 400, desktopStatsOffset: 0 },
+            builder: { desktopMinHeight: 360, desktopStatsOffset: 0 },
           };
           const cvPackages = [
             {
-              key: "builder",
-              icon: "📄",
-              title: lang==="ar" ? "مستخدم عادي" : "Regular User",
-              price: lang==="ar" ? "مجاناً" : "Free",
-              oldPrice: null,
-              summary: lang==="ar" ? "تصدير مجاني" : "Free Export",
-              desc: lang==="ar" ? "أنشئ سيرتك الذاتية بنفسك بخطوات واضحة واحصل على نسخة جاهزة للتصدير." : "Build your CV yourself with a clean guided flow and get an export-ready version.",
-              cta: lang==="ar" ? "ابدأ الآن" : "Start Now",
-              accent: "#0f766e",
-              cardBg: dark ? "linear-gradient(155deg,#123e45,#0f766e)" : "linear-gradient(155deg,#dff5f1,#b8e7df)",
-              titleColor: dark ? "#e6fffb" : "#083b36",
-              textColor: dark ? "#dcfdf7" : "#0f4d45",
-              chipBg: dark ? "rgba(15,118,110,0.35)" : "rgba(255,255,255,0.72)",
-              ctaBg: "linear-gradient(135deg,#0f766e,#0d9488)",
-              ctaColor: "#ffffff",
+              key: "elite",
+              icon: "🚀",
+              title: lang==="ar" ? "باقة البحث والتوظيف" : "Job Search Package",
+              price: "$35",
+              oldPrice: "$70",
+              summary: lang==="ar" ? "عدد 32 فرصة + سيرة ذاتية ممتازة" : "32 Opportunities + Premium CV",
+              desc: lang==="ar" ? "بحث فعلي عن وظائف مناسبة مع سيرة ذاتية ممتازة وإرسال 32 فرصة مرتبطة بمجالك." : "Real job search support with a premium CV and 32 relevant opportunities.",
+              cta: lang==="ar" ? "اطلب الباقة الكاملة" : "Get Full Package",
+              accent: "#7c3aed",
+              cardBg: dark ? "linear-gradient(155deg,#2b174f,#3f216f)" : "linear-gradient(155deg,#32215e,#1f1440)",
+              titleColor: "#efe7ff",
+              textColor: "#dfd4ff",
+              chipBg: "rgba(255,255,255,0.12)",
+              ctaBg: "linear-gradient(135deg,#6d4ec7,#8a67eb)",
+              ctaColor: "#f8f4ff",
             },
             {
               key: "premium",
@@ -14454,21 +14454,21 @@ export default function App() {
               ctaColor: "#fff9eb",
             },
             {
-              key: "elite",
-              icon: "🚀",
-              title: lang==="ar" ? "باقة البحث والتوظيف" : "Job Search Package",
-              price: "$35",
-              oldPrice: "$70",
-              summary: lang==="ar" ? "عدد 32 فرصة + سيرة ذاتية ممتازة" : "32 Opportunities + Premium CV",
-              desc: lang==="ar" ? "بحث فعلي عن وظائف مناسبة مع سيرة ذاتية ممتازة وإرسال 32 فرصة مرتبطة بمجالك." : "Real job search support with a premium CV and 32 relevant opportunities.",
-              cta: lang==="ar" ? "اطلب الباقة الكاملة" : "Get Full Package",
-              accent: "#7c3aed",
-              cardBg: dark ? "linear-gradient(155deg,#2b174f,#3f216f)" : "linear-gradient(155deg,#32215e,#1f1440)",
-              titleColor: "#efe7ff",
-              textColor: "#dfd4ff",
-              chipBg: "rgba(255,255,255,0.12)",
-              ctaBg: "linear-gradient(135deg,#6d4ec7,#8a67eb)",
-              ctaColor: "#f8f4ff",
+              key: "builder",
+              icon: "📄",
+              title: lang==="ar" ? "مستخدم عادي" : "Regular User",
+              price: lang==="ar" ? "مجاناً" : "Free",
+              oldPrice: null,
+              summary: lang==="ar" ? "تصدير مجاني" : "Free Export",
+              desc: lang==="ar" ? "أنشئ سيرتك الذاتية بنفسك بخطوات واضحة واحصل على نسخة جاهزة للتصدير." : "Build your CV yourself with a clean guided flow and get an export-ready version.",
+              cta: lang==="ar" ? "ابدأ الآن" : "Start Now",
+              accent: "#0f766e",
+              cardBg: dark ? "linear-gradient(155deg,#123e45,#0f766e)" : "linear-gradient(155deg,#dff5f1,#b8e7df)",
+              titleColor: dark ? "#e6fffb" : "#083b36",
+              textColor: dark ? "#dcfdf7" : "#0f4d45",
+              chipBg: dark ? "rgba(15,118,110,0.35)" : "rgba(255,255,255,0.72)",
+              ctaBg: "linear-gradient(135deg,#0f766e,#0d9488)",
+              ctaColor: "#ffffff",
             }
           ];
           const cvPaidServices = [
@@ -14594,7 +14594,7 @@ export default function App() {
                 <div style={{ fontSize:cvScaleFont(isCompactPhone ? 10.5 : 12), color:t.subText, lineHeight:isCompactPhone ? 1.52 : 1.62, marginBottom:isCompactPhone ? 6 : 8, fontFamily:"'Cairo',sans-serif" }}>
                   {lang==="ar" ? "اختر مسارك المهني من بين خياراتنا المتكاملة للنجاح." : "Choose your career path from our complete success options."}
                 </div>
-                <div style={{ display:"grid", gridTemplateColumns:isCompactPhone ? "1fr" : "repeat(3, minmax(0, 1fr))", gap:isCompactPhone ? 8 : 12, alignItems:isCompactPhone ? "stretch" : "end" }}>
+                <div style={{ display:"grid", gridTemplateColumns:isCompactPhone ? "1fr" : "repeat(3, minmax(0, 1fr))", gap:isCompactPhone ? 8 : 12, alignItems:"stretch" }}>
                   {cvPackages.map(pkg => {
                     const statsItem = cvPackageStatsCards.find(s => s.key === pkg.key);
                     const isActive = (pkg.key === "builder" && cvMode === "builder") || (pkg.key !== "builder" && cvMode === "services" && selectedCvPackage === pkg.key);
@@ -14662,6 +14662,7 @@ export default function App() {
                             justifyContent:"center",
                             gap:3,
                             marginTop:isCompactPhone ? 0 : packageLayout.desktopStatsOffset,
+                            minHeight:isCompactPhone ? 88 : 108,
                           }}>
                             <div style={{ fontSize:cvScaleFont(isCompactPhone ? 16 : 18), lineHeight:1 }}>{statsItem.icon}</div>
                             <div style={{ fontSize:cvScaleFont(isCompactPhone ? 11 : 13), color:t.text, fontWeight:900, fontFamily:"'Cairo',sans-serif", lineHeight:1.5 }}>
