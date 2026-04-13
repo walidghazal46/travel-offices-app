@@ -15032,10 +15032,10 @@ export default function App() {
                             minHeight:isCompactPhone ? 88 : 108,
                           }}>
                             <div style={{ fontSize:cvScaleFont(isCompactPhone ? 16 : 18), lineHeight:1 }}>{statsItem.icon}</div>
-                            <div style={{ fontSize:cvScaleFont(isCompactPhone ? 11 : 13), color:t.text, fontWeight:900, fontFamily:"'Cairo',sans-serif", lineHeight:1.5 }}>
+                            <div style={{ fontSize:cvScaleFont((isCompactPhone ? 11 : 13) * 1.1), color:t.text, fontWeight:900, fontFamily:"'Cairo',sans-serif", lineHeight:1.5 }}>
                               {statsItem.metric}: <span style={{ color:statsItem.accent, fontWeight:900 }}>{statsItem.users}</span>
                             </div>
-                            <div style={{ fontSize:cvScaleFont(isCompactPhone ? 11 : 13), color:t.text, fontWeight:900, fontFamily:"'Cairo',sans-serif", lineHeight:1.5 }}>
+                            <div style={{ fontSize:cvScaleFont((isCompactPhone ? 11 : 13) * 1.1), color:t.text, fontWeight:900, fontFamily:"'Cairo',sans-serif", lineHeight:1.5 }}>
                               {lang==="ar" ? "متوسط التقييم:" : "Avg Rating:"}{" "}
                               <span style={{ color:t.subText, fontWeight:900 }}>{statsItem.avg}/5</span>
                             </div>
