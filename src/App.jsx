@@ -6563,7 +6563,7 @@ export default function App() {
   const [providerApprovalSnapshot, setProviderApprovalSnapshot] = useState(null);
   const [providerPortalMode, setProviderPortalMode] = useState("service");
   const [providerPortalAddNew, setProviderPortalAddNew] = useState(false);
-  const [pendingProviderPortalOpen, setPendingProviderPortalOpen] = useState(false);
+  const [providerPortalGuestNotice, setProviderPortalGuestNotice] = useState("");
   const [officeOverrides, setOfficeOverrides] = useState(() => {
     try {
       const raw = localStorage.getItem("officeOverridesV1") || "{}";
@@ -6978,13 +6978,10 @@ export default function App() {
   }, [authPreviewUser?.uid]);
 
   useEffect(() => {
-    if (authPreviewUser && pendingProviderPortalOpen) {
-      setPendingProviderPortalOpen(false);
-      setProviderPortalMode("service");
-      setProviderPortalAddNew(false);
-      setView("providerPortal");
-    }
-  }, [authPreviewUser, pendingProviderPortalOpen]);
+    if (!providerPortalGuestNotice) return undefined;
+    const timer = setTimeout(() => setProviderPortalGuestNotice(""), 3200);
+    return () => clearTimeout(timer);
+  }, [providerPortalGuestNotice]);
 
   useEffect(() => {
     setAccountProfileName(authPreviewUser?.displayName || "");
@@ -10114,16 +10111,17 @@ export default function App() {
 
   const openProviderPortalOrPromptLogin = useCallback(() => {
     if (isGuestUser) {
-      setPendingProviderPortalOpen(true);
-      setGuestMode(false);
-      setAuthPreviewMode("login");
-      setAuthPreviewOpen(true);
+      setProviderPortalGuestNotice(
+        lang === "ar"
+          ? "يجب تسجيل الدخول أو إنشاء حساب للاستفادة من هذه الخدمة."
+          : "You need to sign in or create an account to use this service."
+      );
       return;
     }
     setProviderPortalMode("service");
     setProviderPortalAddNew(false);
     setView("providerPortal");
-  }, [isGuestUser]);
+  }, [isGuestUser, lang]);
 
   const closeOfficeEditorState = useCallback(() => {
     setAdminOfficeEditOpen(false);
@@ -12560,14 +12558,14 @@ export default function App() {
                 width: "100%",
                 padding: "14px 10px",
                 borderRadius: 999,
-                border: "1px solid rgba(212,175,55,0.45)",
-                background: "linear-gradient(135deg, rgba(18,43,99,0.92), rgba(11,31,74,0.92))",
-                color: "#f5d77b",
+                border: "none",
+                background: "linear-gradient(135deg, #e7c55b, #c99a23)",
+                color: "#11244f",
                 fontSize: 14,
                 fontWeight: 900,
                 fontFamily: "'Cairo',sans-serif",
                 cursor: "pointer",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+                boxShadow: "0 14px 28px rgba(201,154,35,0.24)",
                 opacity: authPreviewBusy ? 0.72 : 1,
               }}
               disabled={authPreviewBusy}
@@ -16445,6 +16443,39 @@ export default function App() {
               animation: "goldPulse 1.8s ease-in-out infinite",
             }} />
           </button>
+        </div>
+      )}
+
+      {providerPortalGuestNotice && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 9996,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 24,
+          pointerEvents: "none",
+        }}>
+          <div style={{
+            width: "100%",
+            maxWidth: 360,
+            borderRadius: 22,
+            padding: "16px 18px",
+            background: dark ? "linear-gradient(180deg, rgba(127,29,29,0.96) 0%, rgba(69,10,10,0.96) 100%)" : "linear-gradient(180deg, rgba(254,226,226,0.98) 0%, rgba(254,202,202,0.98) 100%)",
+            border: dark ? "1px solid rgba(248,113,113,0.45)" : "1px solid rgba(220,38,38,0.26)",
+            boxShadow: dark ? "0 0 0 1px rgba(248,113,113,0.12), 0 0 24px rgba(239,68,68,0.22), 0 18px 42px rgba(0,0,0,0.26)" : "0 0 0 1px rgba(220,38,38,0.06), 0 0 22px rgba(239,68,68,0.14), 0 18px 42px rgba(0,0,0,0.16)",
+            textAlign: "center",
+            fontFamily: "'Cairo',sans-serif",
+            animation: "fadeSlideUp 0.2s ease-out both",
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fca5a5" : "#b91c1c", marginBottom: 6 }}>
+              {lang === "ar" ? "تنبيه" : "Notice"}
+            </div>
+            <div style={{ fontSize: 12, lineHeight: 1.9, color: dark ? "#fee2e2" : "#7f1d1d", fontWeight: 800 }}>
+              {providerPortalGuestNotice}
+            </div>
+          </div>
         </div>
       )}
 
