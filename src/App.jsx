@@ -14221,16 +14221,6 @@ export default function App() {
                     <button style={addBtnStyle} onClick={cvAddLang}>+ {lang==="ar" ? "أضف لغة" : "Add language"}</button>
                   </div>
 
-                  {/* Keywords */}
-                  <div style={cardStyle}>
-                    <div style={secHeadStyle}>🔑 {lang==="ar" ? "الكلمات المفتاحية (ATS)" : "Keywords (ATS)"}</div>
-                    <textarea style={{ ...inputStyle, minHeight:60, resize:"vertical", fontSize:12 }}
-                      placeholder={lang==="ar" ? "خدمة عملاء، مبيعات، تشغيل، متابعة، CRM..." : "Customer Service, Sales, Operations, Follow-up, CRM..."}
-                      value={cvData.keywords} onChange={e => cvUpdate("keywords", e.target.value)} />
-                    <div style={{ fontSize:10, color:t.subText, fontFamily:"'Cairo',sans-serif", marginTop:4 }}>
-                      {lang==="ar" ? "💡 فصل الكلمات بفاصلة لتحسين ظهور السيرة في أنظمة ATS" : "💡 Separate with commas to improve ATS ranking"}
-                    </div>
-                  </div>
                 </div>
               )}
 
