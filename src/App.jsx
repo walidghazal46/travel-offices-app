@@ -14411,6 +14411,13 @@ export default function App() {
               avg: getRealAvgRating(cvRealtimeEliteOrders, cvEliteStats.averageRating),
             },
           ];
+          const cvFontScale = 1.4;
+          const cvScaleFont = (size) => Number((size * cvFontScale).toFixed(2));
+          const cvPackageLayout = {
+            builder: { desktopMinHeight: 350, desktopStatsOffset: 14 },
+            premium: { desktopMinHeight: 430, desktopStatsOffset: -12 },
+            elite: { desktopMinHeight: 392, desktopStatsOffset: 10 },
+          };
           const cvPackages = [
             {
               key: "builder",
@@ -14579,20 +14586,21 @@ export default function App() {
               <div style={{ ...cardStyle, padding:isCompactPhone ? "11px" : "16px", marginTop:6, background: dark ? "linear-gradient(135deg, rgba(15,23,42,0.97), rgba(30,41,59,0.92), rgba(14,116,144,0.22))" : "linear-gradient(135deg, #f8f4ea, #edf5ff, #d8f3ef)", border:`1px solid ${t.gold}3f`, boxShadow: dark ? "0 18px 38px rgba(0,0,0,0.24)" : "0 18px 38px rgba(15,23,42,0.09)", borderRadius:24 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, marginBottom:isCompactPhone ? 5 : 6, flexWrap:"wrap" }}>
                   <span style={{ ...tagStyle, background:"#e53e3e18", color:"#e53e3e" }}>🔥 {lang==="ar" ? "خصم 50٪ لفترة محدودة" : "50% OFF for a limited time"}</span>
-                  <span style={{ fontSize:11, color:t.subText, fontFamily:"'Cairo',sans-serif" }}>{lang==="ar" ? `ينتهي العرض في ${cvOfferEndsText}` : `Offer ends on ${cvOfferEndsText}`}</span>
+                  <span style={{ fontSize:cvScaleFont(11), color:t.subText, fontFamily:"'Cairo',sans-serif" }}>{lang==="ar" ? `ينتهي العرض في ${cvOfferEndsText}` : `Offer ends on ${cvOfferEndsText}`}</span>
                 </div>
-                <div style={{ fontSize:isCompactPhone ? 17.5 : 22, fontWeight:900, color:t.text, lineHeight:isCompactPhone ? 1.16 : 1.24, marginBottom:isCompactPhone ? 3 : 4, fontFamily:"'Cairo',sans-serif" }}>
+                <div style={{ fontSize:cvScaleFont(isCompactPhone ? 17.5 : 22), fontWeight:900, color:t.text, lineHeight:isCompactPhone ? 1.16 : 1.24, marginBottom:isCompactPhone ? 3 : 4, fontFamily:"'Cairo',sans-serif" }}>
                   {lang==="ar" ? "امتلك السيرة الذاتية التي تضمن لك المقابلات وتحقق لك الوظيفة التي تستحقها" : "Own the CV that gets interviews and lands your ideal role"}
                 </div>
-                <div style={{ fontSize:isCompactPhone ? 10.5 : 12, color:t.subText, lineHeight:isCompactPhone ? 1.52 : 1.62, marginBottom:isCompactPhone ? 6 : 8, fontFamily:"'Cairo',sans-serif" }}>
+                <div style={{ fontSize:cvScaleFont(isCompactPhone ? 10.5 : 12), color:t.subText, lineHeight:isCompactPhone ? 1.52 : 1.62, marginBottom:isCompactPhone ? 6 : 8, fontFamily:"'Cairo',sans-serif" }}>
                   {lang==="ar" ? "اختر مسارك المهني من بين خياراتنا المتكاملة للنجاح." : "Choose your career path from our complete success options."}
                 </div>
-                <div style={{ display:"grid", gridTemplateColumns:isCompactPhone ? "1fr" : "repeat(3, minmax(0, 1fr))", gap:isCompactPhone ? 8 : 12 }}>
+                <div style={{ display:"grid", gridTemplateColumns:isCompactPhone ? "1fr" : "repeat(3, minmax(0, 1fr))", gap:isCompactPhone ? 8 : 12, alignItems:isCompactPhone ? "stretch" : "end" }}>
                   {cvPackages.map(pkg => {
                     const statsItem = cvPackageStatsCards.find(s => s.key === pkg.key);
                     const isActive = (pkg.key === "builder" && cvMode === "builder") || (pkg.key !== "builder" && cvMode === "services" && selectedCvPackage === pkg.key);
+                    const packageLayout = cvPackageLayout[pkg.key] || { desktopMinHeight: 360, desktopStatsOffset: 0 };
                     return (
-                      <div key={pkg.key} style={{ display:"flex", flexDirection:"column", gap:isCompactPhone ? 6 : 8 }}>
+                      <div key={pkg.key} style={{ display:"flex", flexDirection:"column", gap:isCompactPhone ? 6 : 8, justifyContent:"flex-end" }}>
                         <button
                           onClick={() => {
                             if (cvPackageSelectionLocked) return;
@@ -14620,7 +14628,7 @@ export default function App() {
                             textAlign:"center",
                             cursor:cvPackageSelectionLocked ? "not-allowed" : "pointer",
                             fontFamily:"'Cairo',sans-serif",
-                            minHeight:isCompactPhone ? "unset" : 288,
+                            minHeight:isCompactPhone ? "unset" : packageLayout.desktopMinHeight,
                             position:"relative",
                             display:"flex",
                             flexDirection:"column",
@@ -14631,16 +14639,16 @@ export default function App() {
                             filter:cvPackageSelectionLocked && !isActive ? "grayscale(0.1)" : "none"
                           }}>
                           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:isCompactPhone ? 6 : 10 }}>
-                            {pkg.oldPrice ? <span style={{ fontSize:9, color:dark ? "#fff0f0" : "#7f1d1d", background:dark ? "rgba(127,29,29,0.45)" : "#fee2e2", borderRadius:999, padding:"3px 8px", fontWeight:800 }}>50%</span> : <span />}
-                            <span style={{ fontSize:isCompactPhone ? 23 : 31, lineHeight:1 }}>{pkg.icon}</span>
+                            {pkg.oldPrice ? <span style={{ fontSize:cvScaleFont(9), color:dark ? "#fff0f0" : "#7f1d1d", background:dark ? "rgba(127,29,29,0.45)" : "#fee2e2", borderRadius:999, padding:"3px 8px", fontWeight:800 }}>50%</span> : <span />}
+                            <span style={{ fontSize:cvScaleFont(isCompactPhone ? 23 : 31), lineHeight:1 }}>{pkg.icon}</span>
                           </div>
-                          <div style={{ fontSize:isCompactPhone ? 16 : 18, fontWeight:900, color:pkg.titleColor, marginBottom:5, lineHeight:1.35 }}>{pkg.title}</div>
-                          <div style={{ fontSize:isCompactPhone ? 11 : 12, color:pkg.textColor, marginBottom:isCompactPhone ? 7 : 9, lineHeight:1.45, fontWeight:700 }}>{pkg.summary}</div>
+                          <div style={{ fontSize:cvScaleFont(isCompactPhone ? 16 : 18), fontWeight:900, color:pkg.titleColor, marginBottom:5, lineHeight:1.35 }}>{pkg.title}</div>
+                          <div style={{ fontSize:cvScaleFont(isCompactPhone ? 11 : 12), color:pkg.textColor, marginBottom:isCompactPhone ? 7 : 9, lineHeight:1.45, fontWeight:700 }}>{pkg.summary}</div>
                           <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, marginBottom:isCompactPhone ? 8 : 10, flexWrap:"wrap" }}>
-                            {pkg.oldPrice && <span style={{ fontSize:20, color:pkg.textColor, textDecoration:"line-through", opacity:0.8, fontWeight:900 }}>{pkg.oldPrice}</span>}
-                            <span style={{ fontSize:isCompactPhone ? 32 : 40, fontWeight:900, color:pkg.titleColor, lineHeight:1 }}>{pkg.price}</span>
+                            {pkg.oldPrice && <span style={{ fontSize:cvScaleFont(20), color:pkg.textColor, textDecoration:"line-through", opacity:0.8, fontWeight:900 }}>{pkg.oldPrice}</span>}
+                            <span style={{ fontSize:cvScaleFont(isCompactPhone ? 32 : 40), fontWeight:900, color:pkg.titleColor, lineHeight:1 }}>{pkg.price}</span>
                           </div>
-                          <div style={{ width:"100%", borderRadius:999, padding:isCompactPhone ? "9px 10px" : "11px 12px", background:pkg.ctaBg, color:pkg.ctaColor, fontSize:isCompactPhone ? 12 : 13, fontWeight:900, marginTop:8, boxShadow:"0 10px 20px rgba(0,0,0,0.16)", border:`1px solid ${pkg.chipBg}` }}>{pkg.cta}</div>
+                          <div style={{ width:"100%", borderRadius:999, padding:isCompactPhone ? "9px 10px" : "11px 12px", background:pkg.ctaBg, color:pkg.ctaColor, fontSize:cvScaleFont(isCompactPhone ? 12 : 13), fontWeight:900, marginTop:8, boxShadow:"0 10px 20px rgba(0,0,0,0.16)", border:`1px solid ${pkg.chipBg}` }}>{pkg.cta}</div>
                         </button>
                         {statsItem && (
                           <div style={{
@@ -14653,12 +14661,13 @@ export default function App() {
                             flexDirection:"column",
                             justifyContent:"center",
                             gap:3,
+                            marginTop:isCompactPhone ? 0 : packageLayout.desktopStatsOffset,
                           }}>
-                            <div style={{ fontSize:isCompactPhone ? 16 : 18, lineHeight:1 }}>{statsItem.icon}</div>
-                            <div style={{ fontSize:isCompactPhone ? 11 : 13, color:t.text, fontWeight:900, fontFamily:"'Cairo',sans-serif", lineHeight:1.5 }}>
+                            <div style={{ fontSize:cvScaleFont(isCompactPhone ? 16 : 18), lineHeight:1 }}>{statsItem.icon}</div>
+                            <div style={{ fontSize:cvScaleFont(isCompactPhone ? 11 : 13), color:t.text, fontWeight:900, fontFamily:"'Cairo',sans-serif", lineHeight:1.5 }}>
                               {statsItem.metric}: <span style={{ color:statsItem.accent, fontWeight:900 }}>{statsItem.users}</span>
                             </div>
-                            <div style={{ fontSize:isCompactPhone ? 11 : 13, color:t.text, fontWeight:900, fontFamily:"'Cairo',sans-serif", lineHeight:1.5 }}>
+                            <div style={{ fontSize:cvScaleFont(isCompactPhone ? 11 : 13), color:t.text, fontWeight:900, fontFamily:"'Cairo',sans-serif", lineHeight:1.5 }}>
                               {lang==="ar" ? "متوسط التقييم:" : "Avg Rating:"}{" "}
                               <span style={{ color:t.subText, fontWeight:900 }}>{statsItem.avg}/5</span>
                             </div>
