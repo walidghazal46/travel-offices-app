@@ -4726,7 +4726,7 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
         <div style={{ fontSize:40, marginBottom:6 }}>✅</div>
         <div style={{ fontSize:18, fontWeight:900, color:"#22c55e", marginBottom:4 }}>{isAr?"تم إرسال الطلب وتأكيد الدفع":"Payment Confirmed and Request Sent"}</div>
         <div style={{ fontSize:12, color:t.subText }}>{isAr?"تم إرسال بيانات الطلب تلقائيًا إلى بريدك الإلكتروني":"The order details were emailed automatically"}</div>
-        <div style={{ fontSize:11, fontWeight:800, marginTop:7, color: orderEmailStatus === "failed" ? "#dc2626" : orderEmailStatus === "sent" ? "#16a34a" : t.gold }}>
+        <div style={{ fontSize:11, fontWeight:800, marginTop:7, color: "#ffffff" }}>
           {orderEmailStatus === "sending"
             ? (isAr ? "جارٍ إرسال الإيميل تلقائيًا في الخلفية..." : "Sending email automatically in background...")
             : orderEmailStatus === "sent"
@@ -5465,7 +5465,7 @@ function ServiceProviderPortalFlow({
       )}
 
       {!!submitSuccess && (
-        <div style={{ ...card, background:"rgba(22,163,74,0.16)", border:"1px solid rgba(34,197,94,0.42)", color:"#bbf7d0", fontSize:11, fontWeight:800, lineHeight:1.8 }}>
+        <div style={{ ...card, background:"rgba(22,163,74,0.16)", border:"1px solid rgba(34,197,94,0.42)", color:"#ffffff", fontSize:11, fontWeight:800, lineHeight:1.8 }}>
           {isAr
             ? `تم إرسال طلبك بنجاح. رقم الطلب: ${submitSuccess.serial}`
             : `Your request was submitted successfully. Request number: ${submitSuccess.serial}`}
@@ -5473,7 +5473,7 @@ function ServiceProviderPortalFlow({
       )}
 
       {!!emailFailureFallback && (
-        <div style={{ ...card, background:"rgba(245,158,11,0.14)", border:"1px solid rgba(245,158,11,0.42)", color:"#fef3c7", fontSize:11, fontWeight:800, lineHeight:1.8 }}>
+        <div style={{ ...card, background:"rgba(245,158,11,0.14)", border:"1px solid rgba(245,158,11,0.42)", color:"#ffffff", fontSize:11, fontWeight:800, lineHeight:1.8 }}>
           <div style={{ marginBottom: 8 }}>
             {isAr
               ? "تم حفظ الطلب على فايربيز لكن حدث فشل في إرسال الإيميل."
