@@ -8821,7 +8821,18 @@ export default function App() {
       console.error("Auth preview action failed", error);
       const errorCode = String(error?.code || error?.message || "");
       const errorMsg = String(error?.message || "").toLowerCase();
-      if (errorCode.includes("too-many-requests") || errorMsg.includes("too many")) {
+      if (
+        errorCode.toLowerCase().includes("blocked all requests")
+        || errorMsg.includes("blocked all requests")
+        || errorMsg.includes("blocked all requests for this device")
+        || errorCode.toLowerCase().includes("device-request-limit-exceeded")
+      ) {
+        setAuthPreviewError(
+          lang === "ar"
+            ? "تم حظر التحقق برقم الهاتف مؤقتًا على هذا الجهاز. يمكنك المحاولة برقم الهاتف مرة أخرى بعد 24 ساعة، ويمكنك تسجيل الدخول الآن باستخدام البريد الإلكتروني."
+            : "Phone verification is temporarily blocked on this device. You can try phone sign-in again after 24 hours, and you can sign in now using your email."
+        );
+      } else if (errorCode.includes("too-many-requests") || errorMsg.includes("too many")) {
         setAuthPreviewError(
           lang === "ar"
             ? "تم إرسال عدد كبير من المحاولات. انتظر قليلًا ثم حاول مرة أخرى."
@@ -12535,7 +12546,17 @@ export default function App() {
                     })
                     .catch((error) => {
                       const errorCode = String(error?.code || error?.message || "").toLowerCase();
-                      if (errorCode.includes("too-many-requests") || errorCode.includes("quota-exceeded")) {
+                      if (
+                        errorCode.includes("blocked all requests")
+                        || errorCode.includes("blocked all requests for this device")
+                        || errorCode.includes("device-request-limit-exceeded")
+                      ) {
+                        setAuthPreviewError(
+                          lang === "ar"
+                            ? "تم حظر التحقق برقم الهاتف مؤقتًا على هذا الجهاز. يمكنك المحاولة برقم الهاتف مرة أخرى بعد 24 ساعة، ويمكنك تسجيل الدخول الآن باستخدام البريد الإلكتروني."
+                            : "Phone verification is temporarily blocked on this device. You can try phone sign-in again after 24 hours, and you can sign in now using your email."
+                        );
+                      } else if (errorCode.includes("too-many-requests") || errorCode.includes("quota-exceeded")) {
                         setAuthPreviewError(
                           lang === "ar"
                             ? "تم تجاوز عدد محاولات الإرسال مؤقتًا. انتظر قليلًا ثم حاول مرة أخرى."
