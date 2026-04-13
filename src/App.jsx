@@ -12165,7 +12165,7 @@ export default function App() {
     </div>
   ) : null;
 
-  const AuthPreview = () => (authPreviewOpen || !authPreviewUser) ? (
+  const AuthPreview = () => (authPreviewOpen || (!authPreviewUser && !guestMode)) ? (
     <div style={{ ...styles.overlay, background: "rgba(2, 6, 23, 0.84)", backdropFilter: "blur(8px)", alignItems: "center", overflow: "hidden", padding: 12 }}>
       <div
         style={{
