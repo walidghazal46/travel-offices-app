@@ -10199,7 +10199,7 @@ export default function App() {
       return;
     }
 
-    if (authPreviewOpen || !authPreviewUser) {
+    if (authPreviewOpen || (!authPreviewUser && !guestMode)) {
       setShowExitConfirm(true);
       return;
     }
@@ -10289,7 +10289,7 @@ export default function App() {
     }
 
     if (view === "list") {
-      setView("home");
+      setView("egyptMenu");
       setSelectedGov(null);
       return;
     }
@@ -10357,6 +10357,7 @@ export default function App() {
     authPreviewMode,
     authPreviewOpen,
     authPreviewUser,
+    guestMode,
     selectedOffice,
     mainTab,
     cvMode,
