@@ -6563,6 +6563,7 @@ export default function App() {
   const [providerApprovalSnapshot, setProviderApprovalSnapshot] = useState(null);
   const [providerPortalMode, setProviderPortalMode] = useState("service");
   const [providerPortalAddNew, setProviderPortalAddNew] = useState(false);
+  const [pendingProviderPortalOpen, setPendingProviderPortalOpen] = useState(false);
   const [officeOverrides, setOfficeOverrides] = useState(() => {
     try {
       const raw = localStorage.getItem("officeOverridesV1") || "{}";
@@ -6975,6 +6976,15 @@ export default function App() {
       setShowExitConfirm(false);
     }
   }, [authPreviewUser?.uid]);
+
+  useEffect(() => {
+    if (authPreviewUser && pendingProviderPortalOpen) {
+      setPendingProviderPortalOpen(false);
+      setProviderPortalMode("service");
+      setProviderPortalAddNew(false);
+      setView("providerPortal");
+    }
+  }, [authPreviewUser, pendingProviderPortalOpen]);
 
   useEffect(() => {
     setAccountProfileName(authPreviewUser?.displayName || "");
@@ -10101,6 +10111,19 @@ export default function App() {
         : "You need to sign in or create an account to unlock more offices.",
     });
   }, [lang]);
+
+  const openProviderPortalOrPromptLogin = useCallback(() => {
+    if (isGuestUser) {
+      setPendingProviderPortalOpen(true);
+      setGuestMode(false);
+      setAuthPreviewMode("login");
+      setAuthPreviewOpen(true);
+      return;
+    }
+    setProviderPortalMode("service");
+    setProviderPortalAddNew(false);
+    setView("providerPortal");
+  }, [isGuestUser]);
 
   const closeOfficeEditorState = useCallback(() => {
     setAdminOfficeEditOpen(false);
@@ -13563,11 +13586,7 @@ export default function App() {
                   </button>
 
                   <button
-                    onClick={() => {
-                      setProviderPortalMode("service");
-                      setProviderPortalAddNew(false);
-                      setView("providerPortal");
-                    }}
+                    onClick={openProviderPortalOrPromptLogin}
                     style={{
                       width: "100%",
                       textAlign: lang === "ar" ? "right" : "left",
@@ -14067,11 +14086,7 @@ export default function App() {
                   </button>
 
                   <button
-                    onClick={() => {
-                      setProviderPortalMode("service");
-                      setProviderPortalAddNew(false);
-                      setView("providerPortal");
-                    }}
+                    onClick={openProviderPortalOrPromptLogin}
                     style={{
                       width: "100%",
                       textAlign: lang === "ar" ? "right" : "left",
