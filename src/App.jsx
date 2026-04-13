@@ -7024,6 +7024,13 @@ export default function App() {
     clearAuthPreviewFeedback();
   }, [clearAuthPreviewFeedback]);
 
+  useEffect(() => {
+    if (!authPreviewOpen) return;
+    if (authPreviewMode !== "login" && authPreviewMode !== "signup") return;
+    if (String(authPreviewIdentifier || "").trim()) return;
+    setAuthPreviewIdentifier("+");
+  }, [authPreviewOpen, authPreviewMode, authPreviewIdentifier]);
+
   const closeAuthPreview = useCallback(() => {
     setShowExitConfirm(false);
     setAuthPreviewOpen(false);
@@ -12335,11 +12342,7 @@ export default function App() {
                 <input
                   value={authPreviewIdentifier}
                   onChange={(e) => setAuthPreviewIdentifier(e.target.value)}
-                  placeholder={
-                    authPreviewMode === "forgot"
-                      ? (lang === "ar" ? "البريد أو مثال: +201064463650" : "Email or e.g. +201064463650")
-                      : (lang === "ar" ? "البريد أو مثال: +201064463650" : "Email or e.g. +201064463650")
-                  }
+                  placeholder=""
                   type="text"
                   inputMode="text"
                   style={{ ...authFieldInputStyle, direction: "ltr", textAlign: "left" }}
