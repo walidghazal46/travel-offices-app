@@ -856,6 +856,7 @@ export async function startNativePhoneSignIn(phoneNumber, options = {}) {
       }));
 
       await FirebaseAuthentication.signInWithPhoneNumber({
+        skipNativeAuth: false,
         phoneNumber: cleanPhone,
         timeout,
         resendCode,

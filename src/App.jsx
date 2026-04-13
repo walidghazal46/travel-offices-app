@@ -8620,6 +8620,42 @@ export default function App() {
       } catch (error) {
         console.error("OTP verification failed", error);
         const errorCode = String(error?.code || error?.message || "").toLowerCase();
+        const isNativePhoneFlow = !!authPreviewPhoneFlow?.native;
+
+        if (
+          isNativePhoneFlow &&
+          (errorCode.includes("invalid-verification-code")
+            || errorCode.includes("invalid code")
+            || errorCode.includes("invalid credential")
+            || errorCode.includes("session-expired")
+            || errorCode.includes("code-expired")
+            || errorCode.includes("verification-id"))
+        ) {
+          try {
+            const fallbackPhone = String(authPreviewPhoneFlow?.phoneNumber || "").trim();
+            if (fallbackPhone) {
+              const verifier = await getAuthPreviewRecaptcha();
+              const confirmationResult = await sendPhoneVerificationCode(fallbackPhone, verifier);
+              authPhoneConfirmationRef.current = confirmationResult;
+              setAuthPreviewPhoneFlow((prev) => ({
+                ...(prev || {}),
+                native: false,
+                verificationId: "",
+              }));
+              setAuthPreviewOtp(["", "", "", "", "", ""]);
+              setAuthPreviewSuccess(
+                lang === "ar"
+                  ? "تم التحويل لمسار تحقق بديل وإرسال رمز جديد. اكتب آخر كود تم استلامه."
+                  : "Switched to an alternate verification path and sent a new code. Enter the latest SMS code."
+              );
+              setTimeout(() => { authPreviewOtpRefs.current[0]?.focus(); }, 100);
+              return;
+            }
+          } catch (fallbackError) {
+            console.error("OTP fallback to web flow failed", fallbackError);
+          }
+        }
+
         if (errorCode.includes("invalid-verification-code") || errorCode.includes("invalid code") || errorCode.includes("invalid credential")) {
           setAuthPreviewError(
             lang === "ar"
