@@ -2110,7 +2110,7 @@ const T = {
       { icon: "🥉", key: "docs-translation-eg", label: "التوثيق والترجمة", subtitle: "توثيق – ترجمة – مراجعة مستندات – أخرى", subServices: ["توثيق", "ترجمة", "مراجعة مستندات", "أخرى"] },
       { icon: "🏅", key: "work-problems-eg", label: "مشاكل العمل", subtitle: "رواتب – فصل – نزاعات – عقود – أخرى", subServices: ["رواتب", "فصل", "نزاعات", "عقود", "أخرى"] },
       { icon: "🎖", key: "legal-eg", label: "الاستشارات القانونية", subtitle: "استشارة – توثيق مستندات – مراجعة مستندات – أخرى", subServices: ["استشارة", "توثيق مستندات", "مراجعة مستندات", "أخرى"] },
-      { icon: "🪙", key: "migration-eg", label: "خدمات الهجرة", subtitle: "هجرة – لجوء – استشارات – متابعة – أخرى", subServices: ["هجرة", "لجوء", "استشارات", "متابعة", "أخرى"], soon: true, soonLabel: "⏳ قريبًا" },
+      { icon: "🪙", key: "migration-eg", label: "استشارة شخصية", subtitle: "استشارات عامة", subServices: ["استشارات عامة", "أخرى"] },
     ],
     countryServices: [
       { icon: "💼", key: "work-issues-sa", label: "مشاكل العمل", subtitle: "رواتب – فصل تعسفي – نقل كفالة – نزاعات", subServices: ["رواتب", "فصل تعسفي", "نقل كفالة", "نزاعات", "أخرى"] },
@@ -2204,7 +2204,7 @@ const T = {
       { icon: "🥉", key: "docs-translation-eg", label: "Documentation & Translation", subtitle: "Documentation – Translation – Document review – Other", subServices: ["Documentation", "Translation", "Document review", "Other"] },
       { icon: "🏅", key: "work-problems-eg", label: "Work Problems", subtitle: "Salaries – Dismissal – Disputes – Contracts – Other", subServices: ["Salaries", "Dismissal", "Disputes", "Contracts", "Other"] },
       { icon: "🎖", key: "legal-eg", label: "Legal Consultations", subtitle: "Consultation – Document authentication – Document review – Other", subServices: ["Consultation", "Document authentication", "Document review", "Other"] },
-      { icon: "🪙", key: "migration-eg", label: "Migration Services", subtitle: "Migration – Asylum – Consultations – Follow-up – Other", subServices: ["Migration", "Asylum", "Consultations", "Follow-up", "Other"], soon: true, soonLabel: "⏳ Soon" },
+      { icon: "🪙", key: "migration-eg", label: "Personal Consultation", subtitle: "General consultations", subServices: ["General consultations", "Other"] },
     ],
     countryServices: [
       { icon: "💼", key: "work-issues-sa", label: "Work Issues", subtitle: "Salaries – Unfair dismissal – Transfer sponsorship – Disputes", subServices: ["Salaries", "Unfair dismissal", "Transfer sponsorship", "Disputes", "Other"] },
@@ -10097,6 +10097,15 @@ export default function App() {
   };
   const openServiceModal = (label) => setModal({ type: "service", title: tx.paidServicesTitle, msg: `${label} - ${tx.paidComingSoonMsg}` });
   const openCityModal = (cityName) => setModal({ type: "city", title: cityName, msg: tx.cityComingSoonMsg });
+  const openGuestLockedOfficeNotice = useCallback(() => {
+    setModal({
+      type: "info",
+      title: lang === "ar" ? "المكتب مقفول للضيف" : "Office Locked For Guests",
+      msg: lang === "ar"
+        ? "لازم تسجل الدخول أو تنشئ حساب جديد عشان تفتح باقي المكاتب."
+        : "You need to sign in or create an account to unlock more offices.",
+    });
+  }, [lang]);
 
   const closeOfficeEditorState = useCallback(() => {
     setAdminOfficeEditOpen(false);
@@ -14409,9 +14418,11 @@ export default function App() {
                     </button>
                   ))}
                   {isGuestUser && guestLockedOfficesCount > 0 && Array.from({ length: Math.min(guestLockedOfficesCount, 6) }).map((_, idx) => (
-                    <div
+                    <button
                       key={`guest-lock-${idx}`}
-                      style={{ ...styles.officeCard, background: dark ? "rgba(127,29,29,0.22)" : "rgba(254,226,226,0.82)", border: "1px dashed rgba(239,68,68,0.45)", padding: "13px 8px", display: "flex", flexDirection: "column", gap: 9, borderRadius: 14, textAlign: "center", width: "100%", minHeight: 174, opacity: 0.92 }}
+                      type="button"
+                      onClick={openGuestLockedOfficeNotice}
+                      style={{ ...styles.officeCard, background: dark ? "rgba(127,29,29,0.22)" : "rgba(254,226,226,0.82)", border: "1px dashed rgba(239,68,68,0.45)", padding: "13px 8px", display: "flex", flexDirection: "column", gap: 9, borderRadius: 14, textAlign: "center", width: "100%", minHeight: 174, opacity: 0.92, cursor: "pointer" }}
                     >
                       <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(239,68,68,0.22)", color: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 900, flexShrink: 0, margin: "0 auto" }}>🔒</div>
                       <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fecaca" : "#991b1b", textAlign: "center", lineHeight: 1.45 }}>
@@ -14420,7 +14431,7 @@ export default function App() {
                       <div style={{ fontSize: 11, color: dark ? "#fecaca" : "#7f1d1d", lineHeight: 1.7, marginTop: "auto", fontWeight: 700 }}>
                         {lang === "ar" ? "سجل الدخول لفتح باقي المكاتب" : "Sign in to unlock more offices"}
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
                 {visibleFilteredOffices.length > officesPerPage && (
