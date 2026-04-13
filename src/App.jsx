@@ -12331,65 +12331,19 @@ export default function App() {
           {authPreviewMode !== "otp" && (
             <>
               <div style={authFieldShellStyle}>
-                <span style={{ position: "absolute", top: "50%", transform: "translateY(-50%)", right: dir === "rtl" ? 15 : "auto", left: dir === "rtl" ? "auto" : 15, fontSize: 18, color: "#e7c55b", opacity: 0.95 }}>
-                  {shouldUseSplitPhoneInput ? "" : "👤"}
-                </span>
-
-                {!shouldUseSplitPhoneInput ? (
-                  <input
-                    value={authPreviewIdentifier}
-                    onChange={(e) => setAuthPreviewIdentifier(e.target.value)}
-                    placeholder={
-                      authPreviewMode === "forgot"
-                        ? (lang === "ar" ? "أدخل رقم الهاتف أو البريد الإلكتروني" : "Enter your phone or email")
-                        : (lang === "ar" ? "البريد الإلكتروني أو رقم الهاتف" : "Email or phone number")
-                    }
-                    style={authFieldInputStyle}
-                  />
-                ) : (() => {
-                  const phoneDigits = String(authPreviewIdentifier || "").replace(/\D/g, "");
-                  return (
-                    <div style={{
-                      display: "block",
-                      width: "100%",
-                      height: 46,
-                      paddingRight: 0,
-                      paddingLeft: 0,
-                    }}>
-                      <input
-                        ref={authPreviewSplitPhoneInputRef}
-                        value={phoneDigits}
-                        onChange={(e) => {
-                          const nextDigits = String(e.target.value || "").replace(/\D/g, "");
-                          setAuthPreviewIdentifier(nextDigits ? `+${nextDigits}` : "+");
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "+") {
-                            e.preventDefault();
-                          }
-                        }}
-                        placeholder={lang === "ar" ? "كود الدولة ثم رقم الجوال" : "country code then phone number"}
-                        type="tel"
-                        inputMode="numeric"
-                        style={{
-                          width: "100%",
-                          height: 46,
-                          borderRadius: 0,
-                          border: "none",
-                          background: "transparent",
-                          color: "#f8fafc",
-                          fontFamily: "'Cairo',sans-serif",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          outline: "none",
-                          padding: "0 12px",
-                          textAlign: "left",
-                          direction: "ltr",
-                        }}
-                      />
-                    </div>
-                  );
-                })()}
+                <span style={{ position: "absolute", top: "50%", transform: "translateY(-50%)", right: dir === "rtl" ? 15 : "auto", left: dir === "rtl" ? "auto" : 15, fontSize: 18, color: "#e7c55b", opacity: 0.95 }}>👤</span>
+                <input
+                  value={authPreviewIdentifier}
+                  onChange={(e) => setAuthPreviewIdentifier(e.target.value)}
+                  placeholder={
+                    authPreviewMode === "forgot"
+                      ? (lang === "ar" ? "البريد أو مثال: +201064463650" : "Email or e.g. +201064463650")
+                      : (lang === "ar" ? "البريد أو مثال: +201064463650" : "Email or e.g. +201064463650")
+                  }
+                  type="text"
+                  inputMode="text"
+                  style={{ ...authFieldInputStyle, direction: "ltr", textAlign: "left" }}
+                />
               </div>
 
               {authPreviewMode !== "forgot" && (
