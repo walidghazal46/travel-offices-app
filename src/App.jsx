@@ -8587,6 +8587,15 @@ export default function App() {
         return;
       }
 
+      if (authPreviewPhoneFlow?.native && !String(authPreviewPhoneFlow?.verificationId || "").trim()) {
+        setAuthPreviewError(
+          lang === "ar"
+            ? "انتهت جلسة التحقق. اضغط إعادة إرسال الرمز ثم حاول مرة أخرى."
+            : "The verification session has expired. Tap resend code and try again."
+        );
+        return;
+      }
+
       setAuthPreviewBusy(true);
       try {
         const isNativePhoneFlow = !!authPreviewPhoneFlow?.native;
@@ -8610,11 +8619,32 @@ export default function App() {
         closeAuthPreview();
       } catch (error) {
         console.error("OTP verification failed", error);
-        setAuthPreviewError(
-          lang === "ar"
-            ? "رمز التحقق غير صحيح أو انتهت صلاحيته. حاول مرة أخرى."
-            : "The verification code is invalid or expired. Please try again."
-        );
+        const errorCode = String(error?.code || error?.message || "").toLowerCase();
+        if (errorCode.includes("invalid-verification-code") || errorCode.includes("invalid code") || errorCode.includes("invalid credential")) {
+          setAuthPreviewError(
+            lang === "ar"
+              ? "رمز التحقق غير صحيح. تأكد من الكود المرسل ثم حاول مرة أخرى."
+              : "The verification code is incorrect. Check the SMS code and try again."
+          );
+        } else if (errorCode.includes("session-expired") || errorCode.includes("code-expired") || errorCode.includes("verification-id")) {
+          setAuthPreviewError(
+            lang === "ar"
+              ? "انتهت صلاحية جلسة التحقق. اضغط إعادة إرسال الرمز للحصول على كود جديد."
+              : "The verification session has expired. Tap resend code to get a new code."
+          );
+        } else if (errorCode.includes("too-many-requests") || errorCode.includes("quota-exceeded")) {
+          setAuthPreviewError(
+            lang === "ar"
+              ? "تم تجاوز عدد المحاولات مؤقتًا. انتظر قليلًا ثم حاول مرة أخرى."
+              : "Too many attempts were made. Please wait a little and try again."
+          );
+        } else {
+          setAuthPreviewError(
+            lang === "ar"
+              ? "تعذر التحقق من الرمز الآن. حاول مرة أخرى أو أعد إرسال الكود."
+              : "Unable to verify the code right now. Try again or resend the code."
+          );
+        }
       } finally {
         setAuthPreviewBusy(false);
       }
@@ -8821,6 +8851,7 @@ export default function App() {
     authPreviewMode,
     authPreviewName,
     authPreviewOtp,
+    authPreviewPhoneFlow,
     authPreviewPassword,
     clearAuthPreviewFeedback,
     closeAuthPreview,
@@ -12432,6 +12463,8 @@ export default function App() {
                   if (authPreviewOtpResendTimer > 0) return;
                   const phone = authPreviewPhoneFlow?.phoneNumber;
                   if (!phone) return;
+                  setAuthPreviewError("");
+                  setAuthPreviewSuccess("");
                   setAuthPreviewOtpResendTimer(30);
                   clearInterval(authPreviewOtpResendIntervalRef.current);
                   authPreviewOtpResendIntervalRef.current = setInterval(() => {
@@ -12440,15 +12473,46 @@ export default function App() {
                       return v - 1;
                     });
                   }, 1000);
-                  startNativePhoneSignIn(phone, { timeout: 60, resendCode: true })
+
+                  const isNativePhoneFlow = !!authPreviewPhoneFlow?.native;
+                  const resendPromise = isNativePhoneFlow
+                    ? startNativePhoneSignIn(phone, { timeout: 60, resendCode: true })
+                    : getAuthPreviewRecaptcha()
+                      .then((verifier) => sendPhoneVerificationCode(phone, verifier));
+
+                  resendPromise
                     .then((result) => {
-                      if (result?.verificationId) {
-                        setAuthPreviewPhoneFlow((prev) => ({ ...prev, verificationId: result.verificationId }));
+                      if (isNativePhoneFlow) {
+                        if (result?.verificationId) {
+                          setAuthPreviewPhoneFlow((prev) => ({ ...prev, verificationId: result.verificationId }));
+                        }
+                      } else if (result) {
+                        authPhoneConfirmationRef.current = result;
                       }
                       setAuthPreviewOtp(["", "", "", "", "", ""]);
                       authPreviewOtpRefs.current[0]?.focus();
+                      setAuthPreviewSuccess(
+                        lang === "ar"
+                          ? "تم إرسال رمز تحقق جديد."
+                          : "A new verification code has been sent."
+                      );
                     })
-                    .catch(() => {});
+                    .catch((error) => {
+                      const errorCode = String(error?.code || error?.message || "").toLowerCase();
+                      if (errorCode.includes("too-many-requests") || errorCode.includes("quota-exceeded")) {
+                        setAuthPreviewError(
+                          lang === "ar"
+                            ? "تم تجاوز عدد محاولات الإرسال مؤقتًا. انتظر قليلًا ثم حاول مرة أخرى."
+                            : "Too many resend attempts were made. Please wait and try again."
+                        );
+                      } else {
+                        setAuthPreviewError(
+                          lang === "ar"
+                            ? "تعذر إعادة إرسال الرمز الآن. حاول مرة أخرى بعد قليل."
+                            : "Unable to resend the code right now. Please try again shortly."
+                        );
+                      }
+                    });
                 }}
                 style={{ textAlign: "center", color: authPreviewOtpResendTimer > 0 ? "rgba(245,215,123,0.45)" : "rgba(245,215,123,0.88)", fontSize: 12, fontWeight: 700, cursor: authPreviewOtpResendTimer > 0 ? "default" : "pointer" }}
               >
