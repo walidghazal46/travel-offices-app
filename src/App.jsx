@@ -2817,7 +2817,7 @@ class PaidFlowErrorBoundary extends React.Component {
 }
 
 // ── MAIN PaidServicesFlow ────────────────────────────────────────────────────
-function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity="", selectedNationality="", storageKey="paidOrders", countryOverride=null, onScreenChange=null, backRequestToken=0, isAdminUser=false, canManageServiceReviews=true }) {
+function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity="", selectedNationality="", storageKey="paidOrders", countryOverride=null, onScreenChange=null, backRequestToken=0, isAdminUser=false, canManageServiceReviews=true, isGuestUser=false }) {
   const isAr = lang === "ar";
   const activeCountry = countryOverride || selectedCountry;
   const isEgypt = activeCountry === "مصر";
@@ -3406,6 +3406,15 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
   }, [currentOrder, isAr]);
 
   const openPaidNewRequest = useCallback(() => {
+    if (isGuestUser) {
+      setRequestLimitNotice(
+        isAr
+          ? "وضع الضيف يسمح بعرض الخدمات المدفوعة فقط. لتقديم طلب جديد، سجل الدخول بحسابك."
+          : "Guest mode allows viewing paid services only. Sign in with your account to create a new request."
+      );
+      return;
+    }
+
     const recentOrders = isCvPaidFlow
       ? Object.keys(localStorage)
           .filter((key) => key.startsWith("cvPaidOrders-"))
@@ -3421,7 +3430,7 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
 
     setStep(1);
     setScreen("form");
-  }, [isAr, isCvPaidFlow, storageKey]);
+  }, [isAr, isCvPaidFlow, isGuestUser, storageKey]);
 
   const handleInternalBack = useCallback(() => {
     setFirebaseSubmitError("");
@@ -5165,9 +5174,6 @@ function ServiceProviderPortalFlow({
     String(form.country || "").trim() &&
     String(form.nationality || "").trim() &&
     String(form.city || "").trim() &&
-    String(form.commercialRegister || "").trim() &&
-    String(form.taxCard || "").trim() &&
-    String(form.portfolioLink || "").trim() &&
     String(form.notes || "").trim() &&
     selectedServices.length > 0 &&
     selectedServices.length <= 6;
@@ -5205,12 +5211,6 @@ function ServiceProviderPortalFlow({
         setSubmitError(isAr ? "الجنسية إلزامية." : "Nationality is required.");
       } else if (!String(form.city || "").trim()) {
         setSubmitError(isAr ? "المدينة إلزامية." : "City is required.");
-      } else if (!String(form.commercialRegister || "").trim()) {
-        setSubmitError(isAr ? "رقم السجل التجاري إلزامي." : "Commercial register is required.");
-      } else if (!String(form.taxCard || "").trim()) {
-        setSubmitError(isAr ? "رقم البطاقة الضريبية إلزامي." : "Tax card number is required.");
-      } else if (!String(form.portfolioLink || "").trim()) {
-        setSubmitError(isAr ? "رابط البورتفوليو إلزامي." : "Portfolio link is required.");
       } else if (!String(form.notes || "").trim()) {
         setSubmitError(isAr ? "وصف المكتب إلزامي." : "Office description is required.");
       } else {
@@ -5346,11 +5346,6 @@ function ServiceProviderPortalFlow({
               ? String(approvalSnapshot?.decisionNote || approvalSnapshot?.adminDecisionNote)
               : (isAr ? "سيصلك تحديث بالحالة عبر الإيميل." : "You will receive status updates by email.")}
           </div>
-          {!!approvalSnapshot?.portalLink && (
-            <a href={approvalSnapshot.portalLink} target="_blank" rel="noreferrer" style={{ marginTop:8, display:"inline-block", textDecoration:"none", color:"#16a34a", fontSize:11, fontWeight:900 }}>
-              {isAr ? "فتح رابط البوابة المعتمدة" : "Open approved portal link"}
-            </a>
-          )}
         </div>
       )}
 
@@ -5408,17 +5403,17 @@ function ServiceProviderPortalFlow({
         </div>
 
         <div style={{ marginTop:10 }}>
-          <label style={labelStyle}>{isAr ? "رقم السجل التجاري *" : "Commercial Register *"}</label>
+          <label style={labelStyle}>{isAr ? "رقم السجل التجاري" : "Commercial Register"}</label>
           <input style={inputStyle} value={form.commercialRegister} onChange={(e) => setForm((prev) => ({ ...prev, commercialRegister: e.target.value }))} placeholder={isAr ? "رقم السجل التجاري" : "Commercial register number"} />
         </div>
 
         <div style={{ marginTop:10 }}>
-          <label style={labelStyle}>{isAr ? "رقم البطاقة الضريبية *" : "Tax Card Number *"}</label>
+          <label style={labelStyle}>{isAr ? "رقم البطاقة الضريبية" : "Tax Card Number"}</label>
           <input style={inputStyle} value={form.taxCard} onChange={(e) => setForm((prev) => ({ ...prev, taxCard: e.target.value }))} placeholder={isAr ? "رقم البطاقة الضريبية" : "Tax card number"} />
         </div>
 
         <div style={{ marginTop:10 }}>
-          <label style={labelStyle}>{isAr ? "رابط البورتفوليو *" : "Portfolio Link *"}</label>
+          <label style={labelStyle}>{isAr ? "رابط البورتفوليو" : "Portfolio Link"}</label>
           <input style={inputStyle} value={form.portfolioLink} onChange={(e) => setForm((prev) => ({ ...prev, portfolioLink: e.target.value }))} placeholder="https://" />
         </div>
       </div>
@@ -6514,6 +6509,7 @@ export default function App() {
   const [authPreviewBusy, setAuthPreviewBusy] = useState(false);
   const [authPreviewError, setAuthPreviewError] = useState("");
   const [authPreviewSuccess, setAuthPreviewSuccess] = useState("");
+  const [guestMode, setGuestMode] = useState(false);
   const [authPreviewUser, setAuthPreviewUser] = useState(() => shapeAuthPreviewUser(initialAuthSnapshot));
   const [authPreviewReady, setAuthPreviewReady] = useState(() => !!initialAuthSnapshot);
   const [adminSessionRole, setAdminSessionRole] = useState("user");
@@ -6561,6 +6557,8 @@ export default function App() {
   const [adminProviderRequestsError, setAdminProviderRequestsError] = useState("");
   const [adminProviderRequestsQuery, setAdminProviderRequestsQuery] = useState("");
   const [adminProviderActionBusyId, setAdminProviderActionBusyId] = useState("");
+  const [adminPanelSection, setAdminPanelSection] = useState("overview");
+  const [adminSelectedProviderRequestId, setAdminSelectedProviderRequestId] = useState("");
   const [providerApprovalSnapshot, setProviderApprovalSnapshot] = useState(null);
   const [providerPortalMode, setProviderPortalMode] = useState("service");
   const [officeOverrides, setOfficeOverrides] = useState(() => {
@@ -6783,6 +6781,7 @@ export default function App() {
     [adminSessionRole, normalizedAuthEmail]
   );
   const isAdminUser = isPrimaryAdminUser || isDelegatedAdminUser;
+  const isGuestUser = !authPreviewUser && guestMode;
   const canManageAdminUsers = isPrimaryAdminUser;
   const canManageOrderReviews = isPrimaryAdminUser;
   const providerServiceOptions = useMemo(() => {
@@ -6955,13 +6954,19 @@ export default function App() {
   ]);
 
   useEffect(() => {
-    if (authPreviewReady && !authPreviewUser) {
+    if (authPreviewReady && !authPreviewUser && !guestMode) {
       setAdminSessionRole("user");
       setAuthPreviewMode("login");
       setAuthPreviewOpen(true);
       setShowExitConfirm(false);
     }
-  }, [authPreviewReady, authPreviewUser]);
+  }, [authPreviewReady, authPreviewUser, guestMode]);
+
+  useEffect(() => {
+    if (authPreviewUser && guestMode) {
+      setGuestMode(false);
+    }
+  }, [authPreviewUser, guestMode]);
 
   useEffect(() => {
     if (authPreviewUser?.uid) {
@@ -7017,6 +7022,16 @@ export default function App() {
     setAuthPreviewBusy(false);
     resetAuthPreviewForm();
   }, [resetAuthPreviewForm]);
+
+  const handleAuthPreviewGuestMode = useCallback(() => {
+    clearAuthPreviewFeedback();
+    setShowExitConfirm(false);
+    setGuestMode(true);
+    setAuthPreviewOpen(false);
+    setAuthPreviewMode("login");
+    setAuthPreviewBusy(false);
+    resetAuthPreviewForm();
+  }, [clearAuthPreviewFeedback, resetAuthPreviewForm]);
 
   useEffect(() => {
     let cancelled = false;
@@ -7310,6 +7325,7 @@ export default function App() {
   const handleAuthSignOut = useCallback(async () => {
     try {
       await signOutCurrentUser();
+      setGuestMode(false);
       resetAuthPreviewForm();
       setAuthPreviewMode("login");
       setAuthPreviewOpen(true);
@@ -7462,6 +7478,8 @@ export default function App() {
 
   const closeAdminPanel = useCallback(() => {
     setAdminPanelOpen(false);
+    setAdminPanelSection("overview");
+    setAdminSelectedProviderRequestId("");
     setAdminUsersError("");
     setAdminUsersQuery("");
     setAdminActionBusyUid("");
@@ -7586,6 +7604,15 @@ export default function App() {
   const handleAdminProviderDecision = useCallback(async (requestItem, nextStatus) => {
     const requestId = String(requestItem?.id || "").trim();
     if (!requestId) return;
+    const currentStatus = String(requestItem?.statusValue || requestItem?.status || "pending").trim().toLowerCase();
+    if (currentStatus !== "pending") {
+      setAdminProviderRequestsError(
+        lang === "ar"
+          ? "هذا الطلب تم التعامل معه بالفعل ولا يمكن اعتماد/رفضه مرة أخرى."
+          : "This request is already decided and cannot be approved/rejected again."
+      );
+      return;
+    }
     const cleanStatus = nextStatus === "approved" ? "approved" : "rejected";
     const note = window.prompt(
       lang === "ar"
@@ -7668,6 +7695,99 @@ export default function App() {
       setAdminProviderActionBusyId("");
     }
   }, [lang, providerApprovalSnapshot]);
+
+  const handleAdminProviderBlock = useCallback(async (requestItem) => {
+    const requestId = String(requestItem?.id || "").trim();
+    if (!requestId) return;
+    const currentStatus = String(requestItem?.statusValue || requestItem?.status || "pending").trim().toLowerCase();
+    if (currentStatus !== "approved") return;
+
+    const note = window.prompt(
+      lang === "ar" ? "ملاحظة الحظر (اختياري)" : "Block note (optional)",
+      String(requestItem?.adminDecisionNote || "")
+    );
+    if (note === null) return;
+
+    setAdminProviderActionBusyId(requestId);
+    setAdminProviderRequestsError("");
+    try {
+      const updates = {
+        status: "blocked",
+        blockedAt: new Date().toISOString(),
+        adminDecisionNote: String(note || "").trim(),
+      };
+
+      await updateServiceProviderRequestInFirebase(requestId, updates);
+
+      const targetUid = String(requestItem?.userUid || "").trim();
+      if (targetUid) {
+        await upsertAuthUserProfileInFirebase({
+          uid: targetUid,
+          email: requestItem?.userEmail || requestItem?.email || "",
+          phoneNumber: requestItem?.phone || "",
+          displayName: requestItem?.providerName || requestItem?.officeName || "",
+          country: requestItem?.country || "",
+          nationality: requestItem?.nationality || "",
+          providerId: requestItem?.phone ? "phone" : (requestItem?.email ? "email" : "unknown"),
+          providerApprovalStatus: "blocked",
+          providerApprovalRequestId: requestId,
+          providerApprovalUpdatedAt: new Date().toISOString(),
+          status: "blocked",
+        });
+      }
+
+      setAdminProviderRequests((prev) => prev.map((entry) => (
+        String(entry?.id || "") === requestId
+          ? { ...entry, ...updates, statusValue: "blocked" }
+          : entry
+      )));
+    } catch (error) {
+      console.error("Failed to block provider request", error);
+      setAdminProviderRequestsError(
+        lang === "ar"
+          ? "تعذر حظر مقدم الخدمة الآن."
+          : "Unable to block this provider right now."
+      );
+    } finally {
+      setAdminProviderActionBusyId("");
+    }
+  }, [lang]);
+
+  const handleAdminProviderDelete = useCallback(async (requestItem) => {
+    const requestId = String(requestItem?.id || "").trim();
+    if (!requestId) return;
+    const confirmed = typeof window === "undefined" || window.confirm(
+      lang === "ar"
+        ? "تأكيد حذف هذا الطلب من قائمة مقدمي الخدمات؟"
+        : "Confirm deleting this provider request from the providers list?"
+    );
+    if (!confirmed) return;
+
+    setAdminProviderActionBusyId(requestId);
+    setAdminProviderRequestsError("");
+    try {
+      const updates = {
+        status: "deleted",
+        deletedAt: new Date().toISOString(),
+      };
+      await updateServiceProviderRequestInFirebase(requestId, updates);
+
+      setAdminProviderRequests((prev) => prev.filter((entry) => String(entry?.id || "") !== requestId));
+      if (adminSelectedProviderRequestId === requestId) {
+        setAdminSelectedProviderRequestId("");
+        setAdminPanelSection("providers");
+      }
+    } catch (error) {
+      console.error("Failed to delete provider request", error);
+      setAdminProviderRequestsError(
+        lang === "ar"
+          ? "تعذر حذف طلب مقدم الخدمة الآن."
+          : "Unable to delete this provider request right now."
+      );
+    } finally {
+      setAdminProviderActionBusyId("");
+    }
+  }, [adminSelectedProviderRequestId, lang]);
 
   useEffect(() => {
     const uid = String(authPreviewUser?.uid || "").trim();
@@ -9649,13 +9769,28 @@ export default function App() {
     }
     return list;
   }, [effectiveOffices, selectedCountry, selectedGov, search]);
+  const guestEgyptOfficeLimit = useMemo(() => {
+    if (!isGuestUser || selectedCountry !== "مصر" || !selectedGov) return 0;
+    const totalInGovernorate = effectiveOffices.filter((office) => office.gov === selectedGov).length;
+    if (totalInGovernorate <= 0) return 0;
+    return totalInGovernorate < 20 ? 1 : 3;
+  }, [effectiveOffices, isGuestUser, selectedCountry, selectedGov]);
+  const visibleFilteredOffices = useMemo(() => {
+    if (!guestEgyptOfficeLimit) return filteredOffices;
+    return filteredOffices.slice(0, guestEgyptOfficeLimit);
+  }, [filteredOffices, guestEgyptOfficeLimit]);
+  const guestLockedOfficesCount = useMemo(() => {
+    if (!guestEgyptOfficeLimit || selectedCountry !== "مصر" || !selectedGov) return 0;
+    const totalInGovernorate = effectiveOffices.filter((office) => office.gov === selectedGov).length;
+    return Math.max(0, totalInGovernorate - guestEgyptOfficeLimit);
+  }, [effectiveOffices, guestEgyptOfficeLimit, selectedCountry, selectedGov]);
   const officesPerPage = 30;
-  const totalOfficePages = Math.max(1, Math.ceil(filteredOffices.length / officesPerPage));
+  const totalOfficePages = Math.max(1, Math.ceil(visibleFilteredOffices.length / officesPerPage));
   const paginatedOffices = useMemo(() => {
     const safePage = Math.min(officePage, totalOfficePages);
     const startIndex = (safePage - 1) * officesPerPage;
-    return filteredOffices.slice(startIndex, startIndex + officesPerPage);
-  }, [filteredOffices, officePage, totalOfficePages]);
+    return visibleFilteredOffices.slice(startIndex, startIndex + officesPerPage);
+  }, [visibleFilteredOffices, officePage, totalOfficePages]);
 
   useEffect(() => {
     setOfficePage(1);
@@ -9820,10 +9955,15 @@ export default function App() {
     });
   }, [adminOrdersQuery, filteredAdminOrdersByOps]);
 
+  const providerRequestsVisible = useMemo(
+    () => adminProviderRequests.filter((entry) => String(entry?.statusValue || entry?.status || "").trim().toLowerCase() !== "deleted"),
+    [adminProviderRequests]
+  );
+
   const filteredAdminProviderRequestsForView = useMemo(() => {
     const q = String(adminProviderRequestsQuery || "").trim().toLowerCase();
-    if (!q) return adminProviderRequests;
-    return adminProviderRequests.filter((entry) => {
+    if (!q) return providerRequestsVisible;
+    return providerRequestsVisible.filter((entry) => {
       const haystack = [
         entry?.serialLabel,
         entry?.providerNameValue,
@@ -9835,7 +9975,17 @@ export default function App() {
       ].map((value) => String(value || "").toLowerCase()).join(" ");
       return haystack.includes(q);
     });
-  }, [adminProviderRequests, adminProviderRequestsQuery]);
+  }, [providerRequestsVisible, adminProviderRequestsQuery]);
+
+  const adminPendingProvidersCount = useMemo(
+    () => providerRequestsVisible.filter((entry) => String(entry?.statusValue || entry?.status || "pending").trim().toLowerCase() === "pending").length,
+    [providerRequestsVisible]
+  );
+
+  const selectedAdminProviderRequest = useMemo(
+    () => providerRequestsVisible.find((entry) => String(entry?.id || "") === adminSelectedProviderRequestId) || null,
+    [adminSelectedProviderRequestId, providerRequestsVisible]
+  );
 
   const adminCriticalCount = useMemo(() => {
     const nowMs = Date.now();
@@ -11308,6 +11458,17 @@ export default function App() {
           <div style={{ color: "rgba(245,215,123,0.92)", fontSize: 11, fontWeight: 700, marginTop: 3, fontFamily: "'Cairo',sans-serif" }}>
             {lang === "ar" ? "المستخدمون والطلبات (آخر 30 يوم)" : "Users and orders (last 30 days)"}
           </div>
+          {adminPanelSection !== "overview" && (
+            <button
+              onClick={() => {
+                setAdminPanelSection("overview");
+                setAdminSelectedProviderRequestId("");
+              }}
+              style={{ marginTop: 8, border: "1px solid rgba(212,175,55,0.35)", background: "rgba(255,255,255,0.06)", color: "#f5d77b", borderRadius: 10, padding: "6px 10px", fontSize: 11, fontWeight: 900, cursor: "pointer", fontFamily: "'Cairo',sans-serif" }}
+            >
+              {lang === "ar" ? "رجوع للوحة الرئيسية" : "Back to Main Panel"}
+            </button>
+          )}
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 18 }}>
@@ -11342,13 +11503,73 @@ export default function App() {
           </button>
         </div>
 
+        {adminPanelSection === "overview" && (
+          <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+            {[{
+              key: "users",
+              titleAr: "المستخدمون",
+              titleEn: "Users",
+              count: adminUsers.length,
+              tone: "linear-gradient(135deg, rgba(56,189,248,0.18), rgba(37,99,235,0.16))",
+              border: "1px solid rgba(96,165,250,0.45)",
+              icon: "👥",
+            }, {
+              key: "orders",
+              titleAr: "الطلبات",
+              titleEn: "Orders",
+              count: adminOrders.length,
+              tone: "linear-gradient(135deg, rgba(245,158,11,0.18), rgba(180,83,9,0.16))",
+              border: "1px solid rgba(251,191,36,0.42)",
+              icon: "📦",
+            }, {
+              key: "providers",
+              titleAr: "مقدمو الخدمات",
+              titleEn: "Service Providers",
+              count: providerRequestsVisible.length,
+              pending: adminPendingProvidersCount,
+              tone: "linear-gradient(135deg, rgba(34,197,94,0.18), rgba(21,128,61,0.16))",
+              border: "1px solid rgba(74,222,128,0.42)",
+              icon: "🧰",
+            }].map((item) => (
+              <button
+                key={item.key}
+                onClick={() => setAdminPanelSection(item.key)}
+                style={{
+                  width: "100%",
+                  textAlign: dir === "rtl" ? "right" : "left",
+                  borderRadius: 16,
+                  border: item.border,
+                  background: item.tone,
+                  padding: "12px 12px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  cursor: "pointer",
+                  fontFamily: "'Cairo',sans-serif",
+                }}
+              >
+                <div style={{ width: 34, height: 34, borderRadius: 12, background: "rgba(255,255,255,0.14)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{item.icon}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: "#f8fafc", fontSize: 13, fontWeight: 900 }}>
+                    {lang === "ar" ? item.titleAr : item.titleEn}
+                  </div>
+                  <div style={{ color: "#dbeafe", fontSize: 10, fontWeight: 700, marginTop: 2 }}>
+                    {lang === "ar" ? `الإجمالي: ${item.count}` : `Total: ${item.count}`}
+                    {item.key === "providers" ? (lang === "ar" ? ` | الجديد: ${item.pending || 0}` : ` | New: ${item.pending || 0}`) : ""}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
         {!!adminUsersError && (
           <div style={{ marginTop: 14, color: "#fecaca", background: "rgba(127,29,29,0.24)", border: "1px solid rgba(248,113,113,0.32)", borderRadius: 14, padding: "10px 12px", textAlign: "center", fontSize: 12, lineHeight: 1.8, fontWeight: 700, fontFamily: "'Cairo',sans-serif" }}>
             {adminUsersError}
           </div>
         )}
 
-        <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(212,175,55,0.28)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px" }}>
+        <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(212,175,55,0.28)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px", display: adminPanelSection === "users" ? "block" : "none" }}>
           <div style={{ marginBottom: 8, color: "#f8fafc", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
             <span>{lang === "ar" ? "المستخدمون" : "Users"}</span>
             <span style={{ color: "#cbd5e1", fontSize: 10, fontWeight: 800 }}>
@@ -11527,7 +11748,7 @@ export default function App() {
         )}
         </div>
 
-        <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(212,175,55,0.28)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px" }}>
+        <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(212,175,55,0.28)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px", display: adminPanelSection === "orders" ? "block" : "none" }}>
         <div style={{ marginBottom: 6, color: "#f8fafc", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <span>{lang === "ar" ? "الطلبات" : "Orders"}</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 9px", borderRadius: 999, background: adminCriticalCount > 0 ? "rgba(239,68,68,0.18)" : "rgba(34,197,94,0.16)", border: adminCriticalCount > 0 ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(34,197,94,0.35)", color: adminCriticalCount > 0 ? "#fecaca" : "#bbf7d0", fontSize: 10, fontWeight: 900 }}>
@@ -11787,11 +12008,11 @@ export default function App() {
         </div>
         </div>
 
-        <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(34,197,94,0.32)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px" }}>
+        <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(34,197,94,0.32)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px", display: (adminPanelSection === "providers" || adminPanelSection === "providerDetails") ? "block" : "none" }}>
           <div style={{ marginBottom: 8, color: "#bbf7d0", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
             <span>{lang === "ar" ? "طلبات مزودي الخدمات" : "Service Provider Requests"}</span>
             <span style={{ color: "#bbf7d0", fontSize: 10, fontWeight: 800 }}>
-              {filteredAdminProviderRequestsForView.length} / {adminProviderRequests.length}
+              {filteredAdminProviderRequestsForView.length} / {providerRequestsVisible.length}
             </span>
           </div>
 
@@ -11808,81 +12029,137 @@ export default function App() {
             </div>
           )}
 
-          <div style={{ display: "grid", gap: 7 }}>
-            {filteredAdminProviderRequestsForView.map((entry, index) => {
-              const requestId = String(entry?.id || "").trim();
-              const busy = adminProviderActionBusyId === requestId;
-              const statusValue = String(entry?.statusValue || entry?.status || "pending").toLowerCase();
-              const statusLabel = statusValue === "approved"
-                ? (lang === "ar" ? "معتمد" : "Approved")
-                : statusValue === "rejected"
-                  ? (lang === "ar" ? "مرفوض" : "Rejected")
-                  : (lang === "ar" ? "قيد المراجعة" : "Pending");
-              const statusColor = statusValue === "approved" ? "#22c55e" : statusValue === "rejected" ? "#ef4444" : "#f59e0b";
-              const serviceList = (entry?.servicesValue || entry?.services || []).slice(0, 6).join(" • ");
-              return (
-                <div key={requestId || `provider-${index + 1}`} style={{ borderRadius: 14, border: `1px solid ${statusColor}44`, background: "rgba(255,255,255,0.05)", padding: "8px 9px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ color: "#f8fafc", fontSize: 11, fontWeight: 900, lineHeight: 1.35 }}>
-                        {entry?.providerNameValue || entry?.officeName || (lang === "ar" ? "بدون اسم" : "No name")}
-                      </div>
-                      <div style={{ color: "#93c5fd", fontSize: 10, marginTop: 2, wordBreak: "break-word" }}>
-                        {entry?.emailValue || entry?.email || "—"}
-                      </div>
-                      <div style={{ color: "#cbd5e1", fontSize: 10, marginTop: 2 }}>
-                        {lang === "ar" ? "السيريال" : "Serial"}: {entry?.serialLabel || requestId || "—"}
-                      </div>
+          {adminPanelSection === "providerDetails" && selectedAdminProviderRequest ? (
+            <div style={{ display: "grid", gap: 7 }}>
+              <div style={{ borderRadius: 14, border: "1px solid rgba(74,222,128,0.45)", background: "rgba(255,255,255,0.05)", padding: "10px" }}>
+                <div style={{ color: "#f8fafc", fontSize: 12, fontWeight: 900, marginBottom: 8 }}>
+                  {lang === "ar" ? "تفاصيل مقدم الخدمة" : "Service Provider Details"}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                  {[
+                    [lang === "ar" ? "الاسم" : "Name", selectedAdminProviderRequest?.providerNameValue || selectedAdminProviderRequest?.providerName || selectedAdminProviderRequest?.officeName || "—"],
+                    [lang === "ar" ? "السيريال" : "Serial", selectedAdminProviderRequest?.serialLabel || selectedAdminProviderRequest?.id || "—"],
+                    [lang === "ar" ? "الإيميل" : "Email", selectedAdminProviderRequest?.emailValue || selectedAdminProviderRequest?.email || "—"],
+                    [lang === "ar" ? "الهاتف" : "Phone", selectedAdminProviderRequest?.phone || "—"],
+                    [lang === "ar" ? "واتساب" : "WhatsApp", selectedAdminProviderRequest?.whatsapp || "—"],
+                    [lang === "ar" ? "الدولة" : "Country", selectedAdminProviderRequest?.countryValue || selectedAdminProviderRequest?.country || "—"],
+                    [lang === "ar" ? "المدينة" : "City", selectedAdminProviderRequest?.city || "—"],
+                    [lang === "ar" ? "الجنسية" : "Nationality", selectedAdminProviderRequest?.nationalityValue || selectedAdminProviderRequest?.nationality || "—"],
+                    [lang === "ar" ? "السجل التجاري" : "Commercial Register", selectedAdminProviderRequest?.commercialRegister || "—"],
+                    [lang === "ar" ? "البطاقة الضريبية" : "Tax Card", selectedAdminProviderRequest?.taxCard || "—"],
+                    [lang === "ar" ? "رابط البورتفوليو" : "Portfolio", selectedAdminProviderRequest?.portfolioLink || "—"],
+                    [lang === "ar" ? "التاريخ" : "Created At", selectedAdminProviderRequest?.createdAtLabel || "—"],
+                  ].map(([label, value]) => (
+                    <div key={`${label}-${value}`} style={{ borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "6px 7px" }}>
+                      <div style={{ color: "rgba(255,255,255,0.58)", fontSize: 9, fontWeight: 700, marginBottom: 2 }}>{label}</div>
+                      <div style={{ color: "#f8fafc", fontSize: 10, fontWeight: 800, wordBreak: "break-word", lineHeight: 1.35 }}>{value}</div>
                     </div>
-                    <div style={{ padding: "3px 8px", borderRadius: 999, background: `${statusColor}22`, border: `1px solid ${statusColor}66`, color: statusColor, fontSize: 10, fontWeight: 900, whiteSpace: "nowrap" }}>
-                      {statusLabel}
-                    </div>
-                  </div>
+                  ))}
+                </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 7 }}>
-                    <div style={{ borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", padding: "5px 7px" }}>
-                      <div style={{ color: "rgba(255,255,255,0.56)", fontSize: 9, fontWeight: 700, marginBottom: 2 }}>{lang === "ar" ? "الدولة" : "Country"}</div>
-                      <div style={{ color: "#f8fafc", fontSize: 10, fontWeight: 800 }}>{entry?.countryValue || entry?.country || "—"}</div>
-                    </div>
-                    <div style={{ borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", padding: "5px 7px" }}>
-                      <div style={{ color: "rgba(255,255,255,0.56)", fontSize: 9, fontWeight: 700, marginBottom: 2 }}>{lang === "ar" ? "الجنسية" : "Nationality"}</div>
-                      <div style={{ color: "#f8fafc", fontSize: 10, fontWeight: 800 }}>{entry?.nationalityValue || entry?.nationality || "—"}</div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 6, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", padding: "6px 7px" }}>
-                    <div style={{ color: "rgba(255,255,255,0.56)", fontSize: 9, fontWeight: 700, marginBottom: 2 }}>{lang === "ar" ? "الخدمات المختارة" : "Selected services"}</div>
-                    <div style={{ color: "#f8fafc", fontSize: 10, fontWeight: 800, lineHeight: 1.5 }}>
-                      {serviceList || (lang === "ar" ? "لا توجد خدمات" : "No services")}
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 7, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                    <button
-                      onClick={() => handleAdminProviderDecision(entry, "approved")}
-                      disabled={busy}
-                      style={{ padding: "7px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#22c55e,#166534)", color: "#fff", fontSize: 10, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.65 : 1 }}
-                    >
-                      {busy ? (lang === "ar" ? "جارٍ التنفيذ..." : "Updating...") : (lang === "ar" ? "اعتماد" : "Approve")}
-                    </button>
-                    <button
-                      onClick={() => handleAdminProviderDecision(entry, "rejected")}
-                      disabled={busy}
-                      style={{ padding: "7px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#ef4444,#7f1d1d)", color: "#fff", fontSize: 10, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.65 : 1 }}
-                    >
-                      {busy ? (lang === "ar" ? "جارٍ التنفيذ..." : "Updating...") : (lang === "ar" ? "رفض" : "Reject")}
-                    </button>
+                <div style={{ marginTop: 7, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "7px" }}>
+                  <div style={{ color: "rgba(255,255,255,0.58)", fontSize: 9, fontWeight: 700, marginBottom: 2 }}>{lang === "ar" ? "الخدمات" : "Services"}</div>
+                  <div style={{ color: "#f8fafc", fontSize: 10, fontWeight: 800, lineHeight: 1.45 }}>
+                    {((selectedAdminProviderRequest?.servicesValue || selectedAdminProviderRequest?.services || []).join(" • ")) || (lang === "ar" ? "لا توجد خدمات" : "No services")}
                   </div>
                 </div>
-              );
-            })}
 
-            {!adminProviderRequestsLoading && filteredAdminProviderRequestsForView.length === 0 && (
-              <div style={{ borderRadius: 14, border: "1px dashed rgba(34,197,94,0.40)", background: "rgba(255,255,255,0.03)", padding: "12px 10px", textAlign: "center", color: "rgba(255,255,255,0.82)", fontSize: 11, lineHeight: 1.7, fontWeight: 700, fontFamily: "'Cairo',sans-serif" }}>
-                {lang === "ar" ? "لا توجد طلبات مزودي خدمات مطابقة للبحث." : "No matching service provider requests."}
+                <div style={{ marginTop: 7, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "7px" }}>
+                  <div style={{ color: "rgba(255,255,255,0.58)", fontSize: 9, fontWeight: 700, marginBottom: 2 }}>{lang === "ar" ? "الوصف" : "Description"}</div>
+                  <div style={{ color: "#f8fafc", fontSize: 10, fontWeight: 800, lineHeight: 1.45, wordBreak: "break-word" }}>
+                    {selectedAdminProviderRequest?.notes || "—"}
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
+                  {(() => {
+                    const statusValue = String(selectedAdminProviderRequest?.statusValue || selectedAdminProviderRequest?.status || "pending").toLowerCase();
+                    const detailId = String(selectedAdminProviderRequest?.id || "").trim();
+                    const busy = adminProviderActionBusyId === detailId;
+
+                    if (statusValue === "pending") {
+                      return (
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                          <button onClick={() => handleAdminProviderDecision(selectedAdminProviderRequest, "approved")} disabled={busy} style={{ padding: "7px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#22c55e,#166534)", color: "#fff", fontSize: 10, fontWeight: 900, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.65 : 1 }}>
+                            {busy ? (lang === "ar" ? "جارٍ التنفيذ..." : "Updating...") : (lang === "ar" ? "اعتماد" : "Approve")}
+                          </button>
+                          <button onClick={() => handleAdminProviderDecision(selectedAdminProviderRequest, "rejected")} disabled={busy} style={{ padding: "7px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#ef4444,#7f1d1d)", color: "#fff", fontSize: 10, fontWeight: 900, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.65 : 1 }}>
+                            {busy ? (lang === "ar" ? "جارٍ التنفيذ..." : "Updating...") : (lang === "ar" ? "رفض" : "Reject")}
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    if (statusValue === "approved") {
+                      return (
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                          <button onClick={() => handleAdminProviderBlock(selectedAdminProviderRequest)} disabled={busy} style={{ padding: "7px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#f97316,#b45309)", color: "#fff", fontSize: 10, fontWeight: 900, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.65 : 1 }}>
+                            {busy ? (lang === "ar" ? "جارٍ التنفيذ..." : "Updating...") : (lang === "ar" ? "🚫 حظر" : "🚫 Block")}
+                          </button>
+                          <button onClick={() => handleAdminProviderDelete(selectedAdminProviderRequest)} disabled={busy} style={{ padding: "7px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#ef4444,#7f1d1d)", color: "#fff", fontSize: 10, fontWeight: 900, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.65 : 1 }}>
+                            {busy ? (lang === "ar" ? "جارٍ التنفيذ..." : "Updating...") : (lang === "ar" ? "🗑️ حذف" : "🗑️ Delete")}
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <button onClick={() => handleAdminProviderDelete(selectedAdminProviderRequest)} disabled={busy} style={{ padding: "7px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#ef4444,#7f1d1d)", color: "#fff", fontSize: 10, fontWeight: 900, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.65 : 1 }}>
+                        {busy ? (lang === "ar" ? "جارٍ التنفيذ..." : "Updating...") : (lang === "ar" ? "🗑️ حذف الطلب" : "🗑️ Delete Request")}
+                      </button>
+                    );
+                  })()}
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 7 }}>
+              {filteredAdminProviderRequestsForView.map((entry, index) => {
+                const requestId = String(entry?.id || "").trim();
+                const statusValue = String(entry?.statusValue || entry?.status || "pending").toLowerCase();
+                const statusLabel = statusValue === "approved"
+                  ? (lang === "ar" ? "معتمد" : "Approved")
+                  : statusValue === "rejected"
+                    ? (lang === "ar" ? "مرفوض" : "Rejected")
+                    : statusValue === "blocked"
+                      ? (lang === "ar" ? "محظور" : "Blocked")
+                      : (lang === "ar" ? "قيد المراجعة" : "Pending");
+                const statusColor = statusValue === "approved" ? "#22c55e" : statusValue === "rejected" ? "#ef4444" : statusValue === "blocked" ? "#f97316" : "#f59e0b";
+
+                return (
+                  <button
+                    key={requestId || `provider-${index + 1}`}
+                    onClick={() => {
+                      setAdminSelectedProviderRequestId(requestId);
+                      setAdminPanelSection("providerDetails");
+                    }}
+                    style={{ width: "100%", textAlign: dir === "rtl" ? "right" : "left", borderRadius: 14, border: `1px solid ${statusColor}44`, background: "rgba(255,255,255,0.05)", padding: "9px", cursor: "pointer", fontFamily: "'Cairo',sans-serif" }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ color: "#f8fafc", fontSize: 11, fontWeight: 900, lineHeight: 1.35 }}>
+                          {lang === "ar" ? `مقدم خدمة رقم ${index + 1}` : `Provider #${index + 1}`}
+                        </div>
+                        <div style={{ color: "#93c5fd", fontSize: 10, marginTop: 2 }}>{entry?.providerNameValue || entry?.officeName || "—"}</div>
+                        <div style={{ color: "#cbd5e1", fontSize: 10, marginTop: 2 }}>
+                          {lang === "ar" ? "السيريال" : "Serial"}: {entry?.serialLabel || requestId || "—"}
+                        </div>
+                      </div>
+                      <div style={{ padding: "3px 8px", borderRadius: 999, background: `${statusColor}22`, border: `1px solid ${statusColor}66`, color: statusColor, fontSize: 10, fontWeight: 900, whiteSpace: "nowrap" }}>
+                        {statusLabel}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+
+              {!adminProviderRequestsLoading && filteredAdminProviderRequestsForView.length === 0 && (
+                <div style={{ borderRadius: 14, border: "1px dashed rgba(34,197,94,0.40)", background: "rgba(255,255,255,0.03)", padding: "12px 10px", textAlign: "center", color: "rgba(255,255,255,0.82)", fontSize: 11, lineHeight: 1.7, fontWeight: 700, fontFamily: "'Cairo',sans-serif" }}>
+                  {lang === "ar" ? "لا توجد طلبات مزودي خدمات مطابقة للبحث." : "No matching service provider requests."}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -12224,36 +12501,82 @@ export default function App() {
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={handleAuthPreviewPrimaryAction}
-          style={{
-            width: "100%",
-            marginTop: 18,
-            padding: "14px 20px",
-            borderRadius: 999,
-            border: "none",
-            background: "linear-gradient(135deg, #e7c55b, #c99a23)",
-            color: "#11244f",
-            fontSize: 18,
-            fontWeight: 900,
-            fontFamily: "'Cairo',sans-serif",
-            cursor: "pointer",
-            boxShadow: "0 14px 28px rgba(201,154,35,0.24)",
-            opacity: authPreviewBusy ? 0.72 : 1,
-          }}
-          disabled={authPreviewBusy}
-        >
-          {authPreviewBusy
-            ? (lang === "ar" ? "جارٍ المتابعة..." : "Please wait...")
-            : authPreviewMode === "login"
-              ? (lang === "ar" ? "دخول" : "Login")
+        {authPreviewMode === "login" ? (
+          <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <button
+              type="button"
+              onClick={handleAuthPreviewPrimaryAction}
+              style={{
+                width: "100%",
+                padding: "14px 14px",
+                borderRadius: 999,
+                border: "none",
+                background: "linear-gradient(135deg, #e7c55b, #c99a23)",
+                color: "#11244f",
+                fontSize: 16,
+                fontWeight: 900,
+                fontFamily: "'Cairo',sans-serif",
+                cursor: "pointer",
+                boxShadow: "0 14px 28px rgba(201,154,35,0.24)",
+                opacity: authPreviewBusy ? 0.72 : 1,
+              }}
+              disabled={authPreviewBusy}
+            >
+              {authPreviewBusy ? (lang === "ar" ? "جارٍ المتابعة..." : "Please wait...") : (lang === "ar" ? "دخول" : "Login")}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleAuthPreviewGuestMode}
+              style={{
+                width: "100%",
+                padding: "14px 10px",
+                borderRadius: 999,
+                border: "1px solid rgba(212,175,55,0.45)",
+                background: "linear-gradient(135deg, rgba(18,43,99,0.92), rgba(11,31,74,0.92))",
+                color: "#f5d77b",
+                fontSize: 14,
+                fontWeight: 900,
+                fontFamily: "'Cairo',sans-serif",
+                cursor: "pointer",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+                opacity: authPreviewBusy ? 0.72 : 1,
+              }}
+              disabled={authPreviewBusy}
+            >
+              {lang === "ar" ? "دخول كضيف" : "Guest Login"}
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={handleAuthPreviewPrimaryAction}
+            style={{
+              width: "100%",
+              marginTop: 18,
+              padding: "14px 20px",
+              borderRadius: 999,
+              border: "none",
+              background: "linear-gradient(135deg, #e7c55b, #c99a23)",
+              color: "#11244f",
+              fontSize: 18,
+              fontWeight: 900,
+              fontFamily: "'Cairo',sans-serif",
+              cursor: "pointer",
+              boxShadow: "0 14px 28px rgba(201,154,35,0.24)",
+              opacity: authPreviewBusy ? 0.72 : 1,
+            }}
+            disabled={authPreviewBusy}
+          >
+            {authPreviewBusy
+              ? (lang === "ar" ? "جارٍ المتابعة..." : "Please wait...")
               : authPreviewMode === "signup"
                 ? (lang === "ar" ? "إنشاء الحساب" : "Create Account")
                 : authPreviewMode === "otp"
                   ? (lang === "ar" ? "تأكيد الرمز" : "Verify Code")
                   : (lang === "ar" ? "إرسال رمز الاستعادة" : "Send Recovery Code")}
-        </button>
+          </button>
+        )}
 
         {authPreviewMode !== "otp" && authPreviewMode !== "forgot" && (
           <>
@@ -12433,7 +12756,7 @@ export default function App() {
     </div>
   ) : null;
 
-  if (!authPreviewUser) {
+  if (!authPreviewUser && !guestMode) {
     return (
       <div
         dir={dir}
@@ -13162,24 +13485,24 @@ export default function App() {
                       background: dark ? "linear-gradient(135deg, rgba(22,163,74,0.24), rgba(34,197,94,0.10))" : "linear-gradient(135deg, #f0fdf4, #ecfdf5)",
                       border: "1px solid #16a34a33",
                       borderRadius: 20,
-                      padding: "10px 14px",
+                      padding: "8px 11px",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: 10,
+                      gap: 8,
                       boxShadow: dark ? "0 0 18px #16a34a18" : "0 10px 22px #16a34a12",
                       fontFamily: "'Cairo',sans-serif",
                     }}
                   >
-                    <div style={{ width: 42, height: 42, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #16a34a28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>🏢</div>
+                    <div style={{ width: 34, height: 34, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #16a34a28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🏢</div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 900, color: "#16a34a", marginBottom: 2 }}>{lang === "ar" ? "مكاتب السفريات الموثوقة" : "Trusted Travel Offices"}</div>
                       <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? "ادخل إلى المحافظات والمكاتب المرخصة كما هي بدون أي تغيير في محتواها." : "Open the governorates and licensed offices exactly as they are."}</div>
                     </div>
-                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#16a34a18", color: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#16a34a18", color: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                   </button>
 
-                  <div style={{ display: "grid", gridTemplateColumns: isCompactPhone ? "1fr" : "1fr 1fr", gap: 10 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
                     <button
                       onClick={() => setView("egyptForbidden")}
                       style={{
@@ -13188,76 +13511,23 @@ export default function App() {
                         background: dark ? "linear-gradient(135deg, rgba(229,62,62,0.18), rgba(229,62,62,0.08))" : "linear-gradient(135deg, #fff5f5, #fffafa)",
                         border: "1px solid #e53e3e33",
                         borderRadius: 20,
-                        padding: "10px 12px",
+                        padding: "8px 10px",
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
-                        gap: 10,
+                        gap: 8,
                         boxShadow: dark ? "0 0 18px #e53e3e18" : "0 10px 22px #e53e3e10",
                         fontFamily: "'Cairo',sans-serif",
-                        minHeight: 84
+                        minHeight: 67
                       }}
                     >
-                      <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #e53e3e28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🚫</div>
+                      <div style={{ width: 32, height: 32, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #e53e3e28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }}>🚫</div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 13, fontWeight: 900, color: "#e53e3e", marginBottom: 2 }}>{lang === "ar" ? "مكاتب السفريات المحظورة" : "Blocked Travel Offices"}</div>
                         <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? "تحقق أولًا من مصداقية المكتب ورقم الترخيص قبل أي تعامل أو دفع." : "Check office credibility and license number before any deal or payment."}</div>
                       </div>
                     </button>
-
-                    <button
-                      onClick={() => setView("egyptEmbassies")}
-                      style={{
-                        width: "100%",
-                        textAlign: lang === "ar" ? "right" : "left",
-                        background: dark ? "linear-gradient(135deg, rgba(8,145,178,0.24), rgba(14,165,233,0.10))" : "linear-gradient(135deg, #ecfeff, #e0f2fe)",
-                        border: "1px solid rgba(14,165,233,0.28)",
-                        borderRadius: 20,
-                        padding: "10px 12px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        boxShadow: dark ? "0 0 18px rgba(14,165,233,0.18)" : "0 10px 22px rgba(14,165,233,0.12)",
-                        fontFamily: "'Cairo',sans-serif",
-                        minHeight: 84
-                      }}
-                    >
-                      <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(14,165,233,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🏛️</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#67e8f9" : "#0f766e", marginBottom: 2 }}>{lang === "ar" ? "تواصل مع سفارتك" : "Contact Your Embassy"}</div>
-                        <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? `الوصول السريع إلى سفارتك داخل مصر${selectedNationality ? ` - الجنسية الحالية: ${selectedNationality}` : ""}` : `Quick access to your embassy inside Egypt${selectedNationality ? ` - current nationality: ${countryNamesEn[selectedNationality] || selectedNationality}` : ""}`}</div>
-                      </div>
-                    </button>
                   </div>
-
-                  <button
-                    onClick={() => {
-                      setProviderPortalMode("service");
-                      setView("providerPortal");
-                    }}
-                    style={{
-                      width: "100%",
-                      textAlign: lang === "ar" ? "right" : "left",
-                      background: dark ? "linear-gradient(135deg, rgba(202,138,4,0.24), rgba(245,158,11,0.10))" : "linear-gradient(135deg, #fffbeb, #fef3c7)",
-                      border: "1px solid rgba(202,138,4,0.30)",
-                      borderRadius: 20,
-                      padding: "10px 14px",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      boxShadow: dark ? "0 0 18px rgba(202,138,4,0.18)" : "0 10px 22px rgba(202,138,4,0.12)",
-                      fontFamily: "'Cairo',sans-serif",
-                    }}
-                  >
-                    <div style={{ width: 42, height: 42, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(202,138,4,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>🧰</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fde68a" : "#a16207", marginBottom: 2 }}>{lang === "ar" ? "ضيف خدمتك" : "Add Your Service"}</div>
-                      <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? "سجل خدمتك ليتم مراجعتها واعتمادها من الأدمن." : "Submit your service so it can be reviewed and approved by admin."}</div>
-                    </div>
-                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
-                  </button>
 
                   <button
                     onClick={() => {
@@ -13270,21 +13540,75 @@ export default function App() {
                       background: dark ? "linear-gradient(135deg, rgba(14,116,144,0.24), rgba(6,182,212,0.12))" : "linear-gradient(135deg, #ecfeff, #f0fdfa)",
                       border: "1px solid #0f766e33",
                       borderRadius: 20,
-                      padding: "10px 14px",
+                      padding: "8px 11px",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: 10,
+                      gap: 8,
                       boxShadow: dark ? "0 0 18px #0f766e18" : "0 10px 22px #0f766e12",
                       fontFamily: "'Cairo',sans-serif",
                     }}
                   >
-                    <div style={{ width: 42, height: 42, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #0f766e28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>🛂</div>
+                    <div style={{ width: 34, height: 34, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #0f766e28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🛂</div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 900, color: "#0f766e", marginBottom: 2 }}>{lang === "ar" ? "خدمات مدفوعة" : "Paid Services"}</div>
                       <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? "هنا تجد طلب خدمات مدفوعة ووزارة العمل والطوارئ في دولة مصر فقط." : "Here you will find paid service requests, the Ministry of Labor, and emergency contacts in Egypt only."}</div>
                     </div>
-                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#0f766e18", color: "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#0f766e18", color: "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setProviderPortalMode("service");
+                      setView("providerPortal");
+                    }}
+                    style={{
+                      width: "100%",
+                      textAlign: lang === "ar" ? "right" : "left",
+                      background: dark ? "linear-gradient(135deg, rgba(202,138,4,0.24), rgba(245,158,11,0.10))" : "linear-gradient(135deg, #fffbeb, #fef3c7)",
+                      border: "1px solid rgba(202,138,4,0.30)",
+                      borderRadius: 20,
+                      padding: "8px 11px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      boxShadow: dark ? "0 0 18px rgba(202,138,4,0.18)" : "0 10px 22px rgba(202,138,4,0.12)",
+                      fontFamily: "'Cairo',sans-serif",
+                    }}
+                  >
+                    <div style={{ width: 34, height: 34, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(202,138,4,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🧰</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fde68a" : "#a16207", marginBottom: 2 }}>{lang === "ar" ? "ضيف خدمتك" : "Add Your Service"}</div>
+                      <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? "سجل خدمتك ليتم مراجعتها واعتمادها من الأدمن." : "Submit your service so it can be reviewed and approved by admin."}</div>
+                    </div>
+                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                  </button>
+
+                  <button
+                    onClick={() => setView("egyptEmbassies")}
+                    style={{
+                      width: "100%",
+                      textAlign: lang === "ar" ? "right" : "left",
+                      background: dark ? "linear-gradient(135deg, rgba(8,145,178,0.24), rgba(14,165,233,0.10))" : "linear-gradient(135deg, #ecfeff, #e0f2fe)",
+                      border: "1px solid rgba(14,165,233,0.28)",
+                      borderRadius: 20,
+                      padding: "8px 10px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      boxShadow: dark ? "0 0 18px rgba(14,165,233,0.18)" : "0 10px 22px rgba(14,165,233,0.12)",
+                      fontFamily: "'Cairo',sans-serif",
+                      minHeight: 67
+                    }}
+                  >
+                    <div style={{ width: 32, height: 32, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(14,165,233,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }}>🏛️</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#67e8f9" : "#0f766e", marginBottom: 2 }}>{lang === "ar" ? "تواصل مع سفارتك" : "Contact Your Embassy"}</div>
+                      <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? `الوصول السريع إلى سفارتك داخل مصر${selectedNationality ? ` - الجنسية الحالية: ${selectedNationality}` : ""}` : `Quick access to your embassy inside Egypt${selectedNationality ? ` - current nationality: ${countryNamesEn[selectedNationality] || selectedNationality}` : ""}`}</div>
+                    </div>
+                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(14,165,233,0.16)", color: dark ? "#67e8f9" : "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                   </button>
 
                 </div>
@@ -13444,13 +13768,20 @@ export default function App() {
                 <div style={styles.govGrid}>
                   {egyptGovernorates.map((gov) => {
                     const count = govCount(gov.name);
+                    const guestVisibleCount = isGuestUser ? Math.min(count, count < 20 ? 1 : 3) : count;
+                    const guestLockedCount = isGuestUser ? Math.max(0, count - guestVisibleCount) : 0;
                     return (
                       <button key={gov.name} onClick={() => count > 0 ? handleGovSelect(gov.name) : null}
                         style={{ ...styles.govCard, background: t.cardBg, border: `1px solid ${t.border}`, opacity: count === 0 ? 0.5 : 1, cursor: count === 0 ? "default" : "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left", minHeight: 78, padding: "10px 8px" }}>
                         <div style={{ width: 30, height: 30, borderRadius: 10, background: `${t.gold}15`, color: t.gold, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{gov.icon}</div>
                         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: lang === "ar" ? "flex-end" : "flex-start", textAlign: lang === "ar" ? "right" : "left", lineHeight: 1.25 }}>
                           <div style={{ fontSize: lang === "en" ? 9.1 : 10.5, fontWeight: 800, color: t.text, marginBottom: 3, lineHeight: 1.3 }}>{lang === "en" ? gov.nameEn : gov.name}</div>
-                          <div style={{ fontSize: 9.8, fontWeight: 700, color: count > 0 ? t.gold : t.subText, lineHeight: 1.2 }}>{count > 0 ? `${count} ${lang === "en" ? "offices" : "مكتب"}` : tx.comingSoon}</div>
+                          <div style={{ fontSize: 9.8, fontWeight: 700, color: count > 0 ? t.gold : t.subText, lineHeight: 1.2 }}>{count > 0 ? `${guestVisibleCount} ${lang === "en" ? "offices" : "مكتب"}` : tx.comingSoon}</div>
+                          {guestLockedCount > 0 && (
+                            <div style={{ fontSize: 9, fontWeight: 800, color: "#e53e3e", lineHeight: 1.2 }}>
+                              {lang === "ar" ? `${guestLockedCount} مكتب مقفول للضيف` : `${guestLockedCount} offices locked for guest`}
+                            </div>
+                          )}
                         </div>
                       </button>
                     );
@@ -13596,7 +13927,7 @@ export default function App() {
             {view === "egyptServices" && (
               <div>
                 <PaidFlowErrorBoundary lang={lang} resetKey={`eg-${selectedCountry}-${egyptServicesBackRequest}`}>
-                  <PaidServicesFlow services={tx.egServices} lang={lang} dark={dark} selectedCountry={selectedCountry} selectedCity={""} selectedNationality={selectedNationality} isAdminUser={isAdminUser} canManageServiceReviews={canManageOrderReviews} onScreenChange={setEgyptServicesScreen} backRequestToken={egyptServicesBackRequest} />
+                  <PaidServicesFlow services={tx.egServices} lang={lang} dark={dark} selectedCountry={selectedCountry} selectedCity={""} selectedNationality={selectedNationality} isAdminUser={isAdminUser} canManageServiceReviews={canManageOrderReviews} onScreenChange={setEgyptServicesScreen} backRequestToken={egyptServicesBackRequest} isGuestUser={isGuestUser} />
                 </PaidFlowErrorBoundary>
 
                 {egyptServicesScreen === "list" && (
@@ -13658,49 +13989,24 @@ export default function App() {
                       background: dark ? "linear-gradient(135deg, rgba(22,163,74,0.24), rgba(34,197,94,0.10))" : "linear-gradient(135deg, #f0fdf4, #ecfdf5)",
                       border: "1px solid #16a34a33",
                       borderRadius: 20,
-                      padding: "10px 14px",
+                      padding: "8px 11px",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: 10,
+                      gap: 8,
                       boxShadow: dark ? "0 0 18px #16a34a18" : "0 10px 22px #16a34a12",
                       fontFamily: "'Cairo',sans-serif",
                     }}
                   >
-                    <div style={{ width: 42, height: 42, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #16a34a28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>🏙️</div>
+                    <div style={{ width: 34, height: 34, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #16a34a28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🏙️</div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 900, color: "#16a34a", marginBottom: 2 }}>{lang === "ar" ? "المدن والمكاتب الموثوقة" : "Trusted Cities & Offices"}</div>
                       <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? "ادخل إلى المدن والمحتوى الموثوق الحالي كما هو داخل هذه الدولة." : "Open the trusted cities and current verified content inside this country."}</div>
                     </div>
-                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#16a34a18", color: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#16a34a18", color: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                   </button>
 
-                  <div style={{ display: "grid", gridTemplateColumns: isCompactPhone ? "1fr" : "1fr 1fr", gap: 10 }}>
-                    <button
-                      onClick={() => { setView("countryEmbassies"); }}
-                      style={{
-                        width: "100%",
-                        textAlign: lang === "ar" ? "right" : "left",
-                        background: dark ? "linear-gradient(135deg, rgba(8,145,178,0.24), rgba(14,165,233,0.10))" : "linear-gradient(135deg, #ecfeff, #e0f2fe)",
-                        border: "1px solid rgba(14,165,233,0.28)",
-                        borderRadius: 20,
-                        padding: "10px 12px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        boxShadow: dark ? "0 0 18px rgba(14,165,233,0.18)" : "0 10px 22px rgba(14,165,233,0.12)",
-                        fontFamily: "'Cairo',sans-serif",
-                        minHeight: 84
-                      }}
-                    >
-                      <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(14,165,233,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🏛️</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#67e8f9" : "#0f766e", marginBottom: 2 }}>{lang === "ar" ? "تواصل مع سفارتك" : "Contact Your Embassy"}</div>
-                        <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? `الوصول السريع إلى سفارتك داخل ${country.name}${selectedNationality ? ` - الجنسية الحالية: ${selectedNationality}` : ""}` : `Quick access to your embassy inside ${countryNamesEn[country.name] || country.name}${selectedNationality ? ` - current nationality: ${countryNamesEn[selectedNationality] || selectedNationality}` : ""}`}</div>
-                      </div>
-                    </button>
-
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
                     <div
                       style={{
                         width: "100%",
@@ -13708,17 +14014,17 @@ export default function App() {
                         background: dark ? "linear-gradient(135deg, rgba(229,62,62,0.12), rgba(229,62,62,0.06))" : "linear-gradient(135deg, #fff5f5, #fffafa)",
                         border: "1px solid #e53e3e28",
                         borderRadius: 20,
-                        padding: "10px 12px",
+                        padding: "8px 10px",
                         display: "flex",
                         alignItems: "center",
-                        gap: 10,
+                        gap: 8,
                         boxShadow: dark ? "0 0 18px #e53e3e14" : "0 10px 22px #e53e3e0d",
                         fontFamily: "'Cairo',sans-serif",
-                        minHeight: 84,
+                        minHeight: 67,
                         opacity: 0.86
                       }}
                     >
-                      <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #e53e3e20", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🚫</div>
+                      <div style={{ width: 32, height: 32, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #e53e3e20", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }}>🚫</div>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
                           <div style={{ fontSize: 13, fontWeight: 900, color: "#e53e3e" }}>{lang === "ar" ? "مكاتب محظورة" : "Blocked Offices"}</div>
@@ -13728,6 +14034,31 @@ export default function App() {
                       </div>
                     </div>
                   </div>
+
+                  <button
+                    onClick={() => { setCountryPaidScreen("list"); setView("countryPaid"); }}
+                    style={{
+                      width: "100%",
+                      textAlign: lang === "ar" ? "right" : "left",
+                      background: dark ? "linear-gradient(135deg, rgba(14,116,144,0.24), rgba(6,182,212,0.12))" : "linear-gradient(135deg, #ecfeff, #f0fdfa)",
+                      border: "1px solid #0f766e33",
+                      borderRadius: 20,
+                      padding: "8px 11px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      boxShadow: dark ? "0 0 18px #0f766e18" : "0 10px 22px #0f766e12",
+                      fontFamily: "'Cairo',sans-serif",
+                    }}
+                  >
+                    <div style={{ width: 34, height: 34, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #0f766e28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🛂</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: "#0f766e", marginBottom: 2 }}>{lang === "ar" ? "خدمات مدفوعة" : "Paid Services"}</div>
+                      <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? `هنا تجد الخدمات المدفوعة والوزارة والطوارئ في ${country.name}.` : `Here you will find paid services, ministry, and emergency contacts in ${countryNamesEn[country.name] || country.name}.`}</div>
+                    </div>
+                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#0f766e18", color: "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                  </button>
 
                   <button
                     onClick={() => {
@@ -13740,46 +14071,47 @@ export default function App() {
                       background: dark ? "linear-gradient(135deg, rgba(202,138,4,0.24), rgba(245,158,11,0.10))" : "linear-gradient(135deg, #fffbeb, #fef3c7)",
                       border: "1px solid rgba(202,138,4,0.30)",
                       borderRadius: 20,
-                      padding: "10px 14px",
+                      padding: "8px 11px",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: 10,
+                      gap: 8,
                       boxShadow: dark ? "0 0 18px rgba(202,138,4,0.18)" : "0 10px 22px rgba(202,138,4,0.12)",
                       fontFamily: "'Cairo',sans-serif",
                     }}
                   >
-                    <div style={{ width: 42, height: 42, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(202,138,4,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>🧰</div>
+                    <div style={{ width: 34, height: 34, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(202,138,4,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🧰</div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fde68a" : "#a16207", marginBottom: 2 }}>{lang === "ar" ? "ضيف خدمتك" : "Add Your Service"}</div>
                       <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? `سجل خدمتك داخل ${country.name} ليتم مراجعتها واعتمادها.` : `Submit your service in ${countryNamesEn[country.name] || country.name} for admin review and approval.`}</div>
                     </div>
-                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                   </button>
 
                   <button
-                    onClick={() => { setCountryPaidScreen("list"); setView("countryPaid"); }}
+                    onClick={() => { setView("countryEmbassies"); }}
                     style={{
                       width: "100%",
                       textAlign: lang === "ar" ? "right" : "left",
-                      background: dark ? "linear-gradient(135deg, rgba(14,116,144,0.24), rgba(6,182,212,0.12))" : "linear-gradient(135deg, #ecfeff, #f0fdfa)",
-                      border: "1px solid #0f766e33",
+                      background: dark ? "linear-gradient(135deg, rgba(8,145,178,0.24), rgba(14,165,233,0.10))" : "linear-gradient(135deg, #ecfeff, #e0f2fe)",
+                      border: "1px solid rgba(14,165,233,0.28)",
                       borderRadius: 20,
-                      padding: "10px 14px",
+                      padding: "8px 10px",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: 10,
-                      boxShadow: dark ? "0 0 18px #0f766e18" : "0 10px 22px #0f766e12",
+                      gap: 8,
+                      boxShadow: dark ? "0 0 18px rgba(14,165,233,0.18)" : "0 10px 22px rgba(14,165,233,0.12)",
                       fontFamily: "'Cairo',sans-serif",
+                      minHeight: 67
                     }}
                   >
-                    <div style={{ width: 42, height: 42, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #0f766e28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>🛂</div>
+                    <div style={{ width: 32, height: 32, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(14,165,233,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }}>🏛️</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: "#0f766e", marginBottom: 2 }}>{lang === "ar" ? "خدمات مدفوعة" : "Paid Services"}</div>
-                      <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? `هنا تجد الخدمات المدفوعة والوزارة والطوارئ في ${country.name}.` : `Here you will find paid services, ministry, and emergency contacts in ${countryNamesEn[country.name] || country.name}.`}</div>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#67e8f9" : "#0f766e", marginBottom: 2 }}>{lang === "ar" ? "تواصل مع سفارتك" : "Contact Your Embassy"}</div>
+                      <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? `الوصول السريع إلى سفارتك داخل ${country.name}${selectedNationality ? ` - الجنسية الحالية: ${selectedNationality}` : ""}` : `Quick access to your embassy inside ${countryNamesEn[country.name] || country.name}${selectedNationality ? ` - current nationality: ${countryNamesEn[selectedNationality] || selectedNationality}` : ""}`}</div>
                     </div>
-                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#0f766e18", color: "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(14,165,233,0.16)", color: dark ? "#67e8f9" : "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                   </button>
 
                 </div>
@@ -13981,6 +14313,7 @@ export default function App() {
                     canManageServiceReviews={canManageOrderReviews}
                     onScreenChange={setCountryPaidScreen}
                     backRequestToken={countryPaidBackRequest}
+                    isGuestUser={isGuestUser}
                   />
                 </PaidFlowErrorBoundary>
               </div>
@@ -14044,14 +14377,21 @@ export default function App() {
               <div>
                 <div style={{ ...styles.listHeader, background: t.cardBg, borderBottom: `1px solid ${t.border}` }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>{lang === "ar" ? "مكاتب" : "Offices:"} <span style={{ color: t.gold }}>{getGovernorateLabel(selectedGov)}</span></div>
-                <div style={{ color: t.subText, fontSize: 12 }}>{filteredOffices.length} {tx.officesAvail}</div>
+                <div style={{ color: t.subText, fontSize: 12 }}>{visibleFilteredOffices.length} {tx.officesAvail}</div>
               </div>
+                {isGuestUser && guestLockedOfficesCount > 0 && (
+                  <div style={{ marginTop: 10, marginBottom: 10, borderRadius: 12, border: "1px solid rgba(239,68,68,0.35)", background: dark ? "rgba(127,29,29,0.24)" : "rgba(254,226,226,0.85)", color: dark ? "#fecaca" : "#991b1b", fontSize: 11, fontWeight: 800, lineHeight: 1.8, padding: "9px 11px", textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
+                    {lang === "ar"
+                      ? `أنت داخل كضيف. متاح لك ${guestEgyptOfficeLimit} مكتب فقط في هذه المحافظة، وباقي المكاتب (${guestLockedOfficesCount}) تتطلب تسجيل الدخول.`
+                      : `You are in guest mode. Only ${guestEgyptOfficeLimit} offices are available in this governorate, and the remaining (${guestLockedOfficesCount}) require sign-in.`}
+                  </div>
+                )}
                 <div style={{ ...styles.searchWrap, background: t.inputBg, border: `1px solid ${t.border}` }}>
                   <span style={{ fontSize: 14 }}>🔍</span>
                   <input type="text" placeholder={tx.searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...styles.searchInput, background: "transparent", color: t.text }} />
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-                  {filteredOffices.length === 0 ? (
+                  {visibleFilteredOffices.length === 0 ? (
                     <div style={{ textAlign: "center", color: t.subText, padding: "40px 0", fontSize: 15, gridColumn: "1 / -1" }}>{tx.noResults}</div>
                   ) : paginatedOffices.map((office, i) => (
                     <button key={office.id} onClick={() => openOfficeDetails(office)}
@@ -14067,8 +14407,22 @@ export default function App() {
                         </div>
                     </button>
                   ))}
+                  {isGuestUser && guestLockedOfficesCount > 0 && Array.from({ length: Math.min(guestLockedOfficesCount, 6) }).map((_, idx) => (
+                    <div
+                      key={`guest-lock-${idx}`}
+                      style={{ ...styles.officeCard, background: dark ? "rgba(127,29,29,0.22)" : "rgba(254,226,226,0.82)", border: "1px dashed rgba(239,68,68,0.45)", padding: "13px 8px", display: "flex", flexDirection: "column", gap: 9, borderRadius: 14, textAlign: "center", width: "100%", minHeight: 174, opacity: 0.92 }}
+                    >
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(239,68,68,0.22)", color: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 900, flexShrink: 0, margin: "0 auto" }}>🔒</div>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fecaca" : "#991b1b", textAlign: "center", lineHeight: 1.45 }}>
+                        {lang === "ar" ? "مكتب مقفول" : "Locked Office"}
+                      </div>
+                      <div style={{ fontSize: 11, color: dark ? "#fecaca" : "#7f1d1d", lineHeight: 1.7, marginTop: "auto", fontWeight: 700 }}>
+                        {lang === "ar" ? "سجل الدخول لفتح باقي المكاتب" : "Sign in to unlock more offices"}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                {filteredOffices.length > officesPerPage && (
+                {visibleFilteredOffices.length > officesPerPage && (
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, flexWrap:"wrap", marginTop:14 }}>
                     <button
                       onClick={() => setOfficePage((page) => Math.max(1, page - 1))}
@@ -14272,6 +14626,7 @@ export default function App() {
                       canManageServiceReviews={canManageOrderReviews}
                       onScreenChange={setCountryPaidScreen}
                       backRequestToken={countryPaidBackRequest}
+                      isGuestUser={isGuestUser}
                     />
                   </PaidFlowErrorBoundary>
                 )}
@@ -15687,6 +16042,7 @@ export default function App() {
                           countryOverride="المملكة العربية السعودية"
                           onScreenChange={setCvPaidScreen}
                           backRequestToken={cvPaidBackRequest}
+                          isGuestUser={isGuestUser}
                         />
                       </PaidFlowErrorBoundary>
                       <div style={{ display:"flex", justifyContent:"center", marginTop:14 }}>
@@ -15850,6 +16206,34 @@ export default function App() {
                   }}
                 >
                   {lang === "ar" ? "تسجيل الخروج" : "Sign Out"}
+                </button>
+              </div>
+            )}
+
+            {!authPreviewUser && isGuestUser && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10, marginBottom: 12 }}>
+                <button
+                  onClick={() => {
+                    setGuestMode(false);
+                    setAuthPreviewMode("login");
+                    setAuthPreviewOpen(true);
+                    setAuthPreviewError("");
+                    setAuthPreviewSuccess("");
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "12px 14px",
+                    borderRadius: 16,
+                    border: "1px solid rgba(212,175,55,0.46)",
+                    background: "linear-gradient(135deg, rgba(231,197,91,0.24), rgba(201,154,35,0.20))",
+                    color: dark ? "#fde68a" : "#7c5100",
+                    fontSize: 13,
+                    fontWeight: 900,
+                    fontFamily: "'Cairo',sans-serif",
+                    cursor: "pointer",
+                  }}
+                >
+                  {lang === "ar" ? "تسجيل الدخول بحساب" : "Sign In With Account"}
                 </button>
               </div>
             )}
