@@ -16316,7 +16316,7 @@ export default function App() {
               </div>
             )}
 
-            <div style={{ textAlign: "center", marginTop: 16, color: t.subText, fontSize: 11, fontFamily: "'Cairo',sans-serif" }}>v1.0.0.7.26 — مكاتب السفريات الموثوقة</div>
+            <div style={{ textAlign: "center", marginTop: 16, color: t.subText, fontSize: 11, fontFamily: "'Cairo',sans-serif" }}>v1.0.0.8.26 — مكاتب السفريات الموثوقة</div>
 
             {/* ── إشعار هام ── */}
             <div style={{ marginTop: 16, borderRadius: 14, border: `1px solid ${t.gold}30`, background: dark ? `${t.gold}08` : `${t.gold}0a`, padding: "14px 16px" }}>
