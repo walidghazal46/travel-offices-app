@@ -8977,15 +8977,7 @@ export default function App() {
     return nextOrder;
   };
 
-  const openCvBuilderNewRequest = () => {
-    if (getRecentOrderCountWithinDays(cvBuilderOrders, 30) >= 3) {
-      setModal({
-        type: "requestLimit",
-        title: lang === "ar" ? "تم الوصول إلى حد الطلبات" : "Request limit reached",
-        msg: getRequestLimitMessage(30, lang === "ar"),
-      });
-      return;
-    }
+  const startCvBuilderDraftFlow = useCallback(() => {
     setSelectedCvBuilderOrder(null);
     setCvData(createInitialCvData());
     setCvStep(0);
@@ -9001,6 +8993,41 @@ export default function App() {
     setCvBuilderOrderSyncBusy(false);
     setCvBuilderOrderSyncError("");
     setCvBuilderScreen("form");
+  }, []);
+
+  const promptCvBuilderGuestAuth = useCallback(() => {
+    setCvBuilderOrderSyncError(
+      lang === "ar"
+        ? "سجّل الدخول أو أنشئ حسابًا أولًا لإكمال حفظ الطلب وتفعيل التصدير."
+        : "Please sign in or create an account first to complete request saving and enable export."
+    );
+    setShowExitConfirm(false);
+    setAuthPreviewMode("login");
+    setAuthPreviewOpen(true);
+    setAuthPreviewError("");
+    setAuthPreviewSuccess("");
+  }, [lang]);
+
+  const openCvBuilderNewRequest = () => {
+    if (getRecentOrderCountWithinDays(cvBuilderOrders, 30) >= 3) {
+      setModal({
+        type: "requestLimit",
+        title: lang === "ar" ? "تم الوصول إلى حد الطلبات" : "Request limit reached",
+        msg: getRequestLimitMessage(30, lang === "ar"),
+      });
+      return;
+    }
+    if (isGuestUser) {
+      setModal({
+        type: "cvGuestBuilderNotice",
+        title: lang === "ar" ? "تنبيه" : "Notice",
+        msg: lang === "ar"
+          ? "يمكنك إدخال البيانات كضيف، لكن قبل التصدير أو إرسال الطلب يجب تسجيل الدخول أو إنشاء حساب."
+          : "You can enter data as a guest, but before export or request submission you must sign in or create an account.",
+      });
+      return;
+    }
+    startCvBuilderDraftFlow();
   };
 
   const cancelCurrentCvBuilderRequest = () => {
@@ -9285,47 +9312,65 @@ export default function App() {
     setCvBuilderOrderSyncError("");
     setCvStep(targetStep);
 
-    if (targetStep === 4 && !selectedCvBuilderOrder?.firebaseId && !cvBuilderOrderSyncBusy) {
-      setCvBuilderOrderSyncBusy(true);
-      try {
-        const ensuredOrder = await ensureCvBuilderOrderForCurrentRequestAsync();
-        await dispatchCvBuilderOrderEmail(ensuredOrder);
-      } catch (error) {
-        console.error("CV builder order provisioning failed", error);
-        setCvBuilderOrderSyncError(
-          lang === "ar"
-            ? "تعذر حفظ الطلب أو إرسال الإيميل الآن. حاول مرة أخرى من نفس الشاشة."
-            : "Unable to save the request or send the email right now. Please retry from the same screen."
-        );
-      } finally {
-        setCvBuilderOrderSyncBusy(false);
-      }
-    } else if (targetStep === 4 && selectedCvBuilderOrder?.id && !cvBuilderOrderSyncBusy) {
-      setCvBuilderOrderSyncBusy(true);
-      try {
-        const ensuredOrder = await ensureCvBuilderOrderForCurrentRequestAsync();
-        await dispatchCvBuilderOrderEmail(ensuredOrder);
-      } catch (error) {
-        console.error("CV builder order refresh failed", error);
-        setCvBuilderOrderSyncError(
-          lang === "ar"
-            ? "تعذر تحديث الطلب أو إرسال الإيميل الآن. حاول مرة أخرى من نفس الشاشة."
-            : "Unable to refresh the request or send the email right now. Please retry from the same screen."
-        );
-      } finally {
-        setCvBuilderOrderSyncBusy(false);
-      }
+    if (targetStep === 4 && isGuestUser) {
+      setCvBuilderOrderSyncError(
+        lang === "ar"
+          ? "قبل التصدير أو إرسال الطلب، يجب تسجيل الدخول أو إنشاء حساب."
+          : "Before export or request submission, you must sign in or create an account."
+      );
+      promptCvBuilderGuestAuth();
     }
   }, [
-    dispatchCvBuilderOrderEmail,
     cvStep,
-    cvBuilderOrderSyncBusy,
-    ensureCvBuilderOrderForCurrentRequestAsync,
     getCvStepValidationMessage,
     isCvStepComplete,
+    isGuestUser,
     lang,
+    promptCvBuilderGuestAuth,
+  ]);
+
+  useEffect(() => {
+    if (cvMode !== "builder" || cvBuilderScreen !== "form" || cvStep !== 4) return;
+    if (isGuestUser || cvBuilderOrderSyncBusy) return;
+
+    const emailStatus = String(selectedCvBuilderOrder?.emailDeliveryStatus || "").toLowerCase();
+    if (selectedCvBuilderOrder?.firebaseId && (emailStatus === "sending" || emailStatus === "sent")) return;
+
+    let cancelled = false;
+
+    (async () => {
+      setCvBuilderOrderSyncBusy(true);
+      try {
+        const ensuredOrder = await ensureCvBuilderOrderForCurrentRequestAsync();
+        if (cancelled) return;
+        await dispatchCvBuilderOrderEmail(ensuredOrder);
+      } catch (error) {
+        if (cancelled) return;
+        console.error("CV builder auto provisioning failed", error);
+        setCvBuilderOrderSyncError(
+          lang === "ar"
+            ? "تعذر حفظ الطلب أو إرسال الإيميل الآن. يمكنك إعادة المحاولة من نفس الشاشة."
+            : "Unable to save the request or send the email right now. You can retry from the same screen."
+        );
+      } finally {
+        if (!cancelled) setCvBuilderOrderSyncBusy(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    cvBuilderOrderSyncBusy,
+    cvBuilderScreen,
+    cvMode,
+    cvStep,
+    dispatchCvBuilderOrderEmail,
+    ensureCvBuilderOrderForCurrentRequestAsync,
+    isGuestUser,
+    lang,
+    selectedCvBuilderOrder?.emailDeliveryStatus,
     selectedCvBuilderOrder?.firebaseId,
-    selectedCvBuilderOrder?.id,
   ]);
 
   const blobToBase64 = (blob) => new Promise((resolve, reject) => {
@@ -9400,6 +9445,25 @@ export default function App() {
   };
 
   const openCvExportLangModal = (fileType) => {
+    if (isGuestUser) {
+      setCvBuilderOrderSyncError(
+        lang === "ar"
+          ? "قبل التصدير، يجب تسجيل الدخول أو إنشاء حساب."
+          : "Before export, you must sign in or create an account."
+      );
+      promptCvBuilderGuestAuth();
+      return;
+    }
+
+    if (!selectedCvBuilderOrder?.firebaseId || cvBuilderOrderSyncBusy) {
+      setCvBuilderOrderSyncError(
+        lang === "ar"
+          ? "انتظر اكتمال حفظ الطلب وإرسال الإيميل أولًا ثم جرّب التصدير."
+          : "Please wait until request save and email dispatch are completed, then try exporting."
+      );
+      return;
+    }
+
     setModal({
       type: "cvExportLang",
       title: lang === "ar" ? `اختر لغة تصدير ${fileType === "pdf" ? "PDF" : "Word"}` : `Choose ${fileType === "pdf" ? "PDF" : "Word"} export language`,
@@ -9454,6 +9518,20 @@ export default function App() {
   };
 
   const handleCvWordDownload = async (exportLang = "en") => {
+    if (isGuestUser) {
+      promptCvBuilderGuestAuth();
+      return;
+    }
+
+    if (!selectedCvBuilderOrder?.firebaseId || cvBuilderOrderSyncBusy) {
+      setCvBuilderOrderSyncError(
+        lang === "ar"
+          ? "انتظر اكتمال حفظ الطلب وإرسال الإيميل أولًا ثم جرّب التصدير."
+          : "Please wait until request save and email dispatch are completed, then try exporting."
+      );
+      return;
+    }
+
     const hasCoreData = cvData.fullName.trim() && cvData.jobTitle.trim();
     if (!hasCoreData) {
       alert(lang === "ar"
@@ -9481,6 +9559,16 @@ export default function App() {
   };
 
   const openCvServiceEmailConfirm = async () => {
+    if (isGuestUser) {
+      setCvBuilderOrderSyncError(
+        lang === "ar"
+          ? "قبل إرسال الطلب، يجب تسجيل الدخول أو إنشاء حساب."
+          : "Before submitting the request, you must sign in or create an account."
+      );
+      promptCvBuilderGuestAuth();
+      return;
+    }
+
     for (let idx = 0; idx < 4; idx += 1) {
       if (!isCvStepComplete(idx)) {
         setCvStep(idx);
@@ -9625,6 +9713,20 @@ export default function App() {
 
   const handleCvPdfDownload = async (exportLang = "en") => {
     if (cvPdfExporting) return;
+
+    if (isGuestUser) {
+      promptCvBuilderGuestAuth();
+      return;
+    }
+
+    if (!selectedCvBuilderOrder?.firebaseId || cvBuilderOrderSyncBusy) {
+      setCvBuilderOrderSyncError(
+        lang === "ar"
+          ? "انتظر اكتمال حفظ الطلب وإرسال الإيميل أولًا ثم جرّب التصدير."
+          : "Please wait until request save and email dispatch are completed, then try exporting."
+      );
+      return;
+    }
 
     const hasCoreData = cvData.fullName.trim() && cvData.jobTitle.trim();
     if (!hasCoreData) {
@@ -10750,6 +10852,33 @@ export default function App() {
               style={{ width: "100%", padding: "11px", borderRadius: 12, border: "none", background: "#e5e7eb", color: "#334155", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Cairo',sans-serif" }}>
               {lang === "ar" ? "إلغاء" : "Cancel"}
             </button>
+          </>
+        ) : modal.type === "cvGuestBuilderNotice" ? (
+          <>
+            <div style={{ fontSize: 36, textAlign: "center", marginBottom: 10 }}>⚠️</div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: "#dc2626", textAlign: "center", marginBottom: 10, fontFamily: "'Cairo',sans-serif", textShadow: "0 0 12px rgba(220,38,38,0.35)" }}>
+              {modal.title}
+            </div>
+            <div style={{ fontSize: 13, color: t.text, lineHeight: 1.9, textAlign: "center", marginBottom: 16, fontFamily: "'Cairo',sans-serif" }}>
+              {modal.msg}
+            </div>
+            <div style={{ display:"grid", gap:10 }}>
+              <button
+                onClick={() => {
+                  setModal(null);
+                  startCvBuilderDraftFlow();
+                }}
+                style={{ width: "100%", padding: "11px", borderRadius: 12, border: "none", background: "linear-gradient(135deg,#dc2626,#b91c1c)", color: "#fff", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "'Cairo',sans-serif", boxShadow: "0 0 16px rgba(220,38,38,0.45)" }}
+              >
+                {lang === "ar" ? "موافق" : "OK"}
+              </button>
+              <button
+                onClick={() => setModal(null)}
+                style={{ width: "100%", padding: "11px", borderRadius: 12, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Cairo',sans-serif" }}
+              >
+                {lang === "ar" ? "إلغاء" : "Cancel"}
+              </button>
+            </div>
           </>
         ) : modal.type === "requestLimit" ? (
           <>
@@ -16110,6 +16239,25 @@ export default function App() {
               {/* ═══ STEP 4: EXPORT ══════════════════════════ */}
               {cvStep === 4 && (
                 <div>
+                  {isGuestUser && (
+                    <div style={{ ...cardStyle, border:"1px solid rgba(220,38,38,0.45)", background:"linear-gradient(135deg, rgba(254,226,226,0.9), rgba(254,242,242,0.95))", boxShadow:"0 0 18px rgba(220,38,38,0.28)" }}>
+                      <div style={{ fontSize:14, fontWeight:900, color:"#b91c1c", fontFamily:"'Cairo',sans-serif", marginBottom:8, textShadow:"0 0 8px rgba(220,38,38,0.25)" }}>
+                        {lang === "ar" ? "تنبيه قبل التصدير" : "Notice Before Export"}
+                      </div>
+                      <div style={{ fontSize:12, color:"#7f1d1d", lineHeight:1.9, fontFamily:"'Cairo',sans-serif", marginBottom:10 }}>
+                        {lang === "ar"
+                          ? "بياناتك محفوظة في هذه الصفحة كما هي. لإكمال حفظ الطلب وإرسال الإيميل وتفعيل التصدير، سجّل الدخول أو أنشئ حسابًا الآن."
+                          : "Your entered data stays on this page as-is. To complete request saving, email dispatch, and export enablement, sign in or create an account now."}
+                      </div>
+                      <button
+                        onClick={promptCvBuilderGuestAuth}
+                        style={{ width:"100%", border:"none", borderRadius:12, padding:"11px 12px", background:"linear-gradient(135deg,#dc2626,#b91c1c)", color:"#fff", fontSize:13, fontWeight:900, cursor:"pointer", fontFamily:"'Cairo',sans-serif", boxShadow:"0 0 14px rgba(220,38,38,0.42)" }}
+                      >
+                        {lang === "ar" ? "تسجيل الدخول / إنشاء حساب" : "Sign In / Create Account"}
+                      </button>
+                    </div>
+                  )}
+
                   {/* Summary card */}
                   <div style={{ ...cardStyle, border:`1px solid ${t.gold}44`, background:`${t.gold}08` }}>
                     <div style={{ fontSize:13, fontWeight:700, color:t.gold, fontFamily:"'Cairo',sans-serif", marginBottom:10 }}>
