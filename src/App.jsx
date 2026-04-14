@@ -10234,6 +10234,20 @@ export default function App() {
     setView("providerPortal");
   }, [isGuestUser, lang]);
 
+  const openOfficePortalOrPromptLogin = useCallback(() => {
+    if (isGuestUser) {
+      setProviderPortalGuestNotice(
+        lang === "ar"
+          ? "يجب تسجيل الدخول أو إنشاء حساب لإضافة مكتبك."
+          : "You need to sign in or create an account to add your office."
+      );
+      return;
+    }
+    setProviderPortalMode("office");
+    setProviderPortalAddNew(false);
+    setView("providerPortal");
+  }, [isGuestUser, lang]);
+
   const closeOfficeEditorState = useCallback(() => {
     setAdminOfficeEditOpen(false);
     setAdminOfficeEditError("");
@@ -14333,11 +14347,7 @@ export default function App() {
                 <div style={{ padding: "14px 0 4px" }}>
                   {selectedCountry !== "مصر" && (
                     <button
-                      onClick={() => {
-                        setProviderPortalMode("office");
-                        setProviderPortalAddNew(false);
-                        setView("providerPortal");
-                      }}
+                      onClick={openOfficePortalOrPromptLogin}
                       style={{
                         width: "100%",
                         textAlign: lang === "ar" ? "right" : "left",
