@@ -6553,6 +6553,7 @@ export default function App() {
   const [adminOpsFilter, setAdminOpsFilter] = useState("all");
   const [adminDelayedStageKey, setAdminDelayedStageKey] = useState("contact48");
   const [adminExpandedOrderId, setAdminExpandedOrderId] = useState("");
+  const [adminSelectedOrderId, setAdminSelectedOrderId] = useState("");
   const [adminProviderRequests, setAdminProviderRequests] = useState([]);
   const [adminProviderRequestsLoading, setAdminProviderRequestsLoading] = useState(false);
   const [adminProviderRequestsError, setAdminProviderRequestsError] = useState("");
@@ -7496,6 +7497,7 @@ export default function App() {
     setAdminPanelOpen(false);
     setAdminPanelSection("overview");
     setAdminSelectedProviderRequestId("");
+    setAdminSelectedOrderId("");
     setAdminUsersError("");
     setAdminUsersQuery("");
     setAdminActionBusyUid("");
@@ -7999,6 +8001,7 @@ export default function App() {
       await deleteOrderInFirebase(orderId);
       setAdminOrders((prev) => prev.filter((entry) => String(entry?.firebaseId || entry?.id || "").trim() !== orderId));
       setAdminExpandedOrderId((prev) => (prev === orderId ? "" : prev));
+      setAdminSelectedOrderId((prev) => (prev === orderId ? "" : prev));
     } catch (error) {
       console.error("Failed to delete order", error);
       setAdminOrdersError(lang === "ar" ? "تعذر حذف الطلب الآن." : "Unable to delete this order right now.");
@@ -9907,6 +9910,20 @@ export default function App() {
   }, [officePage, totalOfficePages]);
 
   const govCount = (govName) => effectiveOffices.filter((office) => office.gov === govName).length;
+
+  const adminOrdersTimeCounts = useMemo(() => {
+    const nowMs = Date.now();
+    const startOfTodayMs = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).getTime();
+    const weekCutoffMs = nowMs - (7 * 24 * 60 * 60 * 1000);
+    const monthCutoffMs = nowMs - (30 * 24 * 60 * 60 * 1000);
+    return {
+      today: adminOrders.filter((e) => e.createdAtMs >= startOfTodayMs).length,
+      "7d": adminOrders.filter((e) => e.createdAtMs >= weekCutoffMs).length,
+      "30d": adminOrders.filter((e) => e.createdAtMs >= monthCutoffMs).length,
+      all: adminOrders.length,
+    };
+  }, [adminOrders]);
+
   const filteredAdminOrders = useMemo(() => {
     const nowMs = Date.now();
     const startOfTodayMs = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).getTime();
@@ -11572,12 +11589,18 @@ export default function App() {
           {adminPanelSection !== "overview" && (
             <button
               onClick={() => {
-                setAdminPanelSection("overview");
-                setAdminSelectedProviderRequestId("");
+                if (adminSelectedOrderId) {
+                  setAdminSelectedOrderId("");
+                } else {
+                  setAdminPanelSection("overview");
+                  setAdminSelectedProviderRequestId("");
+                }
               }}
               style={{ marginTop: 8, border: "1px solid rgba(212,175,55,0.35)", background: "rgba(255,255,255,0.06)", color: "#f5d77b", borderRadius: 10, padding: "6px 10px", fontSize: 11, fontWeight: 900, cursor: "pointer", fontFamily: "'Cairo',sans-serif" }}
             >
-              {lang === "ar" ? "رجوع للوحة الرئيسية" : "Back to Main Panel"}
+              {adminSelectedOrderId
+                ? (lang === "ar" ? "← رجوع للطلبات" : "← Back to Orders")
+                : (lang === "ar" ? "رجوع للوحة الرئيسية" : "Back to Main Panel")}
             </button>
           )}
         </div>
@@ -11859,7 +11882,7 @@ export default function App() {
         )}
         </div>
 
-        <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(212,175,55,0.28)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px", display: adminPanelSection === "orders" ? "block" : "none" }}>
+        <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(212,175,55,0.28)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px", display: adminPanelSection === "orders" && !adminSelectedOrderId ? "block" : "none" }}>
         <div style={{ marginBottom: 6, color: "#f8fafc", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <span>{lang === "ar" ? "الطلبات" : "Orders"}</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 9px", borderRadius: 999, background: adminCriticalCount > 0 ? "rgba(239,68,68,0.18)" : "rgba(34,197,94,0.16)", border: adminCriticalCount > 0 ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(34,197,94,0.35)", color: adminCriticalCount > 0 ? "#fecaca" : "#bbf7d0", fontSize: 10, fontWeight: 900 }}>
@@ -11894,7 +11917,7 @@ export default function App() {
               >
                 <span>{lang === "ar" ? item.ar : item.en}</span>
                 <span style={{ marginInlineStart: 4, padding: "1px 5px", borderRadius: 999, background: active ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.12)", color: active ? "#fff" : "#ffe4e6", fontSize: 9, fontWeight: 900, lineHeight: 1.2, display: "inline-block", minWidth: 16 }}>
-                  {adminOpsCounts[item.key] ?? 0}
+                  {adminOrdersTimeCounts[item.key] ?? 0}
                 </span>
               </button>
             );
@@ -11991,7 +12014,11 @@ export default function App() {
               : "#";
 
             return (
-              <div key={orderId} style={{ borderRadius: 14, border: "1px solid rgba(212,175,55,0.22)", background: "rgba(255,255,255,0.05)", padding: "8px 9px" }}>
+              <div
+                key={orderId}
+                style={{ borderRadius: 14, border: "1px solid rgba(212,175,55,0.22)", background: "rgba(255,255,255,0.05)", padding: "8px 9px", cursor: "pointer" }}
+                onClick={() => setAdminSelectedOrderId(orderId)}
+              >
                 <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "center" }}>
                   <div>
                     <div style={{ color: "#f8fafc", fontSize: 11, fontWeight: 900, lineHeight: 1.25 }}>{orderTitle}</div>
@@ -12005,36 +12032,21 @@ export default function App() {
                       {(lang === "ar" ? "الخدمة" : "Service")}: {orderItem.serviceName || "—"}
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                    <button
-                      onClick={() => setAdminExpandedOrderId((prev) => prev === orderId ? "" : orderId)}
-                      style={{ border: "1px solid rgba(212,175,55,0.35)", background: "rgba(255,255,255,0.06)", color: "#f5d77b", borderRadius: 10, padding: "5px 8px", fontSize: 10, fontWeight: 800, cursor: "pointer" }}
-                    >
-                      {isExpanded
-                        ? (lang === "ar" ? "إخفاء" : "Hide")
-                        : (lang === "ar" ? "تفاصيل" : "Details")}
-                    </button>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }} onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => handleAdminDeleteOrder(orderItem)}
                       disabled={busy}
                       title={lang === "ar" ? "حذف الطلب نهائيًا" : "Delete order permanently"}
                       style={{
-                        width: 27,
-                        height: 27,
-                        borderRadius: 9,
+                        width: 27, height: 27, borderRadius: 9,
                         border: "1px solid rgba(239,68,68,0.45)",
                         background: "rgba(239,68,68,0.16)",
                         color: "#fca5a5",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 13,
-                        cursor: busy ? "not-allowed" : "pointer",
+                        display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 13, cursor: busy ? "not-allowed" : "pointer",
                         opacity: busy ? 0.5 : 1,
                       }}
-                    >
-                      🗑️
-                    </button>
+                    >🗑️</button>
                     <a
                       href={whatsappHref}
                       target="_blank"
@@ -12069,62 +12081,9 @@ export default function App() {
                 </div>
 
                 {isExpanded && (
-                  <>
-                    <div style={{ marginTop: 7, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                      {[
-                        [lang === "ar" ? "الدولة" : "Country", orderItem.countryName || "—"],
-                        [lang === "ar" ? "الجنسية" : "Nationality", orderItem.nationalityName || "—"],
-                        [lang === "ar" ? "التاريخ" : "Date", orderItem.createdAtLabel || "—"],
-                        [lang === "ar" ? "الحالة" : "Status", String(orderItem.status || orderItem.orderStatus || "new")],
-                        [lang === "ar" ? "التقييم" : "Rating", `${Number(orderItem.ratingValue || orderItem.rating || 0)}/5`],
-                        [lang === "ar" ? "التعليق" : "Comment", String(orderItem.reviewTextValue || orderItem.reviewText || "—")],
-                      ].map(([label, value]) => (
-                        <div key={`${orderId}-${label}`} style={{ borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", padding: "5px 7px" }}>
-                          <div style={{ color: "rgba(255,255,255,0.56)", fontSize: 9, fontWeight: 700, marginBottom: 2 }}>{label}</div>
-                          <div style={{ color: "#f8fafc", fontSize: 10, fontWeight: 800, wordBreak: "break-word", lineHeight: 1.25 }}>{value}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div style={{ marginTop: 7, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                      <button
-                        onClick={() => handleAdminOrderSetStage(orderItem, Math.min(STATUS_STEP_KEYS.length - 1, (Number(currentStageIndex) || 0) + 1))}
-                        disabled={busy}
-                        style={{ padding: "7px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#22c55e,#166534)", color: "#fff", fontSize: 10, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1 }}
-                      >
-                        {busy ? (lang === "ar" ? "جارٍ التنفيذ..." : "Updating...") : (lang === "ar" ? "المرحلة التالية" : "Next Stage")}
-                      </button>
-                      <button
-                        onClick={() => handleAdminOrderSetStage(orderItem, 0)}
-                        disabled={busy}
-                        style={{ padding: "7px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#f59e0b,#b45309)", color: "#fff", fontSize: 10, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1 }}
-                      >
-                        {lang === "ar" ? "إرجاع للبداية" : "Reset Stage"}
-                      </button>
-                      <button
-                        onClick={() => handleAdminOrderEditDetails(orderItem)}
-                        disabled={busy}
-                        style={{ padding: "7px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#0ea5e9,#0369a1)", color: "#fff", fontSize: 10, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1 }}
-                      >
-                        {lang === "ar" ? "تعديل بيانات الطلب" : "Edit Order Data"}
-                      </button>
-                      <button
-                        onClick={() => handleAdminOrderClearReview(orderItem)}
-                        disabled={busy}
-                        style={{ padding: "7px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#7c3aed,#4c1d95)", color: "#fff", fontSize: 10, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1 }}
-                      >
-                        {lang === "ar" ? "حذف التقييم والتعليق" : "Delete Rating & Comment"}
-                      </button>
-                    </div>
-
-                    <button
-                      onClick={() => handleAdminDeleteOrder(orderItem)}
-                      disabled={busy}
-                      style={{ marginTop: 6, width: "100%", padding: "8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#ef4444,#7f1d1d)", color: "#fff", fontSize: 10, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1 }}
-                    >
-                      {lang === "ar" ? "حذف الطلب نهائيًا" : "Delete Order Permanently"}
-                    </button>
-                  </>
+                  <div style={{ marginTop: 5, color: "rgba(245,215,123,0.7)", fontSize: 9, fontWeight: 700, fontFamily: "'Cairo',sans-serif" }}>
+                    {lang === "ar" ? "اضغط على البطاقة لعرض التفاصيل الكاملة" : "Tap card to view full details"}
+                  </div>
                 )}
               </div>
             );
@@ -12139,6 +12098,114 @@ export default function App() {
           )}
         </div>
         </div>
+
+        {/* ===== ORDER DETAIL PAGE ===== */}
+        {(() => {
+          if (!adminSelectedOrderId || adminPanelSection !== "orders") return null;
+          const detailOrder = filteredAdminOrdersForView.find(
+            (o) => String(o.id || o.firebaseId || o.serialLabel || "").trim() === adminSelectedOrderId
+          ) || adminOrders.find(
+            (o) => String(o.id || o.firebaseId || o.serialLabel || "").trim() === adminSelectedOrderId
+          );
+          if (!detailOrder) return null;
+          const dBusy = adminOrderActionBusyId === adminSelectedOrderId;
+          const dStageIndex = Number.isInteger(detailOrder?.statusIndex)
+            ? detailOrder.statusIndex
+            : Math.max(0, STATUS_STEP_KEYS.findIndex((key) => !(detailOrder?.stageConfirmations || {})[key]) - 1);
+          const hasWa = String(detailOrder.whatsappNumber || "").length >= 8;
+          const waMsg = encodeURIComponent(
+            lang === "ar"
+              ? `مرحبًا ${detailOrder.customerName || "عميلنا الكريم"}\n\nمتابعة طلبك:\nرقم الطلب: ${detailOrder.serialLabel || "-"}\nالخدمة: ${detailOrder.serviceName || "-"}\nالدولة: ${detailOrder.countryName || "-"}\nالجنسية: ${detailOrder.nationalityName || "-"}\nالتاريخ: ${detailOrder.createdAtLabel || "-"}\n\nنحن معك لأي استفسار.`
+              : `Hello ${detailOrder.customerName || "dear customer"},\n\nOrder follow-up:\nOrder ID: ${detailOrder.serialLabel || "-"}\nService: ${detailOrder.serviceName || "-"}\nCountry: ${detailOrder.countryName || "-"}\nNationality: ${detailOrder.nationalityName || "-"}\nDate: ${detailOrder.createdAtLabel || "-"}\n\nWe are here for any questions.`
+          );
+          const waHref = hasWa ? `https://wa.me/${detailOrder.whatsappNumber}?text=${waMsg}` : "#";
+
+          const detailFields = [
+            [lang === "ar" ? "رقم الطلب" : "Order ID", detailOrder.serialLabel || "—"],
+            [lang === "ar" ? "اسم العميل" : "Customer", detailOrder.customerName || "—"],
+            [lang === "ar" ? "رقم الهاتف" : "Phone", detailOrder.customerPhone || "—"],
+            [lang === "ar" ? "الخدمة" : "Service", detailOrder.serviceName || "—"],
+            [lang === "ar" ? "الدولة" : "Country", detailOrder.countryName || "—"],
+            [lang === "ar" ? "الجنسية" : "Nationality", detailOrder.nationalityName || "—"],
+            [lang === "ar" ? "التاريخ" : "Date", detailOrder.createdAtLabel || "—"],
+            [lang === "ar" ? "الحالة" : "Status", String(detailOrder.status || detailOrder.orderStatus || "new")],
+            [lang === "ar" ? "التقييم" : "Rating", `${Number(detailOrder.ratingValue || detailOrder.rating || 0)}/5`],
+            [lang === "ar" ? "التعليق" : "Comment", String(detailOrder.reviewTextValue || detailOrder.reviewText || "—")],
+            [lang === "ar" ? "حالة الإيميل" : "Email Status", String(detailOrder.emailDeliveryStatus || "—")],
+          ];
+
+          return (
+            <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(212,175,55,0.38)", background: "rgba(255,255,255,0.04)", padding: "12px 12px 14px" }}>
+              <div style={{ color: "#e7c55b", fontSize: 13, fontWeight: 900, fontFamily: "'Cairo',sans-serif", marginBottom: 10 }}>
+                {lang === "ar" ? "تفاصيل الطلب" : "Order Details"}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
+                {detailFields.map(([label, value]) => (
+                  <div key={label} style={{ borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", padding: "6px 8px" }}>
+                    <div style={{ color: "rgba(255,255,255,0.52)", fontSize: 9, fontWeight: 700, marginBottom: 2 }}>{label}</div>
+                    <div style={{ color: "#f8fafc", fontSize: 11, fontWeight: 800, wordBreak: "break-word", lineHeight: 1.3 }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginBottom: 7 }}>
+                <button
+                  onClick={() => handleAdminOrderSetStage(detailOrder, Math.min(STATUS_STEP_KEYS.length - 1, (Number(dStageIndex) || 0) + 1))}
+                  disabled={dBusy}
+                  style={{ padding: "9px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#22c55e,#166534)", color: "#fff", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: dBusy ? "not-allowed" : "pointer", opacity: dBusy ? 0.6 : 1 }}
+                >
+                  {dBusy ? (lang === "ar" ? "جارٍ..." : "...") : (lang === "ar" ? "المرحلة التالية" : "Next Stage")}
+                </button>
+                <button
+                  onClick={() => handleAdminOrderSetStage(detailOrder, 0)}
+                  disabled={dBusy}
+                  style={{ padding: "9px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#f59e0b,#b45309)", color: "#fff", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: dBusy ? "not-allowed" : "pointer", opacity: dBusy ? 0.6 : 1 }}
+                >
+                  {lang === "ar" ? "إرجاع للبداية" : "Reset Stage"}
+                </button>
+                <button
+                  onClick={() => handleAdminOrderEditDetails(detailOrder)}
+                  disabled={dBusy}
+                  style={{ padding: "9px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#0ea5e9,#0369a1)", color: "#fff", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: dBusy ? "not-allowed" : "pointer", opacity: dBusy ? 0.6 : 1 }}
+                >
+                  {lang === "ar" ? "تعديل البيانات" : "Edit Data"}
+                </button>
+                <button
+                  onClick={() => handleAdminOrderClearReview(detailOrder)}
+                  disabled={dBusy}
+                  style={{ padding: "9px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#7c3aed,#4c1d95)", color: "#fff", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: dBusy ? "not-allowed" : "pointer", opacity: dBusy ? 0.6 : 1 }}
+                >
+                  {lang === "ar" ? "حذف التقييم" : "Delete Review"}
+                </button>
+              </div>
+
+              <a
+                href={waHref}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => { if (!hasWa) { e.preventDefault(); setAdminOrdersError(lang === "ar" ? "لا يوجد رقم واتساب." : "No WhatsApp number."); } }}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  width: "100%", padding: "9px 8px", borderRadius: 10, marginBottom: 7,
+                  border: "1px solid rgba(37,211,102,0.45)", background: "rgba(37,211,102,0.14)",
+                  color: "#4ade80", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif",
+                  textDecoration: "none", opacity: hasWa ? 1 : 0.45, cursor: hasWa ? "pointer" : "not-allowed",
+                }}
+              >
+                ☏ {lang === "ar" ? "متابعة عبر واتساب" : "Follow up via WhatsApp"}
+              </a>
+
+              <button
+                onClick={() => handleAdminDeleteOrder(detailOrder)}
+                disabled={dBusy}
+                style={{ width: "100%", padding: "9px 8px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#ef4444,#7f1d1d)", color: "#fff", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: dBusy ? "not-allowed" : "pointer", opacity: dBusy ? 0.6 : 1 }}
+              >
+                {lang === "ar" ? "🗑️ حذف الطلب نهائيًا" : "🗑️ Delete Order Permanently"}
+              </button>
+            </div>
+          );
+        })()}
 
         <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(34,197,94,0.32)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px", display: (adminPanelSection === "providers" || adminPanelSection === "providerDetails") ? "block" : "none" }}>
           <div style={{ marginBottom: 8, color: "#bbf7d0", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
