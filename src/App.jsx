@@ -7028,7 +7028,7 @@ export default function App() {
     if (!authPreviewOpen) return;
     if (authPreviewMode !== "login" && authPreviewMode !== "signup") return;
     if (String(authPreviewIdentifier || "").trim()) return;
-    setAuthPreviewIdentifier("+");
+    setAuthPreviewIdentifier("");
   }, [authPreviewOpen, authPreviewMode, authPreviewIdentifier]);
 
   const closeAuthPreview = useCallback(() => {
@@ -12420,10 +12420,10 @@ export default function App() {
                 <input
                   value={authPreviewIdentifier}
                   onChange={(e) => setAuthPreviewIdentifier(e.target.value)}
-                  placeholder=""
+                  placeholder={lang === "ar" ? "بريد إلكتروني أو رقم الهاتف" : "Email or phone number"}
                   type="text"
                   inputMode="text"
-                  style={{ ...authFieldInputStyle, direction: "ltr", textAlign: "left" }}
+                  style={{ ...authFieldInputStyle, direction: authPreviewIdentifier.includes("@") ? "ltr" : authPreviewIdentifier.startsWith("+") || /^[0-9]/.test(authPreviewIdentifier) ? "ltr" : "rtl", textAlign: authPreviewIdentifier.includes("@") || authPreviewIdentifier.startsWith("+") || /^[0-9]/.test(authPreviewIdentifier) ? "left" : "right" }}
                 />
               </div>
 
