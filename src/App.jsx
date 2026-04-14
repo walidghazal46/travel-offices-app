@@ -2876,6 +2876,7 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
   const [savedOrderPreview, setSavedOrderPreview] = useState(null);
   const [savedOrderPreviewCountdown, setSavedOrderPreviewCountdown] = useState(10);
   const [requestLimitNotice, setRequestLimitNotice] = useState(null);
+  const [requestLimitNoticeTitle, setRequestLimitNoticeTitle] = useState("");
   const [submitStage, setSubmitStage] = useState("");
   const [orderEmailStatus, setOrderEmailStatus] = useState("idle");
   const [coinsSoonModalOpen, setCoinsSoonModalOpen] = useState(false);
@@ -3165,7 +3166,10 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
 
   useEffect(() => {
     if (!requestLimitNotice) return undefined;
-    const timer = setTimeout(() => setRequestLimitNotice(null), 5000);
+    const timer = setTimeout(() => {
+      setRequestLimitNotice(null);
+      setRequestLimitNoticeTitle("");
+    }, 5000);
     return () => clearTimeout(timer);
   }, [requestLimitNotice]);
 
@@ -3186,6 +3190,7 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
 
   const showRequestLimitNotice = useCallback((details = null) => {
     const windowDays = Number(details?.windowDays) || 7;
+    setRequestLimitNoticeTitle(isAr ? "تم الوصول إلى حد الطلبات" : "Request limit reached");
     setRequestLimitNotice(getRequestLimitMessage(windowDays, isAr));
   }, [isAr]);
 
@@ -3408,6 +3413,7 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
 
   const openPaidNewRequest = useCallback(() => {
     if (isGuestUser) {
+      setRequestLimitNoticeTitle(isAr ? "تنبيه" : "Notice");
       setRequestLimitNotice(
         isAr
           ? "وضع الضيف يسمح بعرض الخدمات المدفوعة فقط. لتقديم طلب جديد، سجل الدخول بحسابك."
@@ -3425,6 +3431,7 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
     const limit = 3;
     const windowDays = 7;
     if (getRecentOrderCountWithinDays(recentOrders, windowDays) >= limit) {
+      setRequestLimitNoticeTitle(isAr ? "تم الوصول إلى حد الطلبات" : "Request limit reached");
       setRequestLimitNotice(getRequestLimitMessage(windowDays, isAr));
       return;
     }
@@ -3850,7 +3857,7 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
       <div style={{ width:"100%", maxWidth:360, borderRadius:24, padding:"22px 20px", background:"linear-gradient(180deg,#fffaf0 0%,#fff5db 100%)", border:"1px solid rgba(212,175,55,0.35)", boxShadow:"0 22px 55px rgba(0,0,0,0.18)", textAlign:"center", fontFamily:"'Cairo',sans-serif" }}>
         <div style={{ fontSize:34, marginBottom:10 }}>⏳</div>
         <div style={{ fontSize:16, fontWeight:900, color:t.gold, marginBottom:8 }}>
-          {isAr ? "تم الوصول إلى حد الطلبات" : "Request limit reached"}
+          {requestLimitNoticeTitle || (isAr ? "تم الوصول إلى حد الطلبات" : "Request limit reached")}
         </div>
         <div style={{ fontSize:13, lineHeight:1.9, color:t.text }}>
           {requestLimitNotice}
