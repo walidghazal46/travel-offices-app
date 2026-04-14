@@ -12014,6 +12014,27 @@ export default function App() {
                         ? (lang === "ar" ? "إخفاء" : "Hide")
                         : (lang === "ar" ? "تفاصيل" : "Details")}
                     </button>
+                    <button
+                      onClick={() => handleAdminDeleteOrder(orderItem)}
+                      disabled={busy}
+                      title={lang === "ar" ? "حذف الطلب نهائيًا" : "Delete order permanently"}
+                      style={{
+                        width: 27,
+                        height: 27,
+                        borderRadius: 9,
+                        border: "1px solid rgba(239,68,68,0.45)",
+                        background: "rgba(239,68,68,0.16)",
+                        color: "#fca5a5",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 13,
+                        cursor: busy ? "not-allowed" : "pointer",
+                        opacity: busy ? 0.5 : 1,
+                      }}
+                    >
+                      🗑️
+                    </button>
                     <a
                       href={whatsappHref}
                       target="_blank"
