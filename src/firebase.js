@@ -1150,6 +1150,59 @@ export async function adjustUserRequestCreditsInFirebase(uid, bucket, delta) {
   return nextCredits;
 }
 
+export async function grantOfficeReviewCoinsIfEligible(uid, officeId, coins = 20) {
+  const cleanUid = String(uid || "").trim();
+  const cleanOfficeId = String(officeId || "").trim();
+  const rewardCoins = Number(coins);
+
+  if (!cleanUid) {
+    throw new Error("auth-user-profile-uid-required");
+  }
+  if (!cleanOfficeId) {
+    throw new Error("office-id-required");
+  }
+  if (!Number.isFinite(rewardCoins) || rewardCoins <= 0) {
+    throw new Error("office-review-coins-invalid");
+  }
+
+  const profileRef = doc(firestoreDb, "users", cleanUid);
+  const snapshot = await withRetry(async () => getDoc(profileRef));
+  const existingData = snapshot.exists() ? (snapshot.data() || {}) : {};
+  const rewardMap = existingData?.officeReviewRewards || {};
+  const rewardKey = `office-${cleanOfficeId}`;
+  const currentCoins = Number(existingData?.requestCredits?.coins) || 0;
+
+  if (rewardMap?.[rewardKey]) {
+    return { awarded: false, coins: currentCoins };
+  }
+
+  const nextCoins = Math.max(0, currentCoins + rewardCoins);
+
+  await withRetry(async () =>
+    setDoc(
+      profileRef,
+      {
+        requestCredits: {
+          ...(existingData?.requestCredits || {}),
+          coins: nextCoins,
+        },
+        officeReviewRewards: {
+          ...rewardMap,
+          [rewardKey]: {
+            awardedCoins: rewardCoins,
+            officeId: cleanOfficeId,
+            awardedAt: new Date().toISOString(),
+          },
+        },
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    )
+  );
+
+  return { awarded: true, coins: nextCoins };
+}
+
 export async function deleteUserProfileInFirebase(uid) {
   const cleanUid = String(uid || "").trim();
   if (!cleanUid) {

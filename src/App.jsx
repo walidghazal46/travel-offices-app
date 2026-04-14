@@ -22,6 +22,7 @@ import {
   subscribeServiceProviderRequestsByUser,
   fetchUserProfileFromFirebase,
   fetchUserProfilesFromFirebase,
+  grantOfficeReviewCoinsIfEligible,
   getCurrentAuthUser,
   deleteOfficeReviewFromFirebase,
   saveOfficeReviewToFirebase,
@@ -2640,6 +2641,7 @@ function buildOfficeReviewState(reviewItems, locale = "ar") {
       rating: Number(review.rating) || 0,
       text: review.text || "",
       date: formatReviewDateValue(review.createdAt || review.date, locale),
+      reviewerUid: String(review.reviewerUid || "").trim(),
       reviewerName: String(review.reviewerName || review.userName || "").trim(),
       reviewerInitials: buildReviewerInitials(review.reviewerName || review.userName || review.userEmail || ""),
     };
@@ -6530,6 +6532,7 @@ export default function App() {
   const [accountProfileName, setAccountProfileName] = useState("");
   const [accountProfileEmail, setAccountProfileEmail] = useState("");
   const [accountProfilePhone, setAccountProfilePhone] = useState("");
+  const [accountCoins, setAccountCoins] = useState(0);
   const [accountProfileBusy, setAccountProfileBusy] = useState(false);
   const [accountProfileError, setAccountProfileError] = useState("");
   const [accountProfileSuccess, setAccountProfileSuccess] = useState("");
@@ -6884,6 +6887,8 @@ export default function App() {
 
         const profileStatus = String(profileSnapshot.status || "active").trim().toLowerCase();
         const profileRole = String(profileSnapshot.role || "user").trim().toLowerCase();
+        const profileCoins = Number(profileSnapshot?.requestCredits?.coins) || 0;
+        setAccountCoins(profileCoins);
         setAdminSessionRole(profileRole);
 
         if (DISABLED_ADMIN_EMAILS.includes(normalizedEmail) && profileRole !== "user") {
@@ -6995,6 +7000,9 @@ export default function App() {
     setAccountProfileName(authPreviewUser?.displayName || "");
     setAccountProfileEmail(authPreviewUser?.email || "");
     setAccountProfilePhone(authPreviewUser?.phoneNumber || "");
+    if (!authPreviewUser?.uid) {
+      setAccountCoins(0);
+    }
     setAccountProfileError("");
     setAccountProfileSuccess("");
     setAccountPhoneBusy(false);
@@ -7003,6 +7011,27 @@ export default function App() {
     setAccountPhoneOtp(["", "", "", "", "", ""]);
     setAccountDeleteConfirm(false);
   }, [authPreviewUser]);
+
+  useEffect(() => {
+    if (!accountPanelOpen || !authPreviewUser?.uid) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const profileSnapshot = await fetchUserProfileFromFirebase(authPreviewUser.uid);
+        if (cancelled) return;
+        setAccountCoins(Number(profileSnapshot?.requestCredits?.coins) || 0);
+      } catch (error) {
+        if (!cancelled) {
+          console.warn("Account coins fetch failed", error);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accountPanelOpen, authPreviewUser?.uid]);
 
   const clearAuthPreviewFeedback = useCallback(() => {
     setAuthPreviewError("");
@@ -10987,6 +11016,23 @@ export default function App() {
           </div>
         </div>
 
+        <div style={{ marginTop: 10, borderRadius: 16, border: "1px solid rgba(212,175,55,0.45)", background: "linear-gradient(135deg, rgba(212,175,55,0.16), rgba(245,215,123,0.08))", padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 18 }}>🪙</span>
+            <div>
+              <div style={{ color: "#f5d77b", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif" }}>
+                {lang === "ar" ? "رصيد الكوينز" : "Coins Balance"}
+              </div>
+              <div style={{ color: "rgba(245,215,123,0.88)", fontSize: 10, fontWeight: 700, fontFamily: "'Cairo',sans-serif" }}>
+                {lang === "ar" ? "يمكنك استخدامه في طرق الدفع المتاحة" : "Can be used in available payment options"}
+              </div>
+            </div>
+          </div>
+          <div style={{ color: "#fde68a", fontSize: 18, fontWeight: 900, fontFamily: "'Cairo',sans-serif" }}>
+            {Number(accountCoins) || 0}
+          </div>
+        </div>
+
         <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
           {[
             {
@@ -13223,7 +13269,23 @@ export default function App() {
         const mapUrl = `https://www.google.com/maps/search/${mapQuery}`;
         const rating = officeRatings[off.id] || { avg: 0, count: 0 };
         const offReviews = reviews[off.id] || [];
+        const currentReviewerUid = String(authPreviewUser?.uid || "").trim();
+        const userAlreadyReviewedOffice = !!currentReviewerUid
+          && offReviews.some((entry) => String(entry?.reviewerUid || "").trim() === currentReviewerUid);
         const isManuallyAddedOffice = adminAddedOffices.some((entry) => Number(entry?.id) === Number(off.id));
+
+        const promptOfficeReviewAuth = () => {
+          setOfficeReviewError(
+            lang === "ar"
+              ? "يجب تسجيل الدخول أو إنشاء حساب جديد لإضافة تقييم وتجربتك."
+              : "You need to sign in or create a new account to submit your review and experience."
+          );
+          setShowExitConfirm(false);
+          setAuthPreviewMode("login");
+          setAuthPreviewOpen(true);
+          setAuthPreviewError("");
+          setAuthPreviewSuccess("");
+        };
 
         const openAdminOfficeEditor = () => {
           if (!isAdminUser) return;
@@ -13350,6 +13412,20 @@ export default function App() {
         };
 
         const submitReview = async () => {
+          if (isGuestUser) {
+            promptOfficeReviewAuth();
+            return;
+          }
+
+          if (userAlreadyReviewedOffice) {
+            setOfficeReviewError(
+              lang === "ar"
+                ? "تم إرسال تقييمك لهذا المكتب من قبل. يمكنك تقييم مكتب آخر."
+                : "You already submitted a review for this office. You can review another office."
+            );
+            return;
+          }
+
           if (!userRating || officeReviewSubmitting) return;
           setOfficeReviewSubmitting(true);
           setOfficeReviewError("");
@@ -13366,9 +13442,27 @@ export default function App() {
               rating: userRating,
               text: reviewText.trim(),
             });
+
+            const rewardResult = await grantOfficeReviewCoinsIfEligible(authPreviewUser?.uid || "", off.id, 20)
+              .catch((rewardError) => {
+                console.error("Office review coins reward failed", rewardError);
+                return { awarded: false, coins: null };
+              });
+
             await reloadOfficeReviews();
             setUserRating(0);
             setReviewText("");
+
+            if (rewardResult?.awarded) {
+              setAccountCoins(Number(rewardResult?.coins) || 0);
+              setModal({
+                type: "success",
+                title: lang === "ar" ? "تم إرسال التقييم" : "Review submitted",
+                msg: lang === "ar"
+                  ? `شكراً لك. تمت إضافة 20 كوينز إلى حسابك. رصيدك الحالي: ${Number(rewardResult?.coins) || 20} كوينز.`
+                  : `Thanks. 20 coins were added to your account. Your current balance is ${Number(rewardResult?.coins) || 20} coins.`,
+              });
+            }
           } catch (error) {
             console.error("Office review save failed", error);
             setOfficeReviewError(
@@ -13614,22 +13708,56 @@ export default function App() {
                       <button key={s}
                         onMouseEnter={() => setHoverRating(s)}
                         onMouseLeave={() => setHoverRating(0)}
-                        onClick={() => setUserRating(s)}
-                        style={{ fontSize: 30, background: "none", border: "none", cursor: "pointer", color: (hoverRating||userRating) >= s ? "#f59e0b" : t.border, transition: "color 0.15s, transform 0.15s", transform: (hoverRating||userRating) >= s ? "scale(1.2)" : "scale(1)" }}>★</button>
+                        onClick={() => {
+                          if (isGuestUser) {
+                            promptOfficeReviewAuth();
+                            return;
+                          }
+                          if (userAlreadyReviewedOffice) {
+                            setOfficeReviewError(
+                              lang === "ar"
+                                ? "تم إرسال تقييمك لهذا المكتب من قبل."
+                                : "You already submitted a review for this office."
+                            );
+                            return;
+                          }
+                          setOfficeReviewError("");
+                          setUserRating(s);
+                        }}
+                        style={{ fontSize: 30, background: "none", border: "none", cursor: isGuestUser || userAlreadyReviewedOffice ? "not-allowed" : "pointer", color: (hoverRating||userRating) >= s ? "#f59e0b" : t.border, transition: "color 0.15s, transform 0.15s", transform: (hoverRating||userRating) >= s ? "scale(1.2)" : "scale(1)", opacity: isGuestUser || userAlreadyReviewedOffice ? 0.7 : 1 }}>★</button>
                     ))}
                   </div>
+                  {isGuestUser && (
+                    <div style={{ marginBottom: 10, fontSize: 11, color: "#b45309", textAlign: "center", fontWeight: 800 }}>
+                      {lang === "ar"
+                        ? "لتقييم المكتب وإضافة تجربتك، سجّل الدخول أو أنشئ حسابًا جديدًا."
+                        : "Sign in or create a new account to rate this office and add your experience."}
+                    </div>
+                  )}
+                  {!isGuestUser && userAlreadyReviewedOffice && (
+                    <div style={{ marginBottom: 10, fontSize: 11, color: "#0f766e", textAlign: "center", fontWeight: 800 }}>
+                      {lang === "ar"
+                        ? "تم تسجيل تقييمك لهذا المكتب بالفعل."
+                        : "Your review for this office has already been recorded."}
+                    </div>
+                  )}
                   <textarea
                     placeholder={lang === "ar" ? "اكتب تجربتك مع هذا المكتب... (اختياري)" : "Write your experience with this office... (optional)"}
                     value={reviewText}
                     onChange={e => setReviewText(e.target.value)}
                     rows={3}
-                    style={{ width: "100%", borderRadius: 12, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 13, fontFamily: "'Cairo',sans-serif", padding: "10px 12px", resize: "none", outline: "none", boxSizing: "border-box", marginBottom: 10 }}
+                    disabled={isGuestUser || userAlreadyReviewedOffice}
+                    style={{ width: "100%", borderRadius: 12, border: `1px solid ${t.border}`, background: isGuestUser || userAlreadyReviewedOffice ? (dark ? "rgba(255,255,255,0.04)" : "#f8fafc") : t.inputBg, color: t.text, fontSize: 13, fontFamily: "'Cairo',sans-serif", padding: "10px 12px", resize: "none", outline: "none", boxSizing: "border-box", marginBottom: 10, opacity: isGuestUser || userAlreadyReviewedOffice ? 0.85 : 1 }}
                   />
                   <button onClick={submitReview}
-                    style={{ width: "100%", padding: "12px", borderRadius: 12, border: "none", background: userRating && !officeReviewSubmitting ? "linear-gradient(135deg,#d4af37,#b8860b)" : t.border, color: userRating && !officeReviewSubmitting ? "#fff" : t.subText, fontSize: 14, fontWeight: 700, cursor: userRating && !officeReviewSubmitting ? "pointer" : "default", fontFamily: "'Cairo',sans-serif", transition: "all 0.2s" }}>
+                    style={{ width: "100%", padding: "12px", borderRadius: 12, border: "none", background: !isGuestUser && !userAlreadyReviewedOffice && userRating && !officeReviewSubmitting ? "linear-gradient(135deg,#d4af37,#b8860b)" : t.border, color: !isGuestUser && !userAlreadyReviewedOffice && userRating && !officeReviewSubmitting ? "#fff" : t.subText, fontSize: 14, fontWeight: 700, cursor: !isGuestUser && !userAlreadyReviewedOffice && userRating && !officeReviewSubmitting ? "pointer" : "default", fontFamily: "'Cairo',sans-serif", transition: "all 0.2s" }}>
                     {officeReviewSubmitting
                       ? (lang === "ar" ? "جارٍ إرسال التقييم..." : "Submitting review...")
-                      : userRating
+                      : isGuestUser
+                        ? (lang === "ar" ? "سجّل الدخول لإرسال تقييمك" : "Sign in to submit your review")
+                        : userAlreadyReviewedOffice
+                          ? (lang === "ar" ? "تم إرسال تقييمك مسبقًا" : "Review already submitted")
+                        : userRating
                         ? `${lang === "ar" ? "إرسال التقييم" : "Submit review"} (${userRating} ★)`
                         : (lang === "ar" ? "اختر عدد النجوم أولاً" : "Choose stars first")}
                   </button>
@@ -16692,7 +16820,7 @@ export default function App() {
               </div>
             )}
 
-            <div style={{ textAlign: "center", marginTop: 16, color: t.subText, fontSize: 11, fontFamily: "'Cairo',sans-serif" }}>v1.0.0.8.26 — مكاتب السفريات الموثوقة</div>
+            <div style={{ textAlign: "center", marginTop: 16, color: t.subText, fontSize: 11, fontFamily: "'Cairo',sans-serif" }}>v1.0.0.26 — مكاتب السفريات الموثوقة</div>
 
             {/* ── إشعار هام ── */}
             <div style={{ marginTop: 16, borderRadius: 14, border: `1px solid ${t.gold}30`, background: dark ? `${t.gold}08` : `${t.gold}0a`, padding: "14px 16px" }}>
