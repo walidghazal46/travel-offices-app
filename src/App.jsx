@@ -70,8 +70,10 @@ const NATIONALITY_DIAL_CODES = {
   "البحرين": "+973",
   "العراق": "+964",
   "ليبيا": "+218",
-  "المغرب": "+212",
+  "المغرب": "+212"
+
 };
+
 const officesData = [
   // القاهرة
   { id: 1, name: "مصر الحجاز", license: 2, address: "ش الحجاز بالدور الأول - شقة 3 - النزهة - مصر الجديدة - القاهرة", gov: "القاهرة", phone: "" },
@@ -1063,7 +1065,6 @@ const officesData = [
   { id: 2478, name: "دولار", license: 1243, address: "مدخل 1 اكتوبر - اعلى محلات اوكارون - طريق الاسكندرية - مطروح - العامرية - الاسكندرية", gov: "الاسكندرية", phone: "" },
   { id: 2479, name: "الاتحاد", license: 1249, address: "شقة 1،1 - الدور الاول علوى - شارع وليتى سبنبورنج من شارع التحرير - الرمل - الاسكندرية", gov: "الاسكندرية", phone: "" },
 ];
-
 const egyptGovernorates = [
   { name: "القاهرة", nameEn: "Cairo", icon: "🏙️" },
   { name: "الجيزة", nameEn: "Giza", icon: "🗺️" },
@@ -2422,6 +2423,8 @@ function getNextPendingStageIndex(order) {
 }
 
 const MAX_RECEIPT_SIZE_BYTES = 2 * 1024 * 1024;
+const RECEIPT_UPLOAD_TIMEOUT_MS = 30000;
+const RECEIPT_UPLOAD_NOTICE_MS = 12000;
 
 function withTimeout(promise, ms, label = "request") {
   return Promise.race([
@@ -2880,6 +2883,7 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
   const [requestLimitNotice, setRequestLimitNotice] = useState(null);
   const [requestLimitNoticeTitle, setRequestLimitNoticeTitle] = useState("");
   const [submitStage, setSubmitStage] = useState("");
+  const [submitStageElapsedMs, setSubmitStageElapsedMs] = useState(0);
   const [orderEmailStatus, setOrderEmailStatus] = useState("idle");
   const [coinsSoonModalOpen, setCoinsSoonModalOpen] = useState(false);
   const [coinsSoonCountdown, setCoinsSoonCountdown] = useState(10);
@@ -2896,9 +2900,12 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
   const lastBackRequestRef = useRef(backRequestToken);
 
   const saveOrders = (orders) => {
-    const hydratedOrders = orders.map(hydratePaidOrder);
-    setExistingOrders(hydratedOrders);
-    try { localStorage.setItem(storageKey, JSON.stringify(hydratedOrders)); } catch {}
+    const normalized = (orders || []).map(hydratePaidOrder);
+    setExistingOrders(normalized);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(normalized));
+    } catch {
+    }
   };
 
   const createFirebaseFallbackTicket = (orderLike) => {
@@ -3091,6 +3098,21 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
   useEffect(() => {
     onScreenChange?.(screen);
   }, [screen, onScreenChange]);
+
+  useEffect(() => {
+    if (!isSubmittingOrder) {
+      setSubmitStageElapsedMs(0);
+      return undefined;
+    }
+    const startedAt = Date.now();
+    setSubmitStageElapsedMs(0);
+    const timer = setInterval(() => {
+      setSubmitStageElapsedMs(Date.now() - startedAt);
+    }, 1000);
+    return () => {
+      clearInterval(timer);
+    };
+  }, [isSubmittingOrder, submitStage]);
 
   useEffect(() => {
     setForm((prev) => ({
@@ -3675,7 +3697,7 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
       try {
         uploadedReceipt = await withTimeout(
           uploadReceiptToFirebase(form.receiptFile, order.serial),
-          120000,
+          RECEIPT_UPLOAD_TIMEOUT_MS,
           "receipt upload"
         );
       } catch (uploadError) {
@@ -3804,7 +3826,7 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
 
       const receiptStageElapsedMs = receiptUploadStartedAt ? (Date.now() - receiptUploadStartedAt) : 0;
       const shouldCreateFallbackTicket =
-        submitStageTracker === "receipt" && receiptStageElapsedMs >= 120000;
+        submitStageTracker === "receipt" && receiptStageElapsedMs >= RECEIPT_UPLOAD_TIMEOUT_MS;
       if (shouldCreateFallbackTicket) {
         const nextTicket = createFirebaseFallbackTicket(nextOrder);
         setFirebaseFallbackTicket(nextTicket);
@@ -4716,12 +4738,32 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
             <button onClick={() => { const o = buildOrder(); void confirmOrder(o); }} disabled={!form.receiptName || isSubmittingOrder} style={{ ...btnStyle(form.receiptName && !isSubmittingOrder ? goldGrad : t.border), opacity: form.receiptName && !isSubmittingOrder ? 1 : 0.45 }}>
               ✅ {isSubmittingOrder
                 ? (submitStage === "receipt"
-                  ? (isAr ? "جارٍ رفع الإيصال..." : "Uploading receipt...")
+                  ? (isAr
+                    ? `جارٍ رفع الإيصال... ${Math.min(Math.floor(submitStageElapsedMs / 1000), Math.floor(RECEIPT_UPLOAD_TIMEOUT_MS / 1000))}ث`
+                    : `Uploading receipt... ${Math.min(Math.floor(submitStageElapsedMs / 1000), Math.floor(RECEIPT_UPLOAD_TIMEOUT_MS / 1000))}s`)
                   : submitStage === "email"
                     ? (isAr ? "جارٍ تجهيز الإيميل..." : "Preparing emails...")
                     : (isAr ? "جارٍ حفظ الطلب..." : "Saving order..."))
                 : (isAr?"تأكيد الدفع وإرسال الطلب":"Confirm Payment & Submit Request")}
             </button>
+            {isSubmittingOrder && submitStage === "receipt" && (
+              <div style={{ ...card, background:"rgba(245,158,11,0.08)", border:"1px solid rgba(245,158,11,0.22)", color:"#92400e", padding:"12px 14px" }}>
+                <div style={{ fontSize:12, fontWeight:800, marginBottom:4 }}>
+                  {isAr
+                    ? `مهلة رفع الإيصال الحالية ${Math.floor(RECEIPT_UPLOAD_TIMEOUT_MS / 1000)} ثانية.`
+                    : `The current receipt upload timeout is ${Math.floor(RECEIPT_UPLOAD_TIMEOUT_MS / 1000)} seconds.`}
+                </div>
+                <div style={{ fontSize:11, lineHeight:1.8 }}>
+                  {submitStageElapsedMs >= RECEIPT_UPLOAD_NOTICE_MS
+                    ? (isAr
+                      ? "الرفع متأخر. إذا لم يكتمل سريعًا سنكمل إرسال الطلب ونؤجل ربط الإيصال بدل ما يفضل معلق."
+                      : "The upload is taking longer than expected. If it does not finish soon, the order will continue and the receipt will be deferred instead of hanging.")
+                    : (isAr
+                      ? "إذا تأخر الرفع لن يظل الطلب معلقًا طويلًا، وسيتم تحويله تلقائيًا إلى وضع مؤجل عند تجاوز المهلة."
+                      : "If the upload is slow, the request will not stay stuck for long and will automatically switch to deferred mode after the timeout.")}
+                </div>
+              </div>
+            )}
             {renderCancelCurrentPaidRequestButton()}
           </>
         )}
@@ -13443,7 +13485,7 @@ export default function App() {
               text: reviewText.trim(),
             });
 
-            const rewardResult = await grantOfficeReviewCoinsIfEligible(authPreviewUser?.uid || "", off.id, 20)
+            const rewardResult = await grantOfficeReviewCoinsIfEligible(authPreviewUser?.uid || "", off.id, 10)
               .catch((rewardError) => {
                 console.error("Office review coins reward failed", rewardError);
                 return { awarded: false, coins: null };
@@ -13459,8 +13501,8 @@ export default function App() {
                 type: "success",
                 title: lang === "ar" ? "تم إرسال التقييم" : "Review submitted",
                 msg: lang === "ar"
-                  ? `شكراً لك. تمت إضافة 20 كوينز إلى حسابك. رصيدك الحالي: ${Number(rewardResult?.coins) || 20} كوينز.`
-                  : `Thanks. 20 coins were added to your account. Your current balance is ${Number(rewardResult?.coins) || 20} coins.`,
+                  ? `شكراً لك. تمت إضافة 10 كوينز إلى حسابك. رصيدك الحالي: ${Number(rewardResult?.coins) || 10} كوينز.`
+                  : `Thanks. 10 coins were added to your account. Your current balance is ${Number(rewardResult?.coins) || 10} coins.`,
               });
             }
           } catch (error) {
@@ -13741,6 +13783,11 @@ export default function App() {
                         : "Your review for this office has already been recorded."}
                     </div>
                   )}
+                  <div style={{ marginBottom: 10, fontSize: 10, color: t.subText, textAlign: "center", fontWeight: 500, opacity: 0.82, fontStyle: "italic" }}>
+                    {lang === "ar"
+                      ? "هذه التقييمات امانة امام الله. أول تقييم لكل مكتب يمنحك 10 كوينز فقط."
+                      : "These reviews are a trust before God. Your first review for each office gives you 10 coins only."}
+                  </div>
                   <textarea
                     placeholder={lang === "ar" ? "اكتب تجربتك مع هذا المكتب... (اختياري)" : "Write your experience with this office... (optional)"}
                     value={reviewText}

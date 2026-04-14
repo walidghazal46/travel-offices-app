@@ -1150,7 +1150,7 @@ export async function adjustUserRequestCreditsInFirebase(uid, bucket, delta) {
   return nextCredits;
 }
 
-export async function grantOfficeReviewCoinsIfEligible(uid, officeId, coins = 20) {
+export async function grantOfficeReviewCoinsIfEligible(uid, officeId, coins = 10) {
   const cleanUid = String(uid || "").trim();
   const cleanOfficeId = String(officeId || "").trim();
   const rewardCoins = Number(coins);
