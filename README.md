@@ -1,16 +1,65 @@
-# React + Vite
+# Travel Offices App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Goal
+Any code change should flow like this:
 
-Currently, two official plugins are available:
+1. Local change
+2. Git add + commit + push
+3. GitHub gets latest code
+4. Website auto deploy runs from GitHub Actions
+5. Android Studio uses same Git repo (pull latest on open, push after edits)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## One-Time Setup
 
-## React Compiler
+### 1) GitHub repo is the source of truth
+Run these once to verify your remote:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. `git remote -v`
+2. `git branch --show-current`
 
-## Expanding the ESLint configuration
+Make sure your working branch is main and tracks origin/main.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 2) Auto deploy on push
+Auto deploy is configured using GitHub Actions workflow:
+
+- [Auto deploy workflow](.github/workflows/auto-deploy.yml)
+
+What it does:
+
+1. Trigger on push to main
+2. Install dependencies
+3. Build production files
+4. Publish dist to gh-pages branch
+
+### 3) Android Studio Git integration
+In Android Studio:
+
+1. Open project from the same repository folder.
+2. Ensure Version Control is Git:
+	- Settings > Version Control > Git
+3. Enable auto fetch in background:
+	- Settings > Version Control > Git > Fetch in background
+4. On opening project, do Pull.
+5. After edits, do Commit then Push.
+
+## Daily Flow (ON_CHANGE)
+
+Use this every time you change code:
+
+1. `git add -A`
+2. `git commit -m "your message"`
+3. `git push origin main`
+
+After push:
+
+1. GitHub is updated immediately.
+2. Website deploy starts automatically from Actions.
+3. Android Studio sees latest changes on next Pull.
+
+## Result
+
+Change -> Commit -> Push -> Auto Deploy -> Reflected on:
+
+1. GitHub
+2. Website
+3. Android Studio project (after pull)
