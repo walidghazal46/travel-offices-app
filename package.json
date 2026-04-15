@@ -7,7 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "sync:offices": "node scripts/sync-offices-from-excel.cjs --excel companies_data0.xlsx",
+    "sync:offices:file": "node scripts/sync-offices-from-excel.cjs",
+    "sync:offices:report": "node scripts/sync-offices-from-excel.cjs --excel companies_data0.xlsx --report office-data/office-rebuild-report.json",
     "sync:offices:apply": "node scripts/sync-offices-from-excel.cjs --excel companies_data0.xlsx --apply",
+    "sync:offices:file:report": "node scripts/sync-offices-from-excel.cjs --report office-data/office-rebuild-report.json",
+    "sync:offices:apply:report": "node scripts/sync-offices-from-excel.cjs --excel companies_data0.xlsx --apply --report office-data/office-rebuild-report.json",
+    "sync:offices:file:apply": "node scripts/sync-offices-from-excel.cjs --apply",
+    "sync:offices:file:apply:report": "node scripts/sync-offices-from-excel.cjs --apply --report office-data/office-rebuild-report.json",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
