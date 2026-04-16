@@ -16,6 +16,7 @@ import {
   fetchCvPackageStatsFromFirebase,
   fetchOfficeReviewsFromFirebase,
   fetchServiceOrdersFromFirebase,
+  fetchUserOrdersFromFirebase,
   fetchReviewedServiceOrdersFromFirebase,
   fetchServiceProviderRequestsByUserFromFirebase,
   fetchServiceProviderRequestsFromFirebase,
@@ -2933,6 +2934,17 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
     setAdminSelectedServiceOrderId("");
   }, [storageKey]);
 
+  // Re-read orders from localStorage when Firestore sync completes
+  useEffect(() => {
+    const handleOrdersSync = () => {
+      try {
+        setExistingOrders(JSON.parse(localStorage.getItem(storageKey) || "[]").map(hydratePaidOrder));
+      } catch {}
+    };
+    window.addEventListener("user-orders-synced", handleOrdersSync);
+    return () => window.removeEventListener("user-orders-synced", handleOrdersSync);
+  }, [storageKey]);
+
   useEffect(() => {
     setForm((prev) => ({ ...prev, country: activeCountry, city: selectedCity }));
   }, [activeCountry, selectedCity]);
@@ -3174,18 +3186,8 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
 
   useEffect(() => {
     if (screen !== "confirm") return undefined;
-    setConfirmCountdown(10);
-    const countdownTimer = setInterval(() => {
-      setConfirmCountdown((value) => (value > 1 ? value - 1 : 1));
-    }, 1000);
-    const redirectTimer = setTimeout(() => {
-      goToOrdersOverview();
-    }, 10000);
-    return () => {
-      clearInterval(countdownTimer);
-      clearTimeout(redirectTimer);
-    };
-  }, [screen, goToOrdersOverview]);
+    // No auto-redirect — user closes manually
+  }, [screen]);
 
   useEffect(() => {
     if (!savedOrderPreview) return undefined;
@@ -3461,18 +3463,21 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
       return;
     }
 
-    const recentOrders = isCvPaidFlow
-      ? Object.keys(localStorage)
-          .filter((key) => key.startsWith("cvPaidOrders-"))
-          .flatMap((key) => getLocalOrdersFromStorage(key))
-      : getLocalOrdersFromStorage(storageKey);
-
-    const limit = 3;
-    const windowDays = 7;
-    if (getRecentOrderCountWithinDays(recentOrders, windowDays) >= limit) {
-      setRequestLimitNoticeTitle(isAr ? "تم الوصول إلى حد الطلبات" : "Request limit reached");
-      setRequestLimitNotice(getRequestLimitMessage(windowDays, isAr));
-      return;
+    // Admin bypasses all order limits
+    if (!isAdminUser) {
+      const recentOrders = getLocalOrdersFromStorage(storageKey);
+      const weeklyCount = getRecentOrderCountWithinDays(recentOrders, 7);
+      const monthlyCount = getRecentOrderCountWithinDays(recentOrders, 30);
+      if (weeklyCount >= 2) {
+        setRequestLimitNoticeTitle(isAr ? "تم الوصول إلى حد الطلبات الأسبوعي" : "Weekly request limit reached");
+        setRequestLimitNotice(getRequestLimitMessage(7, isAr));
+        return;
+      }
+      if (monthlyCount >= 8) {
+        setRequestLimitNoticeTitle(isAr ? "تم الوصول إلى حد الطلبات الشهري" : "Monthly request limit reached");
+        setRequestLimitNotice(getRequestLimitMessage(30, isAr));
+        return;
+      }
     }
 
     setStep(1);
@@ -3890,6 +3895,29 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
     if (!safe?.serial) return;
     setSavedOrderPreview(safe);
   };
+
+  const retryOrderEmail = useCallback(async (order) => {
+    if (!order?.serial) return;
+    setOrderEmailStatus("sending");
+    try {
+      const result = await sendOrderEmails(order);
+      const nextStatus = result?.ok ? "sent" : "failed";
+      setOrderEmailStatus(nextStatus);
+      const updatedAt = new Date().toISOString();
+      const patch = { emailDeliveryStatus: nextStatus, emailDeliveryUpdatedAt: updatedAt, emailDeliveryError: nextStatus === "failed" ? "retry-failed" : "" };
+      if (order?.firebaseId) {
+        updateOrderInFirebase(order.firebaseId, patch).catch(() => {});
+      }
+      setCurrentOrder((prev) => prev?.serial === order.serial ? { ...prev, ...patch } : prev);
+      setExistingOrders((prev) => {
+        const merged = prev.map((e) => e.serial === order.serial ? { ...e, ...patch } : e);
+        try { localStorage.setItem(storageKey, JSON.stringify(merged)); } catch {}
+        return merged;
+      });
+    } catch {
+      setOrderEmailStatus("failed");
+    }
+  }, [storageKey]);
 
   const requestLimitNoticeNode = requestLimitNotice ? (
     <div style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.28)", zIndex:9998, display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
@@ -4789,24 +4817,35 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
   // ── SCREEN: confirm ───────────────────────────────────────────────────────
   if (screen === "confirm" && currentOrder) return (
     <div dir={dir} style={{ fontFamily:"'Cairo',sans-serif", color:t.text }}>
+      <div style={{ display:"flex", justifyContent: isAr ? "flex-start" : "flex-end", marginBottom:10 }}>
+        <button
+          onClick={goToOrdersOverview}
+          style={{ padding:"7px 18px", borderRadius:10, border:`1px solid ${t.border}`, background:t.inputBg, color:t.text, fontSize:12, fontWeight:800, cursor:"pointer", fontFamily:"'Cairo',sans-serif" }}
+        >
+          {isAr ? "← إغلاق" : "Close →"}
+        </button>
+      </div>
       <div style={{ ...card, background:"linear-gradient(135deg,#22c55e20,#16a34a10)", border:"1px solid #22c55e44", textAlign:"center" }}>
         <div style={{ fontSize:40, marginBottom:6 }}>✅</div>
         <div style={{ fontSize:18, fontWeight:900, color:"#22c55e", marginBottom:4 }}>{isAr?"تم إرسال الطلب وتأكيد الدفع":"Payment Confirmed and Request Sent"}</div>
         <div style={{ fontSize:12, color:t.subText }}>{isAr?"تم إرسال بيانات الطلب تلقائيًا إلى بريدك الإلكتروني":"The order details were emailed automatically"}</div>
-        <div style={{ fontSize:11, fontWeight:800, marginTop:7, color: "#ffffff" }}>
+        <div style={{ fontSize:11, fontWeight:800, marginTop:7, color: orderEmailStatus === "failed" ? "#fca5a5" : "#ffffff" }}>
           {orderEmailStatus === "sending"
             ? (isAr ? "جارٍ إرسال الإيميل تلقائيًا في الخلفية..." : "Sending email automatically in background...")
             : orderEmailStatus === "sent"
-              ? (isAr ? "تم إرسال الإيميل بنجاح." : "Email sent successfully.")
+              ? (isAr ? "✅ تم إرسال الإيميل بنجاح." : "✅ Email sent successfully.")
               : orderEmailStatus === "failed"
-                ? (isAr ? "حفظ الطلب تم بنجاح، وتعذر إرسال الإيميل تلقائيًا الآن." : "Order saved successfully, but automatic email failed for now.")
+                ? (isAr ? "⚠️ حفظ الطلب تم بنجاح، لكن تعذر إرسال الإيميل الآن." : "⚠️ Order saved, but email failed to send.")
                 : ""}
         </div>
-        <div style={{ fontSize:11, color:t.gold, fontWeight:800, marginTop:8 }}>
-          {isAr
-            ? `سيتم تحويلك إلى صفحة الطلبات خلال ${confirmCountdown} ثوانٍ`
-            : `You will be redirected to the requests page in ${confirmCountdown} seconds`}
-        </div>
+        {orderEmailStatus === "failed" && (
+          <button
+            onClick={() => retryOrderEmail(currentOrder)}
+            style={{ marginTop:10, padding:"8px 18px", borderRadius:10, border:"1px solid rgba(250,204,21,0.5)", background:"rgba(250,204,21,0.15)", color:"#fde68a", fontSize:12, fontWeight:800, cursor:"pointer", fontFamily:"'Cairo',sans-serif" }}
+          >
+            🔄 {isAr ? "إعادة إرسال الإيميل" : "Retry Email"}
+          </button>
+        )}
       </div>
       <div style={card}>
         <PaidSectionHead icon="📋" label={isAr?"ملخص الطلب":"Order Summary"} t={t} />
@@ -4912,6 +4951,15 @@ function PaidServicesFlow({ services, lang, dark, selectedCountry, selectedCity=
           💾 {isAr?"حفظ الطلب":"Save Order"}
           {!(allStagesConfirmed&&safeOrder.reviewed) && <span style={{ fontSize:10, opacity:0.7 }}> ({isAr?"يتطلب إنهاء المراحل والتقييم أولاً":"Requires all stages and rating first"})</span>}
         </button>
+        {String(safeOrder?.emailDeliveryStatus || "").toLowerCase() === "failed" && (
+          <button
+            onClick={() => retryOrderEmail(safeOrder)}
+            disabled={orderEmailStatus === "sending"}
+            style={{ ...btnStyle("#92400e"), marginTop:10, opacity: orderEmailStatus === "sending" ? 0.6 : 1 }}
+          >
+            🔄 {orderEmailStatus === "sending" ? (isAr ? "جارٍ الإرسال..." : "Sending...") : (isAr ? "إعادة إرسال الإيميل" : "Retry Email")}
+          </button>
+        )}
         {safeOrder.customerSupport && (
           <button onClick={() => window.open(`mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(safeOrder.serial + " - دعم الخدمة")}`, "_blank")} style={{ ...btnStyle("#7c3aed"), marginTop:10 }}>
             🎧 {isAr?"خدمة العملاء":"Customer Support"}
@@ -7047,6 +7095,93 @@ export default function App() {
     }
   }, [authPreviewUser?.uid]);
 
+  // ── Sync user orders from Firestore on login ──────────────────────────────
+  useEffect(() => {
+    const uid = authPreviewUser?.uid;
+    if (!uid) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const firestoreOrders = await fetchUserOrdersFromFirebase(uid);
+        if (cancelled || !firestoreOrders?.length) return;
+
+        // Split by service category
+        const cvBuilderFirestoreOrders = firestoreOrders.filter(
+          (o) => String(o?.serviceKey || "").trim().toLowerCase() === "builder" ||
+                 String(o?.limitBucket || "").trim().toLowerCase() === "cv-builder"
+        );
+        const cvPaidFirestoreOrders = firestoreOrders.filter(
+          (o) => ["premium", "elite"].includes(String(o?.serviceKey || "").trim().toLowerCase()) ||
+                 String(o?.limitBucket || "").trim().toLowerCase() === "cv-paid"
+        );
+        const countryPaidFirestoreOrders = firestoreOrders.filter(
+          (o) => String(o?.serviceCategory || "").trim().toLowerCase() === "country-service" ||
+                 String(o?.limitBucket || "").trim().toLowerCase() === "country-paid"
+        );
+
+        // Merge CV builder orders into state (deduplicate by orderNumber)
+        if (cvBuilderFirestoreOrders.length) {
+          setCvBuilderOrders((prev) => {
+            const existingOrderNumbers = new Set(prev.map((o) => o.orderNumber).filter(Boolean));
+            const toAdd = cvBuilderFirestoreOrders
+              .filter((fo) => fo.orderNumber && !existingOrderNumbers.has(fo.orderNumber))
+              .map((fo) => ({
+                id: fo.id || fo.firebaseId,
+                firebaseId: fo.firebaseId,
+                orderNumber: fo.orderNumber || "",
+                serial: fo.serial || "",
+                packageName: fo.packageName || fo.service || (lang === "ar" ? "مستخدم عادي" : "Regular User"),
+                createdAt: fo.createdAt || new Date().toISOString(),
+                dateStr: fo.dateStr || new Date(fo.createdAt || Date.now()).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US"),
+                monthKey: fo.monthKey || "",
+                review: fo.reviewMeta || null,
+                data: fo.cvData || {},
+                statsCounted: !!fo.statsCounted,
+                emailDeliveryStatus: fo.emailDeliveryStatus || "sent",
+              }));
+            if (!toAdd.length) return prev;
+            return [...toAdd, ...prev].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+          });
+        }
+
+        // Merge CV paid orders into localStorage per package key
+        if (cvPaidFirestoreOrders.length) {
+          ["premium", "elite"].forEach((pkgKey) => {
+            const pkgOrders = cvPaidFirestoreOrders.filter(
+              (o) => String(o?.serviceKey || "").trim().toLowerCase() === pkgKey
+            );
+            if (!pkgOrders.length) return;
+            const storageKey = `cvPaidOrders-${pkgKey}`;
+            const existing = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || "[]"); } catch { return []; } })();
+            const existingSerials = new Set(existing.map((o) => o.serial).filter(Boolean));
+            const toAdd = pkgOrders.filter((fo) => fo.serial && !existingSerials.has(fo.serial));
+            if (!toAdd.length) return;
+            try { localStorage.setItem(storageKey, JSON.stringify([...toAdd, ...existing])); } catch {}
+          });
+        }
+
+        // Merge country paid orders into localStorage
+        if (countryPaidFirestoreOrders.length) {
+          const storageKey = "paidOrders";
+          const existing = (() => { try { return JSON.parse(localStorage.getItem(storageKey) || "[]"); } catch { return []; } })();
+          const existingSerials = new Set(existing.map((o) => o.serial).filter(Boolean));
+          const toAdd = countryPaidFirestoreOrders.filter((fo) => fo.serial && !existingSerials.has(fo.serial));
+          if (toAdd.length) {
+            try { localStorage.setItem(storageKey, JSON.stringify([...toAdd, ...existing])); } catch {}
+          }
+        }
+
+        // Notify PaidServicesFlow components to re-read from localStorage
+        window.dispatchEvent(new CustomEvent("user-orders-synced"));
+      } catch (error) {
+        console.error("User orders sync from Firestore failed", error);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [authPreviewUser?.uid, lang]);
+
   useEffect(() => {
     if (!providerPortalGuestNotice) return undefined;
     const timer = setTimeout(() => setProviderPortalGuestNotice(""), 3200);
@@ -9095,13 +9230,26 @@ export default function App() {
   }, [lang]);
 
   const openCvBuilderNewRequest = () => {
-    if (getRecentOrderCountWithinDays(cvBuilderOrders, 30) >= 3) {
-      setModal({
-        type: "requestLimit",
-        title: lang === "ar" ? "تم الوصول إلى حد الطلبات" : "Request limit reached",
-        msg: getRequestLimitMessage(30, lang === "ar"),
-      });
-      return;
+    // Admin bypasses all order limits
+    if (!isAdminUser) {
+      const weeklyCount = getRecentOrderCountWithinDays(cvBuilderOrders, 7);
+      const monthlyCount = getRecentOrderCountWithinDays(cvBuilderOrders, 30);
+      if (weeklyCount >= 2) {
+        setModal({
+          type: "requestLimit",
+          title: lang === "ar" ? "تم الوصول إلى حد الطلبات الأسبوعي" : "Weekly request limit reached",
+          msg: getRequestLimitMessage(7, lang === "ar"),
+        });
+        return;
+      }
+      if (monthlyCount >= 8) {
+        setModal({
+          type: "requestLimit",
+          title: lang === "ar" ? "تم الوصول إلى حد الطلبات الشهري" : "Monthly request limit reached",
+          msg: getRequestLimitMessage(30, lang === "ar"),
+        });
+        return;
+      }
     }
     if (isGuestUser) {
       setModal({
@@ -9398,21 +9546,31 @@ export default function App() {
     setCvBuilderOrderSyncError("");
     setCvStep(targetStep);
 
-    if (targetStep === 4 && isGuestUser) {
-      setCvBuilderOrderSyncError(
-        lang === "ar"
-          ? "قبل التصدير أو إرسال الطلب، يجب تسجيل الدخول أو إنشاء حساب."
-          : "Before export or request submission, you must sign in or create an account."
-      );
-      promptCvBuilderGuestAuth();
+    if (targetStep === 4) {
+      if (isGuestUser) {
+        setCvBuilderOrderSyncError(
+          lang === "ar"
+            ? "قبل التصدير أو إرسال الطلب، يجب تسجيل الدخول أو إنشاء حساب."
+            : "Before export or request submission, you must sign in or create an account."
+        );
+        promptCvBuilderGuestAuth();
+      } else if (!selectedCvBuilderOrder?.id) {
+        // Pre-create order snapshot synchronously to lock in the order number
+        // before the async useEffect fires, preventing race-condition duplicates
+        const nextOrder = createCvBuilderOrderSnapshot();
+        setCvBuilderOrders((prev) => [nextOrder, ...prev]);
+        setSelectedCvBuilderOrder(nextOrder);
+      }
     }
   }, [
+    createCvBuilderOrderSnapshot,
     cvStep,
     getCvStepValidationMessage,
     isCvStepComplete,
     isGuestUser,
     lang,
     promptCvBuilderGuestAuth,
+    selectedCvBuilderOrder?.id,
   ]);
 
   useEffect(() => {
@@ -9665,37 +9823,51 @@ export default function App() {
 
     setCvStepValidationError("");
     setCvBuilderOrderSyncError("");
+    setCvBuilderOrderSyncBusy(true);
 
     let ensuredOrder = null;
     try {
-      ensuredOrder = await ensureCvBuilderOrderForCurrentRequestAsync();
+      ensuredOrder = await withTimeout(
+        ensureCvBuilderOrderForCurrentRequestAsync(),
+        35000,
+        "CV save"
+      );
     } catch (error) {
       console.error("CV builder request save failed", error);
+      setCvBuilderOrderSyncBusy(false);
       if (isDeviceRequestLimitError(error)) {
         showDeviceRequestLimitNotice(error?.details);
         return;
       }
-      alert(lang === "ar"
-        ? "تعذر حفظ طلب السيرة الذاتية الآن. حاول مرة أخرى."
-        : "Unable to save your CV request right now. Please try again.");
+      setCvBuilderOrderSyncError(
+        lang === "ar"
+          ? "تعذر حفظ الطلب الآن. تحقق من الاتصال وأعد المحاولة."
+          : "Unable to save the request right now. Check your connection and try again."
+      );
       return;
+    } finally {
+      setCvBuilderOrderSyncBusy(false);
     }
 
-    setOrderEmailStatus("sending");
-    const emailResult = await dispatchCvBuilderOrderEmail(ensuredOrder, { force: true });
-    const nextStatus = emailResult?.ok ? "sent" : "failed";
-    setOrderEmailStatus(nextStatus);
+    // Open email client so user can send data directly
+    const { subject, body } = buildCvSubmissionEmail(cvData, {
+      orderNumber: ensuredOrder?.orderNumber || "",
+      serial: ensuredOrder?.serial || "",
+    });
+    window.open(
+      `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+      "_blank"
+    );
+
+    // Background: send via Firebase function (non-blocking)
+    dispatchCvBuilderOrderEmail(ensuredOrder, { force: true }).catch(() => {});
 
     setModal({
       type: "success",
-      title: lang === "ar" ? "تم إرسال الطلب" : "Request sent",
-      msg: nextStatus === "sent"
-        ? (lang === "ar"
-          ? `تم إنشاء الطلب رقم ${ensuredOrder?.orderNumber || "-"} وإرسال الإشعار بالبريد.`
-          : `Request ${ensuredOrder?.orderNumber || "-"} was created and email notification was sent.`)
-        : (lang === "ar"
-          ? `تم إنشاء الطلب رقم ${ensuredOrder?.orderNumber || "-"} لكن تعذر إرسال الإيميل حالياً.`
-          : `Request ${ensuredOrder?.orderNumber || "-"} was created, but the email could not be sent right now.`),
+      title: lang === "ar" ? "تم حفظ الطلب بنجاح" : "Request saved successfully",
+      msg: lang === "ar"
+        ? `تم إنشاء الطلب رقم ${ensuredOrder?.orderNumber || "-"} وحفظه. تأكد من إرسال الإيميل الذي فُتح لك.`
+        : `Request ${ensuredOrder?.orderNumber || "-"} was created and saved. Please send the email that opened for you.`,
     });
   };
 
@@ -9861,6 +10033,70 @@ export default function App() {
         : "There was a problem generating the PDF. Please try again.");
     } finally {
       setCvPdfExporting(false);
+    }
+  };
+
+  // Export PDF/Word for a specific previous order using its stored data
+  const exportOrderDataToPdf = async (order, exportLang = "en") => {
+    if (cvPdfExporting) return;
+    const orderCvData = order?.data;
+    if (!orderCvData?.fullName || !orderCvData?.jobTitle) {
+      alert(lang === "ar" ? "بيانات هذا الطلب غير مكتملة للتصدير." : "This order's data is incomplete for export.");
+      return;
+    }
+    setCvPdfExporting(true);
+    const previewWindow = !isNativePlatform ? window.open("", "_blank") : null;
+    if (previewWindow && !previewWindow.closed) {
+      previewWindow.document.write(`<html><head><title>Preparing PDF</title></head><body style="font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f8fafc;color:#1e293b;"><div style="text-align:center;"><div style="font-size:18px;font-weight:700;margin-bottom:12px;">${lang === "ar" ? "جاري تجهيز ملف PDF..." : "Preparing PDF..."}</div></div></body></html>`);
+      previewWindow.document.close();
+    }
+    let mount = null;
+    try {
+      const [{ default: html2canvas }, jsPdfModule] = await Promise.all([import("html2canvas"), import("jspdf")]);
+      const JsPdfCtor = jsPdfModule.jsPDF || jsPdfModule.default?.jsPDF || jsPdfModule.default;
+      if (!JsPdfCtor) throw new Error("jsPDF constructor is unavailable.");
+      mount = document.createElement("div");
+      mount.style.cssText = "position:fixed;left:-10000px;top:0;z-index:-1;pointer-events:none;";
+      mount.innerHTML = buildCvPdfDocument(orderCvData, exportLang);
+      document.body.appendChild(mount);
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      const pages = Array.from(mount.querySelectorAll(".cv-pdf-page-node"));
+      if (!pages.length) throw new Error("PDF pages were not rendered.");
+      const pdf = new JsPdfCtor({ orientation: "portrait", unit: "pt", format: "a4" });
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      for (let i = 0; i < pages.length; i++) {
+        const canvas = await html2canvas(pages[i], { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false });
+        if (i > 0) pdf.addPage();
+        pdf.addImage(canvas.toDataURL("image/jpeg", 0.96), "JPEG", 0, 0, pdfWidth, pdfHeight);
+      }
+      const pdfBlob = pdf.output("blob");
+      const fileNameBase = (orderCvData.fullName || "professional-cv").trim().replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/\s+/g, "-").toLowerCase() || "professional-cv";
+      await triggerFileDownload(pdfBlob, `${fileNameBase}.pdf`, "application/pdf", previewWindow);
+    } catch (error) {
+      console.error("CV PDF export (order) failed:", error);
+      if (previewWindow && !previewWindow.closed) previewWindow.close();
+      alert(lang === "ar" ? "حدثت مشكلة أثناء إنشاء ملف PDF. جرّب مرة أخرى." : "There was a problem generating the PDF. Please try again.");
+    } finally {
+      if (mount && mount.parentNode) mount.parentNode.removeChild(mount);
+      setCvPdfExporting(false);
+    }
+  };
+
+  const exportOrderDataToWord = async (order, exportLang = "en") => {
+    const orderCvData = order?.data;
+    if (!orderCvData?.fullName || !orderCvData?.jobTitle) {
+      alert(lang === "ar" ? "بيانات هذا الطلب غير مكتملة للتصدير." : "This order's data is incomplete for export.");
+      return;
+    }
+    const fileNameBase = (orderCvData.fullName || "professional-cv").trim().replace(/[^\p{L}\p{N}\s-]/gu, "").replace(/\s+/g, "-").toLowerCase() || "professional-cv";
+    const wordDocument = buildCvWordDocument(orderCvData, exportLang);
+    const wordBlob = new Blob(["\ufeff", wordDocument], { type: "application/msword" });
+    try {
+      await triggerFileDownload(wordBlob, `${fileNameBase}.doc`, "application/msword");
+    } catch (error) {
+      console.error("CV Word export (order) failed:", error);
+      alert(lang === "ar" ? "حدثت مشكلة أثناء إنشاء ملف Word. جرّب مرة أخرى." : "There was a problem generating the Word file. Please try again.");
     }
   };
 
@@ -10995,6 +11231,29 @@ export default function App() {
             </div>
             <button onClick={() => setModal(null)}
               style={{ width: "100%", padding: "11px", borderRadius: 12, border: "none", background: "#e5e7eb", color: "#334155", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Cairo',sans-serif" }}>
+              {lang === "ar" ? "إلغاء" : "Cancel"}
+            </button>
+          </>
+        ) : modal.type === "cvExportLangPrevOrder" ? (
+          <>
+            <div style={{ fontSize: 36, textAlign: "center", marginBottom: 10 }}>🌐</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: t.gold, textAlign: "center", marginBottom: 10, fontFamily: "'Cairo',sans-serif" }}>
+              {lang === "ar" ? `اختر لغة تصدير ${modal.fileType === "pdf" ? "PDF" : "Word"}` : `Choose ${modal.fileType === "pdf" ? "PDF" : "Word"} export language`}
+            </div>
+            <div style={{ display:"grid", gap:10, marginBottom:12 }}>
+              <button
+                onClick={() => { const o = modal.order; setModal(null); modal.fileType === "pdf" ? exportOrderDataToPdf(o, "ar") : exportOrderDataToWord(o, "ar"); }}
+                style={{ width:"100%", padding:"12px", borderRadius:12, border:`1px solid ${t.gold}55`, background:`${t.gold}12`, color:t.gold, fontSize:13, fontWeight:800, cursor:"pointer", fontFamily:"'Cairo',sans-serif" }}>
+                العربية
+              </button>
+              <button
+                onClick={() => { const o = modal.order; setModal(null); modal.fileType === "pdf" ? exportOrderDataToPdf(o, "en") : exportOrderDataToWord(o, "en"); }}
+                style={{ width:"100%", padding:"12px", borderRadius:12, border:`1px solid ${t.border}`, background:t.inputBg, color:t.text, fontSize:13, fontWeight:800, cursor:"pointer", fontFamily:"'Cairo',sans-serif" }}>
+                English
+              </button>
+            </div>
+            <button onClick={() => setModal(null)}
+              style={{ width:"100%", padding:"11px", borderRadius:12, border:"none", background:"#e5e7eb", color:"#334155", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"'Cairo',sans-serif" }}>
               {lang === "ar" ? "إلغاء" : "Cancel"}
             </button>
           </>
@@ -15537,17 +15796,17 @@ export default function App() {
           const selectedCvService = cvPaidServices.find(service => service.key === selectedCvPackage) || null;
           const selectedCvPackageIntro = selectedCvPackage === "premium"
             ? {
-                title: lang==="ar" ? "ملحوظة مهمة" : "Important Note",
+                title: lang==="ar" ? "ملاحظة مهمة — باقة بريميوم 👑" : "Important Note — Premium Package 👑",
                 body: lang==="ar"
-                  ? "مدة الخدمة المقدمة شهر كامل لحين استيفاء عدد الوظائف المطلوب، أو يتم تمديدها لحين انتهاء إرسال عدد الوظائف كاملة إلى المستخدم."
-                  : "This service remains active for a full month until the required number of opportunities is completed, or is extended until all opportunities are fully delivered."
+                  ? "تشمل الباقة: سيرة ذاتية احترافية + 16 فرصة توظيف مناسبة لتخصصك تُرسل إلى واتسابك مباشرة + Cover Letter بالعربي والإنجليزي.\n\nمدة الخدمة شهر كامل أو لحين اكتمال إرسال 16 فرصة.\n\n⚠️ لا تتضمن هذه الباقة دعم عملاء بعد الدفع. للتواصل المباشر يُنصح بالترقية إلى باقة البحث والتوظيف."
+                  : "Package includes: Professional CV + 16 role-matched opportunities sent to your WhatsApp + Cover Letter in Arabic & English.\n\nService duration: 1 month or until all 16 opportunities are delivered.\n\n⚠️ This package does not include post-payment customer support. For direct support, consider upgrading to the Job Search Package."
               }
             : selectedCvPackage === "elite"
               ? {
-                  title: lang==="ar" ? "ملحوظة مهمة" : "Important Note",
+                  title: lang==="ar" ? "ملاحظة مهمة — باقة البحث والتوظيف 🚀" : "Important Note — Job Search Package 🚀",
                   body: lang==="ar"
-                    ? "مدة الخدمة المقدمة شهر كامل لحين استيفاء عدد الوظائف المطلوب، أو يتم تمديدها لحين انتهاء إرسال عدد الوظائف كاملة إلى المستخدم."
-                    : "This service remains active for a full month until the required number of opportunities is completed, or is extended until all opportunities are fully delivered."
+                    ? "تشمل الباقة: سيرة ذاتية احترافية بالعربي والإنجليزي + 32 فرصة توظيف مستهدفة فعلياً من مجالك + بحث حقيقي عن وظائف مناسبة.\n\nمدة الخدمة شهر كامل أو لحين اكتمال إرسال 32 فرصة.\n\n✅ تتضمن هذه الباقة دعم عملاء مباشر بعد الدفع عبر واتساب."
+                    : "Package includes: Professional Arabic & English CV + 32 real targeted job opportunities from your field + active job search on your behalf.\n\nService duration: 1 month or until all 32 opportunities are delivered.\n\n✅ This package includes direct post-payment customer support via WhatsApp."
                 }
               : null;
           const cvJobSites = [
@@ -15978,6 +16237,27 @@ export default function App() {
                           : "Open all the data you submitted in this request in a simple organized view."}
                       </div>
                     </button>
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(2,minmax(0,1fr))", gap:10 }}>
+                      <button
+                        onClick={() => setModal({ type:"cvExportLangPrevOrder", fileType:"pdf", order: selectedCvBuilderOrder })}
+                        disabled={cvPdfExporting}
+                        style={{ ...cardStyle, marginBottom:0, textAlign:"center", background:"linear-gradient(135deg,#fff1f2,#f8fafc)", border:"1px solid #fda4af", cursor: cvPdfExporting ? "wait" : "pointer", opacity: cvPdfExporting ? 0.75 : 1, minHeight:90, padding:"10px" }}
+                      >
+                        <div style={{ fontSize:20, marginBottom:4 }}>📄</div>
+                        <div style={{ fontSize:13, fontWeight:900, color:"#e11d48", fontFamily:"'Cairo',sans-serif", marginBottom:3 }}>
+                          {cvPdfExporting ? (lang==="ar" ? "جاري التجهيز..." : "Preparing...") : (lang==="ar" ? "تصدير PDF" : "Export PDF")}
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => setModal({ type:"cvExportLangPrevOrder", fileType:"word", order: selectedCvBuilderOrder })}
+                        style={{ ...cardStyle, marginBottom:0, textAlign:"center", background:"linear-gradient(135deg,#eff6ff,#f8fafc)", border:"1px solid #93c5fd", cursor:"pointer", minHeight:90, padding:"10px" }}
+                      >
+                        <div style={{ fontSize:20, marginBottom:4 }}>📝</div>
+                        <div style={{ fontSize:13, fontWeight:900, color:"#2563eb", fontFamily:"'Cairo',sans-serif", marginBottom:3 }}>
+                          {lang==="ar" ? "تصدير Word" : "Export Word"}
+                        </div>
+                      </button>
+                    </div>
                     <div style={{ display:"flex", justifyContent:"center" }}>
                       <button
                         onClick={() => {

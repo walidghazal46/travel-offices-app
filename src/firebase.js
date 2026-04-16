@@ -490,6 +490,25 @@ export async function fetchServiceOrdersFromFirebase() {
   }));
 }
 
+export async function fetchUserOrdersFromFirebase(uid) {
+  if (!uid) return [];
+  const snapshot = await withRetry(async () =>
+    getDocs(query(collection(firestoreDb, "orders"), where("userUid", "==", uid)))
+  );
+  return snapshot.docs.map((orderDoc) => {
+    const data = orderDoc.data();
+    const createdAt = data.createdAt?.toDate
+      ? data.createdAt.toDate().toISOString()
+      : (data.createdAt || data.date || new Date().toISOString());
+    return {
+      ...data,
+      firebaseId: orderDoc.id,
+      id: data.id || orderDoc.id,
+      createdAt,
+    };
+  });
+}
+
 export async function submitServiceProviderRequestToFirebase(requestData = {}) {
   const payload = {
     ...removeUndefined(requestData),
