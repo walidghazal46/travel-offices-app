@@ -926,6 +926,9 @@ export default function App() {
   const [adminSecurityAttempts, setAdminSecurityAttempts] = useState(0);
   const [adminSecurityBusy, setAdminSecurityBusy] = useState(false);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+  const [adminSelectedUserUid, setAdminSelectedUserUid] = useState("");
+  const [adminPanelHistory, setAdminPanelHistory] = useState(["overview"]);
+  const [adminExitConfirm, setAdminExitConfirm] = useState(false);
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminUsersLoading, setAdminUsersLoading] = useState(false);
   const [adminUsersError, setAdminUsersError] = useState("");
@@ -1997,8 +2000,10 @@ export default function App() {
   const closeAdminPanel = useCallback(() => {
     setAdminPanelOpen(false);
     setAdminPanelSection("overview");
+    setAdminPanelHistory(["overview"]);
     setAdminSelectedProviderRequestId("");
     setAdminSelectedOrderId("");
+    setAdminSelectedUserUid("");
     setAdminUsersError("");
     setAdminUsersQuery("");
     setAdminActionBusyUid("");
@@ -2010,6 +2015,7 @@ export default function App() {
     setAdminProviderRequestsError("");
     setAdminProviderRequestsQuery("");
     setAdminProviderActionBusyId("");
+    setAdminExitConfirm(false);
   }, []);
 
   const loadAdminUsers = useCallback(async () => {
@@ -6396,6 +6402,77 @@ export default function App() {
           </div>
         </div>
       )}
+      {!!adminExitConfirm && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 10002,
+            background: "rgba(2, 6, 23, 0.58)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            style={{
+              width: "min(100%, 360px)",
+              borderRadius: 20,
+              padding: "16px 14px 14px",
+              background: "linear-gradient(180deg, rgba(127,29,29,0.98) 0%, rgba(30,12,12,0.98) 100%)",
+              border: "1px solid rgba(248,113,113,0.55)",
+              boxShadow: "0 18px 48px rgba(127,29,29,0.42), 0 0 28px rgba(248,113,113,0.28)",
+              textAlign: dir === "rtl" ? "right" : "left",
+            }}
+          >
+            <div style={{ color: "#f8fafc", fontSize: 15, fontWeight: 900, fontFamily: "'Cairo',sans-serif", marginBottom: 8 }}>
+              {lang === "ar" ? "هل تريد الخروج من لوحة تحكم الأدمن؟" : "Exit Admin Control Panel?"}
+            </div>
+            <div style={{ color: "rgba(241,245,249,0.92)", fontSize: 12, lineHeight: 1.75, fontWeight: 700, fontFamily: "'Cairo',sans-serif", marginBottom: 12 }}>
+              {lang === "ar"
+                ? "سيتم إغلاق لوحة تحكم الأدمن والعودة إلى الواجهة الرئيسية."
+                : "The admin panel will be closed and you will return to the main interface."}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <button
+                onClick={() => setAdminExitConfirm(false)}
+                style={{
+                  width: "100%",
+                  padding: "9px 10px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.24)",
+                  background: "rgba(255,255,255,0.08)",
+                  color: "#f8fafc",
+                  fontSize: 12,
+                  fontWeight: 800,
+                  fontFamily: "'Cairo',sans-serif",
+                  cursor: "pointer",
+                }}
+              >
+                {lang === "ar" ? "إلغاء" : "Cancel"}
+              </button>
+              <button
+                onClick={() => closeAdminPanel()}
+                style={{
+                  width: "100%",
+                  padding: "9px 10px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: "linear-gradient(135deg, #ef4444, #b91c1c)",
+                  color: "#fff",
+                  fontSize: 12,
+                  fontWeight: 900,
+                  fontFamily: "'Cairo',sans-serif",
+                  cursor: "pointer",
+                }}
+              >
+                {lang === "ar" ? "تأكيد الخروج" : "Exit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div
         style={{
           width: "100%",
@@ -6439,23 +6516,29 @@ export default function App() {
           <div style={{ color: "rgba(245,215,123,0.92)", fontSize: 11, fontWeight: 700, marginTop: 3, fontFamily: "'Cairo',sans-serif" }}>
             {lang === "ar" ? "المستخدمون والطلبات (آخر 30 يوم)" : "Users and orders (last 30 days)"}
           </div>
-          {adminPanelSection !== "overview" && (
-            <button
-              onClick={() => {
-                if (adminSelectedOrderId) {
-                  setAdminSelectedOrderId("");
-                } else {
-                  setAdminPanelSection("overview");
-                  setAdminSelectedProviderRequestId("");
-                }
-              }}
-              style={{ marginTop: 8, border: "1px solid rgba(212,175,55,0.35)", background: "rgba(255,255,255,0.06)", color: "#f5d77b", borderRadius: 10, padding: "6px 10px", fontSize: 11, fontWeight: 900, cursor: "pointer", fontFamily: "'Cairo',sans-serif" }}
-            >
-              {adminSelectedOrderId
-                ? (lang === "ar" ? "← رجوع للطلبات" : "← Back to Orders")
-                : (lang === "ar" ? "رجوع للوحة الرئيسية" : "Back to Main Panel")}
-            </button>
-          )}
+          <button
+            onClick={() => {
+              const currentSection = adminPanelSection;
+              if (currentSection === "overview") {
+                setAdminExitConfirm(true);
+              } else if (adminSelectedOrderId) {
+                setAdminSelectedOrderId("");
+                setAdminPanelHistory(prev => prev.slice(0, -1));
+              } else if (adminSelectedUserUid) {
+                setAdminSelectedUserUid("");
+                setAdminPanelHistory(prev => prev.slice(0, -1));
+              } else if (adminSelectedProviderRequestId) {
+                setAdminSelectedProviderRequestId("");
+                setAdminPanelHistory(prev => prev.slice(0, -1));
+              } else {
+                setAdminPanelSection("overview");
+                setAdminPanelHistory(["overview"]);
+              }
+            }}
+            style={{ marginTop: 8, border: "1px solid rgba(212,175,55,0.35)", background: "rgba(255,255,255,0.06)", color: "#f5d77b", borderRadius: 10, padding: "6px 10px", fontSize: 11, fontWeight: 900, cursor: "pointer", fontFamily: "'Cairo',sans-serif" }}
+          >
+            {lang === "ar" ? "← رجوع" : "← Back"}
+          </button>
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 18 }}>
@@ -6520,7 +6603,11 @@ export default function App() {
             }].map((item) => (
               <button
                 key={item.key}
-                onClick={() => setAdminPanelSection(item.key)}
+                onClick={() => {
+                  const newHistory = [...adminPanelHistory, item.key];
+                  setAdminPanelHistory(newHistory);
+                  setAdminPanelSection(item.key);
+                }}
                 style={{
                   width: "100%",
                   textAlign: dir === "rtl" ? "right" : "left",
@@ -6582,157 +6669,131 @@ export default function App() {
           )}
 
           {canManageAdminUsers && (
-          <div style={{ display: "grid", gap: 8, marginTop: 2 }}>
-            {filteredAdminUsers.map((entry) => {
-            const entryUid = String(entry.uid || entry.id || "").trim();
-            const entryEmail = String(entry.email || "").trim().toLowerCase();
-            const isBlocked = String(entry.status || "active").trim() === "blocked";
-            const entryRole = String(entry.role || "user").trim().toLowerCase();
-            const isEntryOwnerAdmin = entryEmail === PRIMARY_ADMIN_EMAIL;
-            const isEntryDelegatedAdmin = entryRole === "admin_delegate";
-            const canManage = !!entryUid && entryUid !== authPreviewUser?.uid && !isEntryOwnerAdmin;
-            return (
-              <div
-                key={entryUid || entry.id}
-                style={{
-                  borderRadius: 18,
-                  border: `1px solid ${isBlocked ? "rgba(248,113,113,0.34)" : "rgba(212,175,55,0.22)"}`,
-                  background: isBlocked ? "rgba(127,29,29,0.14)" : "rgba(255,255,255,0.05)",
-                  padding: "8px 9px 7px",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ color: "#f8fafc", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif", lineHeight: 1.35 }}>
-                      {entry.displayName || (lang === "ar" ? "مستخدم بدون اسم" : "Unnamed user")}
+          <div style={{ marginTop: 2 }}>
+            {adminSelectedUserUid ? (() => {
+              const selEntry = filteredAdminUsers.find(e => String(e.uid || e.id || "").trim() === adminSelectedUserUid)
+                || adminUsers.find(e => String(e.uid || e.id || "").trim() === adminSelectedUserUid);
+              if (!selEntry) return null;
+              const selUid = String(selEntry.uid || selEntry.id || "").trim();
+              const selEmail = String(selEntry.email || "").trim().toLowerCase();
+              const selBlocked = String(selEntry.status || "active").trim() === "blocked";
+              const selRole = String(selEntry.role || "user").trim().toLowerCase();
+              const isSelOwnerAdmin = selEmail === PRIMARY_ADMIN_EMAIL;
+              const isSelDelegateAdmin = selRole === "admin_delegate";
+              const canManageSel = !!selUid && selUid !== authPreviewUser?.uid && !isSelOwnerAdmin;
+              const rawSelName = String(selEntry.displayName || "").trim();
+              const cleanSelName = rawSelName && !rawSelName.includes("@") ? rawSelName : (lang === "ar" ? "مستخدم بدون اسم" : "Unnamed user");
+              const selIdx = adminUsers.findIndex(e => String(e.uid || e.id || "").trim() === adminSelectedUserUid);
+              return (
+                <div>
+                  <button
+                    onClick={() => setAdminSelectedUserUid("")}
+                    style={{ marginBottom: 10, border: "1px solid rgba(212,175,55,0.35)", background: "rgba(255,255,255,0.06)", color: "#f5d77b", borderRadius: 10, padding: "6px 10px", fontSize: 11, fontWeight: 900, cursor: "pointer", fontFamily: "'Cairo',sans-serif" }}
+                  >
+                    {lang === "ar" ? "← رجوع للقائمة" : "← Back to list"}
+                  </button>
+                  <div style={{ borderRadius: 18, border: `1px solid ${selBlocked ? "rgba(248,113,113,0.5)" : "rgba(212,175,55,0.35)"}`, background: selBlocked ? "rgba(127,29,29,0.18)" : "rgba(255,255,255,0.05)", padding: "12px 12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: "50%", background: selBlocked ? "rgba(239,68,68,0.22)" : "rgba(56,189,248,0.18)", border: `1px solid ${selBlocked ? "rgba(248,113,113,0.4)" : "rgba(96,165,250,0.4)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <span style={{ color: selBlocked ? "#fca5a5" : "#93c5fd", fontWeight: 900, fontSize: 15, fontFamily: "'Cairo',sans-serif" }}>{selIdx + 1}</span>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ color: "#f8fafc", fontSize: 13, fontWeight: 900, fontFamily: "'Cairo',sans-serif", lineHeight: 1.3 }}>{cleanSelName}</div>
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 3, padding: "2px 8px", borderRadius: 999, background: selBlocked ? "rgba(239,68,68,0.18)" : "rgba(34,197,94,0.16)", color: selBlocked ? "#fecaca" : "#bbf7d0", fontSize: 10, fontWeight: 900, fontFamily: "'Cairo',sans-serif" }}>
+                          {selBlocked ? (lang === "ar" ? "محظور" : "Blocked") : (lang === "ar" ? "نشط" : "Active")}
+                          {!selBlocked && isSelOwnerAdmin && <span style={{ marginInlineStart: 4 }}>{lang === "ar" ? "| أدمن أساسي" : "| Primary Admin"}</span>}
+                          {!selBlocked && !isSelOwnerAdmin && isSelDelegateAdmin && <span style={{ marginInlineStart: 4 }}>{lang === "ar" ? "| أدمن متابعة" : "| Tracking Admin"}</span>}
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ color: "#93c5fd", fontSize: 10, fontWeight: 700, fontFamily: "sans-serif", marginTop: 1, wordBreak: "break-word", lineHeight: 1.3 }}>
-                      {entry.email || entry.phoneNumber || entryUid}
+                    <div style={{ display: "grid", gap: 6, marginBottom: 12 }}>
+                      {[
+                        [lang === "ar" ? "البريد الإلكتروني" : "Email", selEntry.email || "—"],
+                        [lang === "ar" ? "رقم الهاتف" : "Phone", selEntry.phoneNumber || "—"],
+                        [lang === "ar" ? "الدولة" : "Country", selEntry.country || "—"],
+                        [lang === "ar" ? "الجنسية" : "Nationality", selEntry.nationality || "—"],
+                        ["UID", selUid],
+                      ].map(([label, value]) => (
+                        <div key={label} style={{ display: "flex", alignItems: "flex-start", gap: 8, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", padding: "6px 9px" }}>
+                          <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 10, fontWeight: 700, fontFamily: "'Cairo',sans-serif", whiteSpace: "nowrap", minWidth: 90 }}>{label}</div>
+                          <div style={{ color: "#e0f2fe", fontSize: 10, fontWeight: 800, fontFamily: label === "UID" ? "monospace" : "'Cairo',sans-serif", wordBreak: "break-all", lineHeight: 1.4 }}>{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 7 }}>
+                      <button
+                        onClick={() => executeAdminToggleRole(selEntry)}
+                        disabled={!canManageSel || adminActionBusyUid === selUid}
+                        style={{ padding: "8px 4px", borderRadius: 12, border: "none", background: isSelDelegateAdmin ? "linear-gradient(135deg, #f59e0b, #d97706)" : "linear-gradient(135deg, #22c55e, #15803d)", color: "#fff", fontSize: 10, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: canManageSel ? "pointer" : "not-allowed", opacity: !canManageSel || adminActionBusyUid === selUid ? 0.55 : 1 }}
+                      >
+                        {!canManageSel ? (lang === "ar" ? "غير متاح" : "Locked") : adminActionBusyUid === selUid ? (lang === "ar" ? "جارٍ..." : "Wait...") : isSelDelegateAdmin ? (lang === "ar" ? "إلغاء الأدمن" : "Remove Admin") : (lang === "ar" ? "🟢 جعل أدمن" : "🟢 Make Admin")}
+                      </button>
+                      <button
+                        onClick={() => handleAdminStatusToggle(selEntry)}
+                        disabled={!canManageSel || adminActionBusyUid === selUid}
+                        style={{ padding: "8px 4px", borderRadius: 12, border: "none", background: selBlocked ? "linear-gradient(135deg, #22c55e, #15803d)" : "linear-gradient(135deg, #ef4444, #b91c1c)", color: "#fff", fontSize: 10, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: canManageSel ? "pointer" : "not-allowed", opacity: !canManageSel || adminActionBusyUid === selUid ? 0.55 : 1 }}
+                      >
+                        {!canManageSel ? (lang === "ar" ? "حسابك" : "Yours") : adminActionBusyUid === selUid ? (lang === "ar" ? "جارٍ..." : "Wait...") : selBlocked ? (lang === "ar" ? "فك الحظر" : "Unblock") : (lang === "ar" ? "حظر" : "Block")}
+                      </button>
+                      <button
+                        onClick={() => handleAdminDeleteUser(selEntry)}
+                        disabled={!canManageSel || adminActionBusyUid === selUid}
+                        style={{ padding: "8px 4px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #ef4444, #991b1b)", color: "#fff", fontSize: 10, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: canManageSel ? "pointer" : "not-allowed", opacity: !canManageSel || adminActionBusyUid === selUid ? 0.55 : 1 }}
+                      >
+                        {!canManageSel ? (lang === "ar" ? "حسابك" : "Yours") : adminActionBusyUid === selUid ? (lang === "ar" ? "جارٍ..." : "Wait...") : (lang === "ar" ? "حذف" : "Delete")}
+                      </button>
                     </div>
                   </div>
-                  <div style={{
-                    padding: "4px 8px",
-                    borderRadius: 999,
-                    background: isBlocked ? "rgba(239,68,68,0.18)" : "rgba(34,197,94,0.16)",
-                    color: isBlocked ? "#fecaca" : "#bbf7d0",
-                    fontSize: 10,
-                    fontWeight: 900,
-                    fontFamily: "'Cairo',sans-serif",
-                    whiteSpace: "nowrap",
-                  }}>
-                    <span>{isBlocked ? (lang === "ar" ? "محظور" : "Blocked") : (lang === "ar" ? "نشط" : "Active")}</span>
-                    {!isBlocked && (isEntryOwnerAdmin || isEntryDelegatedAdmin) && (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, marginInlineStart: 6 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 8px #22c55e" }} />
-                        <span>
-                          {isEntryOwnerAdmin
-                            ? (lang === "ar" ? "أدمن أساسي" : "Primary Admin")
-                            : (lang === "ar" ? "أدمن متابعة" : "Tracking Admin")}
+                </div>
+              );
+            })() : (
+              <div style={{ display: "grid", gap: 5 }}>
+                {filteredAdminUsers.map((entry, idx) => {
+                  const entryUid = String(entry.uid || entry.id || "").trim();
+                  const entryEmail = String(entry.email || "").trim().toLowerCase();
+                  const isBlocked = String(entry.status || "active").trim() === "blocked";
+                  const entryRole = String(entry.role || "user").trim().toLowerCase();
+                  const isEntryOwnerAdmin = entryEmail === PRIMARY_ADMIN_EMAIL;
+                  const isEntryDelegatedAdmin = entryRole === "admin_delegate";
+                  const rawName = String(entry.displayName || "").trim();
+                  const cleanName = rawName && !rawName.includes("@") ? rawName : (lang === "ar" ? "مستخدم بدون اسم" : "Unnamed");
+                  const subtitle = entry.email || entry.phoneNumber || "";
+                  return (
+                    <button
+                      key={entryUid || entry.id}
+                      onClick={() => setAdminSelectedUserUid(entryUid)}
+                      style={{ display: "flex", alignItems: "center", gap: 9, padding: "7px 9px", borderRadius: 13, border: `1px solid ${isBlocked ? "rgba(248,113,113,0.32)" : "rgba(212,175,55,0.2)"}`, background: isBlocked ? "rgba(127,29,29,0.12)" : "rgba(255,255,255,0.04)", cursor: "pointer", textAlign: dir === "rtl" ? "right" : "left", width: "100%" }}
+                    >
+                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(56,189,248,0.14)", border: "1px solid rgba(96,165,250,0.28)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <span style={{ color: "#93c5fd", fontWeight: 900, fontSize: 11, fontFamily: "'Cairo',sans-serif" }}>{idx + 1}</span>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ color: "#f8fafc", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cleanName}</div>
+                        {subtitle && <div style={{ color: "#94a3b8", fontSize: 9, fontWeight: 700, fontFamily: "sans-serif", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{subtitle}</div>}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                        {(isEntryOwnerAdmin || isEntryDelegatedAdmin) && !isBlocked && (
+                          <span style={{ padding: "2px 6px", borderRadius: 999, background: "rgba(245,158,11,0.18)", color: "#fbbf24", fontSize: 9, fontWeight: 900, fontFamily: "'Cairo',sans-serif" }}>
+                            {lang === "ar" ? "أدمن" : "Admin"}
+                          </span>
+                        )}
+                        <span style={{ padding: "2px 7px", borderRadius: 999, background: isBlocked ? "rgba(239,68,68,0.18)" : "rgba(34,197,94,0.14)", color: isBlocked ? "#fca5a5" : "#86efac", fontSize: 9, fontWeight: 900, fontFamily: "'Cairo',sans-serif" }}>
+                          {isBlocked ? (lang === "ar" ? "محظور" : "Blocked") : (lang === "ar" ? "نشط" : "Active")}
                         </span>
-                      </span>
-                    )}
+                        <span style={{ color: "#64748b", fontSize: 14, lineHeight: 1 }}>{dir === "rtl" ? "‹" : "›"}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+                {!adminUsersLoading && filteredAdminUsers.length === 0 && (
+                  <div style={{ borderRadius: 18, border: "1px dashed rgba(212,175,55,0.28)", background: "rgba(255,255,255,0.04)", padding: "18px 14px", textAlign: "center", color: "rgba(255,255,255,0.82)", fontSize: 13, lineHeight: 1.8, fontWeight: 700, fontFamily: "'Cairo',sans-serif" }}>
+                    {lang === "ar" ? "لا توجد نتائج مطابقة للمستخدمين." : "No matching users were found."}
                   </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 7 }}>
-                  {[
-                    [lang === "ar" ? "الدولة" : "Country", entry.country || "—"],
-                    [lang === "ar" ? "الجنسية" : "Nationality", entry.nationality || "—"],
-                  ].map(([label, value]) => (
-                    <div key={`${entryUid}-${label}`} style={{ borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", padding: "5px 7px" }}>
-                      <div style={{ color: "rgba(255,255,255,0.56)", fontSize: 9, fontWeight: 700, fontFamily: "'Cairo',sans-serif", marginBottom: 2 }}>
-                        {label}
-                      </div>
-                      <div style={{ color: "#f8fafc", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif", wordBreak: "break-word", lineHeight: 1.25 }}>
-                        {value}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 7 }}>
-                  <button
-                    onClick={() => executeAdminToggleRole(entry)}
-                    disabled={!canManage || adminActionBusyUid === entryUid}
-                    style={{
-                      padding: "6px 8px",
-                      borderRadius: 12,
-                      border: "none",
-                      background: isEntryDelegatedAdmin ? "linear-gradient(135deg, #f59e0b, #d97706)" : "linear-gradient(135deg, #22c55e, #15803d)",
-                      color: "#fff",
-                      fontSize: 10,
-                      fontWeight: 900,
-                      fontFamily: "'Cairo',sans-serif",
-                      cursor: canManage ? "pointer" : "not-allowed",
-                      opacity: !canManage || adminActionBusyUid === entryUid ? 0.6 : 1,
-                    }}
-                  >
-                    {!canManage
-                      ? (lang === "ar" ? "غير متاح" : "Locked")
-                      : adminActionBusyUid === entryUid
-                        ? (lang === "ar" ? "جارٍ التنفيذ..." : "Updating...")
-                        : isEntryDelegatedAdmin
-                          ? (lang === "ar" ? "إلغاء الأدمن" : "Remove admin")
-                          : (lang === "ar" ? "🟢 جعل هذا الحساب أدمن" : "🟢 Make Admin")}
-                  </button>
-                  <button
-                    onClick={() => handleAdminStatusToggle(entry)}
-                    disabled={!canManage || adminActionBusyUid === entryUid}
-                    style={{
-                      padding: "6px 8px",
-                      borderRadius: 12,
-                      border: "none",
-                      background: isBlocked ? "linear-gradient(135deg, #22c55e, #15803d)" : "linear-gradient(135deg, #ef4444, #b91c1c)",
-                      color: "#fff",
-                      fontSize: 10,
-                      fontWeight: 900,
-                      fontFamily: "'Cairo',sans-serif",
-                      cursor: canManage ? "pointer" : "not-allowed",
-                      opacity: !canManage || adminActionBusyUid === entryUid ? 0.6 : 1,
-                    }}
-                  >
-                    {!canManage
-                      ? (lang === "ar" ? "هذا حسابك" : "Your account")
-                      : adminActionBusyUid === entryUid
-                        ? (lang === "ar" ? "جارٍ التنفيذ..." : "Updating...")
-                        : isBlocked
-                          ? (lang === "ar" ? "فك الحظر" : "Unblock")
-                          : (lang === "ar" ? "حظر المستخدم" : "Block user")}
-                  </button>
-                  <button
-                    onClick={() => handleAdminDeleteUser(entry)}
-                    disabled={!canManage || adminActionBusyUid === entryUid}
-                    style={{
-                      padding: "6px 8px",
-                      borderRadius: 12,
-                      border: "none",
-                      background: "linear-gradient(135deg, #0ea5e9, #0369a1)",
-                      color: "#fff",
-                      fontSize: 10,
-                      fontWeight: 900,
-                      fontFamily: "'Cairo',sans-serif",
-                      cursor: canManage ? "pointer" : "not-allowed",
-                      opacity: !canManage || adminActionBusyUid === entryUid ? 0.6 : 1,
-                    }}
-                  >
-                    {!canManage
-                      ? (lang === "ar" ? "هذا حسابك" : "Your account")
-                      : adminActionBusyUid === entryUid
-                        ? (lang === "ar" ? "جارٍ التنفيذ..." : "Updating...")
-                        : (lang === "ar" ? "حذف الحساب" : "Delete account")}
-                  </button>
-                </div>
+                )}
               </div>
-            );
-          })}
-
-          {!adminUsersLoading && filteredAdminUsers.length === 0 && (
-            <div style={{ borderRadius: 18, border: "1px dashed rgba(212,175,55,0.28)", background: "rgba(255,255,255,0.04)", padding: "18px 14px", textAlign: "center", color: "rgba(255,255,255,0.82)", fontSize: 13, lineHeight: 1.8, fontWeight: 700, fontFamily: "'Cairo',sans-serif" }}>
-              {lang === "ar" ? "لا توجد نتائج مطابقة للمستخدمين." : "No matching users were found."}
-            </div>
+            )}
+          </div>
           )}
-        </div>
-        )}
         </div>
 
         <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(212,175,55,0.28)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px", display: adminPanelSection === "orders" && !adminSelectedOrderId ? "block" : "none" }}>

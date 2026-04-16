@@ -1,0 +1,102 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper Functions ───────────────────────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isVerifiedEmail() {
+      return isAuthenticated() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerifiedEmail() &&
+        request.auth.token.email in ['walidghazal46@gmail.com', 'walidghazal51@yahoo.com'];
+    }
+
+    // ─── orders ─────────────────────────────────────────────────────────────
+    // Orders are created via Cloud Function (createOrder) - not directly by clients.
+    // Users can read their own orders; admins can read/write all.
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() &&
+        (resource.data.userUid == request.auth.uid || isAdmin());
+      allow create: if false; // Only Cloud Function can create
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ─── office_reviews ──────────────────────────────────────────────────────
+    // Anyone can read reviews. Authenticated users can create one review.
+    // Users can update/delete only their own reviews.
+    match /office_reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated() &&
+        request.resource.data.userUid == request.auth.uid &&
+        request.resource.data.rating is number &&
+        request.resource.data.rating >= 1 &&
+        request.resource.data.rating <= 5;
+      allow update: if isAuthenticated() &&
+        resource.data.userUid == request.auth.uid;
+      allow delete: if isAuthenticated() &&
+        (resource.data.userUid == request.auth.uid || isAdmin());
+    }
+
+    // ─── office_customizations ──────────────────────────────────────────────
+    // Public read. Admin-only write. Doc ID must match override-* or added-* pattern.
+    match /office_customizations/{docId} {
+      allow read: if true;
+
+      allow create, update: if isAdmin() &&
+        (docId.matches('override-[a-zA-Z0-9_-]+') || docId.matches('added-[a-zA-Z0-9_-]+')) &&
+        request.resource.data.keys().hasAll(['officeId', 'updatedAt']) &&
+        request.resource.data.officeId is string &&
+        request.resource.data.officeId.size() > 0 &&
+        request.resource.data.officeId.size() <= 100;
+
+      allow delete: if isAdmin();
+    }
+
+    // ─── service_providers ──────────────────────────────────────────────────
+    // Public read for listings. Authenticated users can submit a request.
+    // Users can read/update their own. Admins have full access.
+    match /service_providers/{docId} {
+      allow read: if true;
+      allow create: if isAuthenticated() &&
+        request.resource.data.userUid == request.auth.uid;
+      allow update: if isAuthenticated() &&
+        (resource.data.userUid == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // ─── service_reviews ────────────────────────────────────────────────────
+    // Anyone can read. Authenticated users can create. Own reviews are editable.
+    match /service_reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated() &&
+        request.resource.data.userUid == request.auth.uid &&
+        request.resource.data.rating is number &&
+        request.resource.data.rating >= 1 &&
+        request.resource.data.rating <= 5;
+      allow update: if isAuthenticated() &&
+        resource.data.userUid == request.auth.uid;
+      allow delete: if isAuthenticated() &&
+        (resource.data.userUid == request.auth.uid || isAdmin());
+    }
+
+    // ─── users ───────────────────────────────────────────────────────────────
+    // Users can read and update their own profile. Admins can read all.
+    // Deletion is only via Cloud Function (deleteAuthUserByAdmin).
+    match /users/{userId} {
+      allow read: if isAuthenticated() &&
+        (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() &&
+        request.auth.uid == userId;
+      allow update: if isAuthenticated() &&
+        (request.auth.uid == userId || isAdmin());
+      allow delete: if false; // Only Cloud Function can delete
+    }
+
+  }
+}

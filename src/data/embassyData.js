@@ -1,3 +1,6 @@
+import { countryNamesEn } from "./egyptData";
+import { countriesData } from "./countriesData";
+
 export const embassyHostCity = {
   "مصر": "القاهرة",
   "المملكة العربية السعودية": "الرياض",
