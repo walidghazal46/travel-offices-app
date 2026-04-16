@@ -25,9 +25,9 @@ export function getNextPendingStageIndex(order) {
   return STATUS_STEP_KEYS.findIndex((key) => !safeOrder.stageConfirmations[key]);
 }
 
-const MAX_RECEIPT_SIZE_BYTES = 2 * 1024 * 1024;
-const RECEIPT_UPLOAD_TIMEOUT_MS = 30000;
-const RECEIPT_UPLOAD_NOTICE_MS = 12000;
+export const MAX_RECEIPT_SIZE_BYTES = 2 * 1024 * 1024;
+export const RECEIPT_UPLOAD_TIMEOUT_MS = 30000;
+export const RECEIPT_UPLOAD_NOTICE_MS = 12000;
 
 export function withTimeout(promise, ms, label = "request") {
   return Promise.race([

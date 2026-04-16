@@ -21,6 +21,9 @@ import {
   createInitialStageConfirmations,
   hydratePaidOrder,
   getNextPendingStageIndex,
+  MAX_RECEIPT_SIZE_BYTES,
+  RECEIPT_UPLOAD_TIMEOUT_MS,
+  RECEIPT_UPLOAD_NOTICE_MS,
   withTimeout,
   normalizePaidService,
   isOtherSubServiceValue,
@@ -37,6 +40,7 @@ import {
   buildServiceReviewMap,
 } from '../../utils/reviewUtils';
 import { T } from '../../i18n/translations';
+import { NATIONALITY_DIAL_CODES } from '../../constants/index';
 
 export function PaidBackBtn({ onClick, isAr, t }) {
   return (
@@ -193,9 +197,7 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
   const [firebaseFallbackTicket, setFirebaseFallbackTicket] = useState(null);
   const [sharedServiceReviews, setSharedServiceReviews] = useState({});
   const [emailFieldError, setEmailFieldError] = useState("");
-  const [confirmCountdown, setConfirmCountdown] = useState(10);
   const [savedOrderPreview, setSavedOrderPreview] = useState(null);
-  const [savedOrderPreviewCountdown, setSavedOrderPreviewCountdown] = useState(10);
   const [requestLimitNotice, setRequestLimitNotice] = useState(null);
   const [requestLimitNoticeTitle, setRequestLimitNoticeTitle] = useState("");
   const [submitStage, setSubmitStage] = useState("");
@@ -507,45 +509,22 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
 
   const goToOrdersOverview = useCallback(() => {
     resetRequestDraft();
-    setScreen(existingOrders.length > 0 ? "previousOrders" : "existingOrNew");
-  }, [existingOrders.length, resetRequestDraft]);
+    setCurrentOrder(null);
+    setSavedOrderPreview(null);
+    const persistedOrders = getLocalOrdersFromStorage(storageKey).map(hydratePaidOrder);
+    if (persistedOrders.length > 0) {
+      setExistingOrders(persistedOrders);
+      setScreen("previousOrders");
+      return;
+    }
+    setScreen("existingOrNew");
+  }, [resetRequestDraft, storageKey]);
 
   const cancelCurrentPaidRequest = useCallback(() => {
     setCurrentOrder(null);
     resetRequestDraft();
     setScreen("existingOrNew");
   }, [resetRequestDraft]);
-
-  useEffect(() => {
-    if (screen !== "confirm") return undefined;
-    setConfirmCountdown(10);
-    const countdownTimer = setInterval(() => {
-      setConfirmCountdown((value) => (value > 1 ? value - 1 : 1));
-    }, 1000);
-    const redirectTimer = setTimeout(() => {
-      goToOrdersOverview();
-    }, 10000);
-    return () => {
-      clearInterval(countdownTimer);
-      clearTimeout(redirectTimer);
-    };
-  }, [screen, goToOrdersOverview]);
-
-  useEffect(() => {
-    if (!savedOrderPreview) return undefined;
-    setSavedOrderPreviewCountdown(10);
-    const countdownTimer = setInterval(() => {
-      setSavedOrderPreviewCountdown((value) => (value > 1 ? value - 1 : 1));
-    }, 1000);
-    const hideTimer = setTimeout(() => {
-      setSavedOrderPreview(null);
-      goToOrdersOverview();
-    }, 10000);
-    return () => {
-      clearInterval(countdownTimer);
-      clearTimeout(hideTimer);
-    };
-  }, [savedOrderPreview, goToOrdersOverview]);
 
   useEffect(() => {
     if (!requestLimitNotice) return undefined;
@@ -935,7 +914,14 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
 
   const handleReceiptChange = (event) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      setFirebaseSubmitError(
+        isAr
+          ? "تعذر قراءة ملف الإيصال. جرّب اختيار صورة أخرى أو ملف PDF."
+          : "Could not read the receipt file. Please choose another image or PDF."
+      );
+      return;
+    }
     setFirebaseSubmitError("");
     if (file.size > MAX_RECEIPT_SIZE_BYTES) {
       setForm((prev) => ({
@@ -952,11 +938,14 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
       event.target.value = "";
       return;
     }
+    const safeName = file.name && file.name.trim()
+      ? file.name.trim()
+      : `receipt_${Date.now()}.${(file.type || "image/jpeg").split("/").pop()}`;
     setForm((prev) => ({
       ...prev,
-      receiptName: file.name,
+      receiptName: safeName,
       receiptMeta: {
-        name: file.name,
+        name: safeName,
         size: file.size,
         type: file.type || "",
         lastModified: file.lastModified,
@@ -2147,9 +2136,7 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
                 : ""}
         </div>
         <div style={{ fontSize:11, color:t.gold, fontWeight:800, marginTop:8 }}>
-          {isAr
-            ? `سيتم تحويلك إلى صفحة الطلبات خلال ${confirmCountdown} ثوانٍ`
-            : `You will be redirected to the requests page in ${confirmCountdown} seconds`}
+          {isAr ? "لن يتم التحويل تلقائيًا. اضغط زر الإغلاق عند الانتهاء." : "No automatic redirect. Use the close button when you are done."}
         </div>
       </div>
       <div style={card}>
@@ -2164,6 +2151,7 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
       <PaidOrderTimeline lang={lang} currentStep={1} t={t} />
       <div style={{ display:"flex", gap:10, marginTop:8 }}>
         <button onClick={() => setScreen("status")} style={{ ...btnStyle(goldGrad), flex:2 }}>{isAr?"متابعة حالة الطلب 📊":"Track Order Status 📊"}</button>
+        <button onClick={() => goToOrdersOverview()} style={{ ...btnStyle("#dc2626"), flex:1 }}>{isAr?"إغلاق":"Close"}</button>
         <button onClick={() => { setScreen("list"); setSelectedService(null); setForm(f=>({...f,paymentMethod:"",receiptName:"",receiptMeta:null,receiptFile:null})); }} style={{ ...btnStyle(t.inputBg,t.gold), flex:1, boxShadow:"none", border:`1px solid ${t.gold}` }}>{isAr?"رئيسية":"Home"}</button>
       </div>
     </div>
@@ -2266,7 +2254,7 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
             <div dir={dir} style={{ width:"100%", maxWidth:440, maxHeight:"82vh", overflowY:"auto", background:"linear-gradient(180deg,#fffdf7,#fff6e2)", border:"1px solid rgba(200,150,12,0.32)", borderRadius:24, boxShadow:"0 24px 70px rgba(15,23,42,0.28)", padding:"14px 14px 16px" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:10, marginBottom:8 }}>
                 <div style={{ fontSize:12, color:t.subText, fontWeight:800, fontFamily:"'Cairo',sans-serif" }}>
-                  {isAr ? `إغلاق تلقائي خلال ${savedOrderPreviewCountdown} ثوانٍ` : `Auto close in ${savedOrderPreviewCountdown}s`}
+                    {isAr ? "الإغلاق يدوي عبر زر إغلاق" : "Manual close via the Close button"}
                 </div>
                 <button
                   onClick={() => {
@@ -2283,8 +2271,8 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
                 <div style={{ fontSize:21, fontWeight:900, color:t.gold, marginBottom:6 }}>{isAr ? "احفظ بيانات الطلب" : "Save Your Request"}</div>
                 <div style={{ fontSize:12, color:t.subText, lineHeight:1.8 }}>
                   {isAr
-                    ? `التقط صورة للشاشة واحتفظ بها للمتابعة. ستغلق هذه الشاشة خلال ${savedOrderPreviewCountdown} ثانية.`
-                    : `Take a screenshot and keep it for follow-up. This screen will close in ${savedOrderPreviewCountdown} seconds.`}
+                      ? "التقط صورة للشاشة واحتفظ بها للمتابعة، ثم اضغط إغلاق."
+                      : "Take a screenshot for follow-up, then press Close."}
                 </div>
               </div>
               <div style={{ background:"#ffffffd9", border:`1px solid ${t.border}`, borderRadius:18, padding:"12px 14px", marginBottom:12 }}>
@@ -2465,7 +2453,7 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
           <div dir={dir} style={{ width:"100%", maxWidth:440, maxHeight:"82vh", overflowY:"auto", background:"linear-gradient(180deg,#fffdf7,#fff6e2)", border:"1px solid rgba(200,150,12,0.32)", borderRadius:24, boxShadow:"0 24px 70px rgba(15,23,42,0.28)", padding:"14px 14px 16px" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:10, marginBottom:8 }}>
               <div style={{ fontSize:12, color:t.subText, fontWeight:800, fontFamily:"'Cairo',sans-serif" }}>
-                {isAr ? `إغلاق تلقائي خلال ${savedOrderPreviewCountdown} ثوانٍ` : `Auto close in ${savedOrderPreviewCountdown}s`}
+                  {isAr ? "الإغلاق يدوي عبر زر إغلاق" : "Manual close via the Close button"}
               </div>
               <button
                 onClick={() => {
@@ -2482,8 +2470,8 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
               <div style={{ fontSize:21, fontWeight:900, color:t.gold, marginBottom:6 }}>{isAr ? "احفظ بيانات الطلب" : "Save Your Request"}</div>
               <div style={{ fontSize:12, color:t.subText, lineHeight:1.8 }}>
                 {isAr
-                  ? `التقط صورة للشاشة واحتفظ بها للمتابعة. ستغلق هذه الشاشة خلال ${savedOrderPreviewCountdown} ثانية.`
-                  : `Take a screenshot and keep it for follow-up. This screen will close in ${savedOrderPreviewCountdown} seconds.`}
+                    ? "التقط صورة للشاشة واحتفظ بها للمتابعة، ثم اضغط إغلاق."
+                    : "Take a screenshot for follow-up, then press Close."}
               </div>
             </div>
             <div style={{ background:"#ffffffd9", border:`1px solid ${t.border}`, borderRadius:18, padding:"12px 14px", marginBottom:12 }}>
