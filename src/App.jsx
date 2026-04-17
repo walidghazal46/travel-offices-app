@@ -57,6 +57,7 @@ import {
 } from "./firebase";
 import { officesData } from "./data/offices";
 import { officeIdAliases, egyptGovernorates, cityIcons, cityNamesEn, countryNamesEn } from "./data/egyptData";
+import { saudiOfficesData, saudiCityIcons } from "./data/saudiOfficesData";
 import { NATIONALITY_DIAL_CODES } from "./constants/index";
 import { countriesData, egyptEmergency } from "./data/countriesData";
 import { embassyHostCity, nationalityEmbassyFallbacks, egyptHostedEmbassies, hostedEmbassyOverrides, buildFallbackEmbassyRecord, embassyDirectory } from "./data/embassyData";
@@ -4541,6 +4542,33 @@ export default function App() {
   );
   }, [adminAddedOffices, officeOverrides, remoteAddedOffices, remoteOfficeOverrides]);
 
+  const saudiOffices = useMemo(() => {
+    const normalized = Object.entries(saudiOfficesData || {}).flatMap(([cityName, offices]) => (
+      (offices || []).map((office, index) => ({
+        ...office,
+        id: String(office?.id || `sa-office-${cityName}-${index + 1}`),
+        country: "المملكة العربية السعودية",
+        gov: cityName,
+        district: String(office?.district || "").trim(),
+        type: String(office?.type || "").trim(),
+        phone: String(office?.phone || "").trim(),
+        website: String(office?.website || "").trim(),
+        working_hours: String(office?.working_hours || "").trim(),
+        services: Array.isArray(office?.services) ? office.services : [],
+      }))
+    ));
+
+    return normalized
+      .slice()
+      .sort((a, b) => {
+        const cityCompare = String(a?.gov || "").localeCompare(String(b?.gov || ""), "ar");
+        if (cityCompare !== 0) return cityCompare;
+        const nameCompare = String(a?.name || "").localeCompare(String(b?.name || ""), "ar");
+        if (nameCompare !== 0) return nameCompare;
+        return String(a?.id || "").localeCompare(String(b?.id || ""));
+      });
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem("adminAddedOfficesV1", JSON.stringify(adminAddedOffices || []));
@@ -4572,37 +4600,61 @@ export default function App() {
     .replace(/ى/g, "ي")
     .replace(/\s+/g, " ");
   const isSameGovernorate = (leftGov, rightGov) => normalizeGovernorateName(leftGov) === normalizeGovernorateName(rightGov);
-  const countryOffices = useMemo(() => effectiveOffices.filter((o) => isSameGovernorate(o.gov, selectedGov || "") && selectedCountry === "مصر"), [effectiveOffices, selectedCountry, selectedGov]);
+  const countryOffices = useMemo(() => {
+    if (!selectedGov) return [];
+    if (selectedCountry === "مصر") {
+      return effectiveOffices.filter((office) => isSameGovernorate(office.gov, selectedGov));
+    }
+    if (selectedCountry === "المملكة العربية السعودية") {
+      return saudiOffices.filter((office) => isSameGovernorate(office.gov, selectedGov));
+    }
+    return [];
+  }, [effectiveOffices, isSameGovernorate, saudiOffices, selectedCountry, selectedGov]);
   const hasSelectedNationality = Boolean(String(selectedNationality || "").trim());
   const filteredOffices = useMemo(() => {
-    if (selectedCountry !== "مصر") return [];
-    let list = effectiveOffices;
+    let list = [];
+    if (selectedCountry === "مصر") {
+      list = effectiveOffices;
+    } else if (selectedCountry === "المملكة العربية السعودية") {
+      list = saudiOffices;
+    } else {
+      return [];
+    }
+
     if (selectedGov) list = list.filter((o) => isSameGovernorate(o.gov, selectedGov));
     if (search.trim()) {
       const query = search.trim().toLowerCase();
       list = list.filter((o) =>
         o.name.toLowerCase().includes(query)
-        || o.address.toLowerCase().includes(query)
+        || String(o.address || "").toLowerCase().includes(query)
+        || String(o.district || "").toLowerCase().includes(query)
+        || String(o.type || "").toLowerCase().includes(query)
+        || (Array.isArray(o.services) && o.services.some((service) => String(service || "").toLowerCase().includes(query)))
         || String(o.license || "").includes(query)
       );
     }
     return list;
-  }, [effectiveOffices, search, selectedCountry, selectedGov]);
-  const guestEgyptOfficeLimit = useMemo(() => {
-    if (!isGuestUser || selectedCountry !== "مصر" || !selectedGov) return 0;
-    const totalInGovernorate = effectiveOffices.filter((office) => isSameGovernorate(office.gov, selectedGov)).length;
-    if (totalInGovernorate <= 0) return 0;
-    return totalInGovernorate < 20 ? 1 : 3;
-  }, [effectiveOffices, isGuestUser, selectedCountry, selectedGov]);
+  }, [effectiveOffices, isSameGovernorate, saudiOffices, search, selectedCountry, selectedGov]);
+  const guestOfficeLimit = useMemo(() => {
+    if (!isGuestUser || !selectedGov) return 0;
+    const totalInSelectedRegion = countryOffices.length;
+    if (totalInSelectedRegion <= 0) return 0;
+    if (selectedCountry === "مصر") {
+      return totalInSelectedRegion < 20 ? 1 : 3;
+    }
+    if (selectedCountry === "المملكة العربية السعودية") {
+      return Math.min(3, totalInSelectedRegion);
+    }
+    return 0;
+  }, [countryOffices.length, isGuestUser, selectedCountry, selectedGov]);
   const visibleFilteredOffices = useMemo(() => {
-    if (!guestEgyptOfficeLimit) return filteredOffices;
-    return filteredOffices.slice(0, guestEgyptOfficeLimit);
-  }, [filteredOffices, guestEgyptOfficeLimit]);
+    if (!guestOfficeLimit) return filteredOffices;
+    return filteredOffices.slice(0, guestOfficeLimit);
+  }, [filteredOffices, guestOfficeLimit]);
   const guestLockedOfficesCount = useMemo(() => {
-    if (!guestEgyptOfficeLimit || selectedCountry !== "مصر" || !selectedGov) return 0;
-    const totalInGovernorate = effectiveOffices.filter((office) => isSameGovernorate(office.gov, selectedGov)).length;
-    return Math.max(0, totalInGovernorate - guestEgyptOfficeLimit);
-  }, [effectiveOffices, guestEgyptOfficeLimit, selectedCountry, selectedGov]);
+    if (!guestOfficeLimit) return 0;
+    return Math.max(0, countryOffices.length - guestOfficeLimit);
+  }, [countryOffices.length, guestOfficeLimit]);
   const officesPerPage = 30;
   const totalOfficePages = Math.max(1, Math.ceil(visibleFilteredOffices.length / officesPerPage));
   const paginatedOffices = useMemo(() => {
@@ -4851,7 +4903,11 @@ export default function App() {
 
   const getGovernorateLabel = (govName) => {
     if (lang === "ar") return govName;
-    return egyptGovernorates.find((gov) => isSameGovernorate(gov.name, govName))?.nameEn || getOfficeEnglishText(govName);
+    return (
+      cityNamesEn[govName]
+      || egyptGovernorates.find((gov) => isSameGovernorate(gov.name, govName))?.nameEn
+      || getOfficeEnglishText(govName)
+    );
   };
   const getOfficeLabel = (officeName) => (lang === "ar" ? officeName : getOfficeEnglishText(officeName));
   const getOfficeAddressLabel = (officeAddress) => (lang === "ar" ? officeAddress : getOfficeEnglishText(officeAddress));
@@ -7974,7 +8030,8 @@ export default function App() {
         const officeNameLabel = getOfficeLabel(off.name);
         const officeAddressLabel = getOfficeAddressLabel(off.address);
         const officeGovLabel = getGovernorateLabel(off.gov);
-        const mapQuery = encodeURIComponent(`Egypt ${officeNameLabel} ${officeAddressLabel}`);
+        const officeCountryLabel = String(off?.country || selectedCountry || "");
+        const mapQuery = encodeURIComponent(`${officeCountryLabel} ${officeNameLabel} ${officeAddressLabel}`);
         const mapUrl = `https://www.google.com/maps/search/${mapQuery}`;
         const rating = officeRatings[off.id] || { avg: 0, count: 0 };
         const offReviews = reviews[off.id] || [];
@@ -8145,7 +8202,7 @@ export default function App() {
               officeNameEn: getOfficeEnglishText(off.name),
               governorate: off.gov,
               governorateEn: getOfficeEnglishText(off.gov),
-              country: "مصر",
+              country: officeCountryLabel,
               reviewerUid: authPreviewUser?.uid || "",
               reviewerName: authPreviewUser?.displayName || authPreviewUser?.email || "",
               rating: userRating,
@@ -8260,7 +8317,12 @@ export default function App() {
             <div style={{ position: "sticky", top: 0, zIndex: 10, background: dark ? "rgba(10,22,40,0.97)" : "rgba(255,255,255,0.97)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${t.border}`, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: t.text, lineHeight: 1.2 }}>{officeNameLabel}</div>
-                <div style={{ fontSize: 10, color: t.gold }}>{officeGovLabel} — {lang === "ar" ? "ترخيص" : "License"} {off.license}</div>
+                      <div style={{ fontSize: 10, color: t.gold }}>
+                        {officeGovLabel}
+                        {selectedCountry === "مصر"
+                          ? ` — ${lang === "ar" ? "ترخيص" : "License"} ${off.license}`
+                          : (off.type ? ` — ${lang === "ar" ? "نوع الجهة" : "Office type"} ${off.type}` : "")}
+                      </div>
               </div>
             </div>
 
@@ -8275,7 +8337,9 @@ export default function App() {
                       <div style={{ fontSize: 14, fontWeight: 900, color: "#ffffff", lineHeight: 1.2 }}>{officeNameLabel}</div>
                     </div>
                     <div style={{ fontSize: 14, color: "#f8d57a", fontWeight: 900, whiteSpace: "nowrap", textAlign: "left" }}>
-                      {lang === "ar" ? "رخصة رقم" : "License No."} {off.license}
+                      {selectedCountry === "مصر"
+                        ? `${lang === "ar" ? "رخصة رقم" : "License No."} ${off.license}`
+                        : `${lang === "ar" ? "نوع الجهة" : "Office type"} ${off.type || "—"}`}
                     </div>
                   </div>
                 </div>
@@ -8290,14 +8354,45 @@ export default function App() {
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0" }}>
                     <div style={{ width: 22, height: 22, borderRadius: 8, background: "#22c55e18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>🏛️</div>
                     <div>
-                      <div style={{ fontSize: 9, color: t.subText, marginBottom: 2 }}>{lang === "ar" ? "المحافظة" : "Governorate"}</div>
+                      <div style={{ fontSize: 9, color: t.subText, marginBottom: 2 }}>{selectedCountry === "مصر" ? (lang === "ar" ? "المحافظة" : "Governorate") : (lang === "ar" ? "المدينة" : "City")}</div>
                       <div style={{ fontSize: 11, color: t.text, fontWeight: 600 }}>{officeGovLabel}</div>
                     </div>
                   </div>
+                  {selectedCountry === "المملكة العربية السعودية" && (
+                    <>
+                      {!!off.district && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: `1px solid ${t.border}` }}>
+                          <div style={{ width: 22, height: 22, borderRadius: 8, background: "#0ea5e918", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>📌</div>
+                          <div>
+                            <div style={{ fontSize: 9, color: t.subText, marginBottom: 2 }}>{lang === "ar" ? "الحي" : "District"}</div>
+                            <div style={{ fontSize: 11, color: t.text, fontWeight: 600 }}>{off.district}</div>
+                          </div>
+                        </div>
+                      )}
+                      {!!off.phone && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: `1px solid ${t.border}` }}>
+                          <div style={{ width: 22, height: 22, borderRadius: 8, background: "#22c55e18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>📞</div>
+                          <div>
+                            <div style={{ fontSize: 9, color: t.subText, marginBottom: 2 }}>{lang === "ar" ? "الهاتف" : "Phone"}</div>
+                            <div style={{ fontSize: 11, color: t.text, fontWeight: 600 }}>{off.phone}</div>
+                          </div>
+                        </div>
+                      )}
+                      {!!off.website && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: `1px solid ${t.border}` }}>
+                          <div style={{ width: 22, height: 22, borderRadius: 8, background: "#60a5fa18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>🌐</div>
+                          <div>
+                            <div style={{ fontSize: 9, color: t.subText, marginBottom: 2 }}>{lang === "ar" ? "الموقع" : "Website"}</div>
+                            <div style={{ fontSize: 11, color: t.text, fontWeight: 600 }}>{off.website}</div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
 
-              {isAdminUser && (
+              {isAdminUser && selectedCountry === "مصر" && (
                 <div style={{ background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", borderRadius: 14, border: `1px solid ${t.border}`, padding: "10px", marginBottom: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <div style={{ fontSize: 12, fontWeight: 900, color: t.text }}>
@@ -9353,15 +9448,35 @@ export default function App() {
                       <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#16a34a18", color: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                     </button>
                   )}
-                  <div style={{ color: t.subText, fontSize: 11, marginBottom: 10 }}>{tx.citiesComingSoon}</div>
+                  <div style={{ color: t.subText, fontSize: 11, marginBottom: 10 }}>
+                    {selectedCountry === "المملكة العربية السعودية"
+                      ? (lang === "ar" ? "اختر المدينة لعرض المكاتب الموثوقة المتاحة" : "Choose a city to browse available trusted offices")
+                      : tx.citiesComingSoon}
+                  </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
-                    {country.cities.map(city => (
-                      <button key={city} onClick={() => openCityModal(lang === "en" ? (cityNamesEn[city] || city) : city)}
+                    {country.cities.map(city => {
+                      const cityTotalOffices = selectedCountry === "المملكة العربية السعودية"
+                        ? ((saudiOfficesData?.[city] || []).length)
+                        : 0;
+                      const cityVisibleOffices = isGuestUser && selectedCountry === "المملكة العربية السعودية"
+                        ? Math.min(3, cityTotalOffices)
+                        : cityTotalOffices;
+
+                      return (
+                      <button key={city} onClick={() => selectedCountry === "المملكة العربية السعودية" ? handleGovSelect(city) : openCityModal(lang === "en" ? (cityNamesEn[city] || city) : city)}
                         style={{ background: t.cardBg, border: `1px solid ${t.border}`, borderRadius: 12, padding: "12px 6px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, transition: "all 0.2s", fontFamily: "'Cairo',sans-serif" }}>
-                        <span style={{ fontSize: 28 }}>{cityIcons[city] || "🏙️"}</span>
+                        <span style={{ fontSize: 28 }}>{selectedCountry === "المملكة العربية السعودية" ? (saudiCityIcons[city] || "🏙️") : (cityIcons[city] || "🏙️")}</span>
                         <span style={{ fontSize: 10, color: t.text, fontWeight: 600, textAlign: "center" }}>{lang === "en" ? (cityNamesEn[city] || city) : city}</span>
+                        {selectedCountry === "المملكة العربية السعودية" && (
+                          <span style={{ fontSize: 9, color: t.subText, textAlign: "center", lineHeight: 1.3 }}>
+                            {isGuestUser
+                              ? (lang === "ar" ? `${cityVisibleOffices}/${cityTotalOffices} متاح للضيف` : `${cityVisibleOffices}/${cityTotalOffices} guest visible`)
+                              : (lang === "ar" ? `${cityTotalOffices} مكتب` : `${cityTotalOffices} offices`)}
+                          </span>
+                        )}
                       </button>
-                    ))}
+                    );
+                    })}
                   </div>
                 </div>
               </div>
@@ -9657,8 +9772,8 @@ export default function App() {
                 {isGuestUser && guestLockedOfficesCount > 0 && (
                   <div style={{ marginTop: 10, marginBottom: 10, borderRadius: 12, border: "1px solid rgba(239,68,68,0.35)", background: dark ? "rgba(127,29,29,0.24)" : "rgba(254,226,226,0.85)", color: dark ? "#fecaca" : "#991b1b", fontSize: 11, fontWeight: 800, lineHeight: 1.8, padding: "9px 11px", textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
                     {lang === "ar"
-                      ? `أنت داخل كضيف. متاح لك ${guestEgyptOfficeLimit} مكتب فقط في هذه المحافظة، وباقي المكاتب (${guestLockedOfficesCount}) تتطلب تسجيل الدخول.`
-                      : `You are in guest mode. Only ${guestEgyptOfficeLimit} offices are available in this governorate, and the remaining (${guestLockedOfficesCount}) require sign-in.`}
+                      ? `أنت داخل كضيف. متاح لك ${guestOfficeLimit} مكاتب فقط هنا، وباقي المكاتب (${guestLockedOfficesCount}) تتطلب تسجيل الدخول.`
+                      : `You are in guest mode. Only ${guestOfficeLimit} offices are available here, and the remaining (${guestLockedOfficesCount}) require sign-in.`}
                   </div>
                 )}
                 <div style={{ ...styles.searchWrap, background: t.inputBg, border: `1px solid ${t.border}` }}>
@@ -9673,7 +9788,19 @@ export default function App() {
                       style={{ ...styles.officeCard, background: t.cardBg, border: `1px solid ${t.border}`, animationDelay: `${i * 30}ms`, padding: "13px 8px", display: "flex", flexDirection: "column", gap: 9, borderRadius: 14, cursor: "pointer", textAlign: "center", width: "100%", minHeight: 174 }}>
                       <div style={{ width: 36, height: 36, borderRadius: 10, background: `${t.gold}22`, color: t.gold, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, flexShrink: 0, margin: "0 auto" }}>{((officePage - 1) * officesPerPage) + i + 1}</div>
                       <div style={{ fontSize: 14, fontWeight: 700, color: t.text, textAlign: "center", lineHeight: 1.3 }}>{getOfficeLabel(office.name)}</div>
-                      <div style={{ display: "inline-block", alignSelf:"center", borderRadius: 999, padding: "5px 13px", fontSize: 12, fontWeight: 700, background: `${t.gold}15`, color: t.gold, textAlign: "center" }}>{tx.licenseNo} {office.license}</div>
+                      <div style={{ display: "inline-block", alignSelf:"center", borderRadius: 999, padding: "5px 13px", fontSize: 12, fontWeight: 700, background: `${t.gold}15`, color: t.gold, textAlign: "center" }}>
+                        {selectedCountry === "مصر" ? `${tx.licenseNo} ${office.license}` : `${lang === "ar" ? "نوع الجهة" : "Office type"} ${office.type || "—"}`}
+                      </div>
+                      {selectedCountry === "المملكة العربية السعودية" && (
+                        <>
+                          <div style={{ fontSize: 10, color: t.subText, lineHeight: 1.5 }}>
+                            {office.phone ? `${lang === "ar" ? "هاتف" : "Phone"}: ${office.phone}` : (lang === "ar" ? "لا يوجد هاتف" : "No phone")}
+                          </div>
+                          <div style={{ fontSize: 10, color: t.subText, lineHeight: 1.5, wordBreak: "break-all" }}>
+                            {office.website ? `${lang === "ar" ? "الموقع" : "Website"}: ${office.website}` : (lang === "ar" ? "لا يوجد موقع" : "No website")}
+                          </div>
+                        </>
+                      )}
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2, marginTop: "auto" }}>
                           {[1,2,3,4,5].map(s => (
                             <span key={s} style={{ fontSize: 16, color: (officeRatings[office.id]?.avg || 0) >= s ? "#f59e0b" : t.border }}>★</span>
