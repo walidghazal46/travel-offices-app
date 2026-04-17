@@ -853,6 +853,7 @@ export default function App() {
   const [selectedGov, setSelectedGov] = useState(null);
   const [search, setSearch] = useState("");
   const [selectedServiceFilter, setSelectedServiceFilter] = useState(null);
+  const [showAllSaudiServices, setShowAllSaudiServices] = useState(false);
   const [activeTab, setActiveTab] = useState("ministry");
   const [selectedEmbassyCountry, setSelectedEmbassyCountry] = useState("مصر");
   const [showOtherEmbassies, setShowOtherEmbassies] = useState(false);
@@ -4634,6 +4635,13 @@ export default function App() {
       });
     return Array.from(servicesSet).sort((a, b) => a.localeCompare(b, "ar"));
   }, [isSameGovernorate, saudiOffices, selectedCountry, selectedGov]);
+  const saudiServiceColumns = isCompactPhone ? 4 : 7;
+  const saudiServicePreviewCount = Math.max(6, (saudiServiceColumns * 3) - 2);
+  const hasMoreSaudiServices = availableSaudiServices.length > saudiServicePreviewCount;
+  const visibleSaudiServices = useMemo(() => {
+    if (showAllSaudiServices || !hasMoreSaudiServices) return availableSaudiServices;
+    return availableSaudiServices.slice(0, saudiServicePreviewCount);
+  }, [availableSaudiServices, hasMoreSaudiServices, saudiServicePreviewCount, showAllSaudiServices]);
 
   const filteredOffices = useMemo(() => {
     let list = [];
@@ -4698,6 +4706,7 @@ export default function App() {
 
   useEffect(() => {
     setSelectedServiceFilter(null);
+    setShowAllSaudiServices(false);
   }, [selectedGov, selectedCountry]);
 
   useEffect(() => {
@@ -8977,6 +8986,38 @@ export default function App() {
                   </button>
 
                 </div>
+
+                <a
+                  href={`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
+                    lang === "ar"
+                      ? "مرحبًا، أحتاج مساعدة في اختيار القسم أو الخدمات داخل التطبيق."
+                      : "Hello, I need help choosing sections or services in the app."
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    marginTop: 14,
+                    width: "100%",
+                    borderRadius: 14,
+                    border: "1px solid rgba(37,211,102,0.46)",
+                    background: "linear-gradient(135deg, rgba(16,99,53,0.44), rgba(20,150,71,0.34))",
+                    color: "#eafff1",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    textDecoration: "none",
+                    padding: "9px 12px",
+                    boxSizing: "border-box",
+                    boxShadow: "0 0 14px rgba(37,211,102,0.24)",
+                    fontSize: 12,
+                    fontWeight: 900,
+                    fontFamily: "'Cairo',sans-serif",
+                  }}
+                >
+                  <span style={{ fontSize: 15, lineHeight: 1 }}>☏</span>
+                  <span>{lang === "ar" ? "واتساب الدعم الفني" : "Support WhatsApp"}</span>
+                </a>
               </div>
             )}
 
@@ -9086,6 +9127,45 @@ export default function App() {
                     <div style={{ position: "absolute", top: -18, left: lang === "ar" ? "auto" : -18, right: lang === "ar" ? -18 : "auto", width: 74, height: 74, borderRadius: "50%", background: "radial-gradient(circle, rgba(74,222,128,0.22), rgba(74,222,128,0))" }} />
                     <div style={{ fontSize: 11, fontWeight: 800, color: "#15803d", lineHeight: 1.9, fontFamily: "'Cairo',sans-serif", position: "relative", textShadow: dark ? "0 0 10px rgba(74,222,128,0.18)" : "0 1px 0 rgba(255,255,255,0.45)" }}>
                       {lang === "ar" ? "ملحوظة: جميع المستخدمين يمكنهم الدخول إلى أي دولة وطلب الخدمة بكل سهولة." : "Note: All users can enter any country page and request the service easily."}
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 16, borderRadius: 20, padding: "14px 10px 16px", background: dark ? "rgba(255,255,255,0.04)" : "#ffffff", border: `1px solid ${dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.07)"}`, boxShadow: dark ? "none" : "0 4px 20px rgba(0,0,0,0.06)" }}>
+                    <div style={{ textAlign: "center", fontSize: 12, color: dark ? "#94a3b8" : "#475569", fontWeight: 800, marginBottom: 12, fontFamily: "'Cairo',sans-serif" }}>
+                      {lang === "ar" ? "روابط مهمة" : "Important Links"}
+                    </div>
+                    <div className="landing-links-row">
+                      {[
+                        { key: "passport-book", icon: "📖", labelAr: "كتاب المرور", labelEn: "Passport Book", href: "https://drive.google.com/file/d/1IRen7Ud-lVEoMM1n97Tul6hYhVJrLPNg/view?usp=sharing", accent: "#2563eb", bg: "linear-gradient(145deg, #93c5fd, #3b82f6)", shadow: "rgba(59,130,246,0.45)" },
+                        { key: "qiwa", icon: "🧭", labelAr: "منصة قوي", labelEn: "Qiwa", href: "https://www.qiwa.sa/", accent: "#16a34a", bg: "linear-gradient(145deg, #86efac, #22c55e)", shadow: "rgba(34,197,94,0.45)" },
+                        { key: "gosi", icon: "🛡️", labelAr: "التأمينات", labelEn: "GOSI", href: "https://www.gosi.gov.sa/", accent: "#0891b2", bg: "linear-gradient(145deg, #67e8f9, #06b6d4)", shadow: "rgba(6,182,212,0.45)" },
+                        { key: "labor-law", icon: "⚖️", labelAr: "قانون العمل", labelEn: "Labor Law", href: "https://www.hrsd.gov.sa/knowledge-centre/decisions-and-regulations/regulation-and-procedures/%D9%86%D8%B8%D8%A7%D9%85-%D8%A7%D9%84%D8%B9%D9%85%D9%84", accent: "#d97706", bg: "linear-gradient(145deg, #fde68a, #f59e0b)", shadow: "rgba(245,158,11,0.45)" },
+                        { key: "end-service", icon: "🧮", labelAr: "نهاية الخدمة", labelEn: "End Service", href: "https://www.hrsd.gov.sa/ministry-services/services/end-service-benefit-calculator", accent: "#e11d48", bg: "linear-gradient(145deg, #fca5a5, #f43f5e)", shadow: "rgba(244,63,94,0.45)" },
+                      ].map((item, idx) => (
+                        <a
+                          key={item.key}
+                          href={item.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="landing-link-tile"
+                          style={{
+                            animationDelay: `${idx * 0.08}s`,
+                          }}
+                        >
+                            <div
+                              className="landing-link-orb"
+                              style={{
+                                background: item.bg,
+                                boxShadow: `0 6px 18px ${item.shadow}`,
+                              }}
+                            >
+                              {item.icon}
+                            </div>
+                          <span className="landing-link-label" style={{ color: dark ? "#e2e8f0" : "#0f172a" }}>
+                            {lang === "ar" ? item.labelAr : item.labelEn}
+                          </span>
+                        </a>
+                      ))}
                     </div>
                   </div>
 
@@ -9476,6 +9556,38 @@ export default function App() {
                   </button>
 
                 </div>
+
+                <a
+                  href={`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
+                    lang === "ar"
+                      ? `مرحبًا، أحتاج مساعدة داخل أقسام ${country.name}.`
+                      : `Hello, I need help inside ${countryNamesEn[country.name] || country.name} sections.`
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    marginTop: 14,
+                    width: "100%",
+                    borderRadius: 14,
+                    border: "1px solid rgba(37,211,102,0.46)",
+                    background: "linear-gradient(135deg, rgba(16,99,53,0.44), rgba(20,150,71,0.34))",
+                    color: "#eafff1",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    textDecoration: "none",
+                    padding: "9px 12px",
+                    boxSizing: "border-box",
+                    boxShadow: "0 0 14px rgba(37,211,102,0.24)",
+                    fontSize: 12,
+                    fontWeight: 900,
+                    fontFamily: "'Cairo',sans-serif",
+                  }}
+                >
+                  <span style={{ fontSize: 15, lineHeight: 1 }}>☏</span>
+                  <span>{lang === "ar" ? "واتساب الدعم الفني" : "Support WhatsApp"}</span>
+                </a>
               </div>
             )}
 
@@ -9848,11 +9960,20 @@ export default function App() {
                   </div>
                 )}
                 {selectedCountry === "المملكة العربية السعودية" && availableSaudiServices.length > 0 && (
-                  <div style={{ padding: "8px 10px 4px", overflowX: "auto", display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <div style={{ padding: "8px 10px 4px", display: "grid", gridTemplateColumns: `repeat(${saudiServiceColumns}, minmax(0, 1fr))`, gap: 6 }}>
                     <button
                       onClick={() => setSelectedServiceFilter(null)}
                       style={{
-                        flexShrink: 0, borderRadius: 999, padding: "5px 12px", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'Cairo',sans-serif",
+                        borderRadius: 10,
+                        minHeight: 30,
+                        padding: "4px 8px",
+                        fontSize: 10,
+                        fontWeight: 800,
+                        cursor: "pointer",
+                        fontFamily: "'Cairo',sans-serif",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
                         border: !selectedServiceFilter ? "none" : `1px solid ${t.border}`,
                         background: !selectedServiceFilter ? t.gold : t.inputBg,
                         color: !selectedServiceFilter ? "#000" : t.subText,
@@ -9860,20 +9981,50 @@ export default function App() {
                     >
                       {lang === "ar" ? "الكل" : "All"}
                     </button>
-                    {availableSaudiServices.map((service) => (
+                    {visibleSaudiServices.map((service) => (
                       <button
                         key={service}
                         onClick={() => setSelectedServiceFilter(selectedServiceFilter === service ? null : service)}
                         style={{
-                          flexShrink: 0, borderRadius: 999, padding: "5px 12px", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'Cairo',sans-serif",
+                          borderRadius: 10,
+                          minHeight: 30,
+                          padding: "4px 8px",
+                          fontSize: 10,
+                          fontWeight: 800,
+                          cursor: "pointer",
+                          fontFamily: "'Cairo',sans-serif",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
                           border: selectedServiceFilter === service ? "none" : `1px solid ${t.border}`,
                           background: selectedServiceFilter === service ? t.gold : t.inputBg,
                           color: selectedServiceFilter === service ? "#000" : t.subText,
                         }}
+                        title={service}
                       >
                         {service}
                       </button>
                     ))}
+                    {hasMoreSaudiServices && (
+                      <button
+                        onClick={() => setShowAllSaudiServices((prev) => !prev)}
+                        style={{
+                          borderRadius: 10,
+                          minHeight: 30,
+                          padding: "4px 8px",
+                          fontSize: 10,
+                          fontWeight: 900,
+                          cursor: "pointer",
+                          fontFamily: "'Cairo',sans-serif",
+                          border: `1px dashed ${t.gold}`,
+                          background: showAllSaudiServices ? `${t.gold}18` : t.inputBg,
+                          color: showAllSaudiServices ? t.gold : t.subText,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {showAllSaudiServices ? (lang === "ar" ? "عرض أقل" : "Show less") : (lang === "ar" ? "رؤية الكل" : "View all")}
+                      </button>
+                    )}
                   </div>
                 )}
                 <div style={{ ...styles.searchWrap, background: t.inputBg, border: `1px solid ${t.border}` }}>
@@ -11873,7 +12024,7 @@ export default function App() {
       </main>
 
       {/* ── WHATSAPP FLOAT BTN — home tab + home view only ───────────── */}
-      {mainTab === "home" && (view === "home" || view === "landing") && (
+      {mainTab === "home" && view === "home" && (
         <a href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noreferrer" style={styles.waBtn}>
           <svg width="26" height="26" viewBox="0 0 24 24" fill="white">
             <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />

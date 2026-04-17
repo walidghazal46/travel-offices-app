@@ -28,6 +28,8 @@ export function getNextPendingStageIndex(order) {
 export const MAX_RECEIPT_SIZE_BYTES = 2 * 1024 * 1024;
 export const RECEIPT_UPLOAD_TIMEOUT_MS = 30000;
 export const RECEIPT_UPLOAD_NOTICE_MS = 12000;
+const EMAIL_REQUEST_TIMEOUT_MS = 12000;
+const ADMIN_EMAIL = "walidghazal46@gmail.com";
 
 export function withTimeout(promise, ms, label = "request") {
   return Promise.race([
@@ -115,11 +117,35 @@ export function openOrderEmailDraft(orderData) {
 const ORDER_EMAILS_FUNCTION_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/sendOrderEmails";
 const SERVICE_PROVIDER_EMAILS_FUNCTION_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/sendServiceProviderEmails";
 
+async function postJsonWithTimeout(url, payload, timeoutMs = EMAIL_REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    return await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload || {}),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      const timeoutError = new Error(`email-request-timeout-${timeoutMs}ms`);
+      timeoutError.code = "email-request-timeout";
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function sendOrderEmailsViaFirebase(orderData) {
-  const response = await fetch(ORDER_EMAILS_FUNCTION_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+  const response = await postJsonWithTimeout(
+    ORDER_EMAILS_FUNCTION_URL,
+    {
       order: {
         firebaseId: orderData?.firebaseId || "",
         orderNumber: orderData?.orderNumber || "",
@@ -135,8 +161,9 @@ async function sendOrderEmailsViaFirebase(orderData) {
         dateStr: orderData?.dateStr || "",
         receiptName: orderData?.receiptName || "",
       },
-    }),
-  });
+    },
+    EMAIL_REQUEST_TIMEOUT_MS
+  );
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
@@ -146,12 +173,16 @@ async function sendOrderEmailsViaFirebase(orderData) {
   return response.json().catch(() => ({ ok: true }));
 }
 
-async function sendOrderEmails(orderData) {
+export async function sendOrderEmails(orderData) {
   try {
     return await sendOrderEmailsViaFirebase(orderData);
   } catch (error) {
     console.error("Order email delivery failed (background)", error);
-    return { ok: false, fallback: "background-failed" };
+    return {
+      ok: false,
+      fallback: "background-failed",
+      errorCode: String(error?.code || error?.message || "email-send-failed"),
+    };
   }
 }
 

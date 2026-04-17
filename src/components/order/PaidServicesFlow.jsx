@@ -32,6 +32,7 @@ import {
   getRecentOrderCountWithinDays,
   getRequestLimitMessage,
   openOrderEmailDraft,
+  sendOrderEmails,
 } from '../../utils/orderUtils';
 import {
   getServiceReviewBucketKey,
@@ -203,6 +204,7 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
   const [submitStage, setSubmitStage] = useState("");
   const [submitStageElapsedMs, setSubmitStageElapsedMs] = useState(0);
   const [orderEmailStatus, setOrderEmailStatus] = useState("idle");
+  const [orderEmailRetryBusy, setOrderEmailRetryBusy] = useState(false);
   const [coinsSoonModalOpen, setCoinsSoonModalOpen] = useState(false);
   const [coinsSoonCountdown, setCoinsSoonCountdown] = useState(10);
   const [phoneFieldError, setPhoneFieldError] = useState("");
@@ -1122,17 +1124,19 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
       setCurrentOrder(nextOrder);
       setScreen("confirm");
       setOrderEmailStatus("sending");
+      setOrderEmailRetryBusy(false);
       setTimeout(() => {
         void sendOrderEmails(nextOrder)
           .then((result) => {
             const nextStatus = result?.ok ? "sent" : "failed";
+            const emailErrorCode = String(result?.errorCode || "");
             setOrderEmailStatus(nextStatus);
             const updatedAt = new Date().toISOString();
             if (nextOrder?.firebaseId) {
               updateOrderInFirebase(nextOrder.firebaseId, {
                 emailDeliveryStatus: nextStatus,
                 emailDeliveryUpdatedAt: updatedAt,
-                emailDeliveryError: nextStatus === "failed" ? "background-send-failed" : "",
+                emailDeliveryError: nextStatus === "failed" ? (emailErrorCode || "background-send-failed") : "",
               }).catch((error) => {
                 console.error("Email delivery status update failed", error);
               });
@@ -1140,14 +1144,24 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
             setExistingOrders((prev) => {
               const merged = prev.map((entry) => (
                 entry.serial === nextOrder.serial
-                  ? { ...entry, emailDeliveryStatus: nextStatus, emailDeliveryUpdatedAt: updatedAt }
+                  ? {
+                    ...entry,
+                    emailDeliveryStatus: nextStatus,
+                    emailDeliveryUpdatedAt: updatedAt,
+                    emailDeliveryError: nextStatus === "failed" ? (emailErrorCode || "background-send-failed") : "",
+                  }
                   : entry
               ));
               try { localStorage.setItem(storageKey, JSON.stringify(merged)); } catch {}
               return merged;
             });
             setCurrentOrder((prev) => prev?.serial === nextOrder.serial
-              ? { ...prev, emailDeliveryStatus: nextStatus, emailDeliveryUpdatedAt: updatedAt }
+              ? {
+                ...prev,
+                emailDeliveryStatus: nextStatus,
+                emailDeliveryUpdatedAt: updatedAt,
+                emailDeliveryError: nextStatus === "failed" ? (emailErrorCode || "background-send-failed") : "",
+              }
               : prev);
           })
           .catch(() => {
@@ -2138,6 +2152,75 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
         <div style={{ fontSize:11, color:t.gold, fontWeight:800, marginTop:8 }}>
           {isAr ? "لن يتم التحويل تلقائيًا. اضغط زر الإغلاق عند الانتهاء." : "No automatic redirect. Use the close button when you are done."}
         </div>
+        {orderEmailStatus === "failed" && (
+          <button
+            type="button"
+            disabled={orderEmailRetryBusy}
+            onClick={async () => {
+              if (!currentOrder || orderEmailRetryBusy) return;
+              setOrderEmailRetryBusy(true);
+              setOrderEmailStatus("sending");
+              const retryResult = await sendOrderEmails(currentOrder);
+              const retryStatus = retryResult?.ok ? "sent" : "failed";
+              const retryErrorCode = String(retryResult?.errorCode || "");
+              const retryUpdatedAt = new Date().toISOString();
+              setOrderEmailStatus(retryStatus);
+
+              if (currentOrder?.firebaseId) {
+                updateOrderInFirebase(currentOrder.firebaseId, {
+                  emailDeliveryStatus: retryStatus,
+                  emailDeliveryUpdatedAt: retryUpdatedAt,
+                  emailDeliveryError: retryStatus === "failed" ? (retryErrorCode || "manual-retry-failed") : "",
+                }).catch((error) => {
+                  console.error("Manual retry email status update failed", error);
+                });
+              }
+
+              setExistingOrders((prev) => {
+                const merged = prev.map((entry) => (
+                  entry.serial === currentOrder.serial
+                    ? {
+                      ...entry,
+                      emailDeliveryStatus: retryStatus,
+                      emailDeliveryUpdatedAt: retryUpdatedAt,
+                      emailDeliveryError: retryStatus === "failed" ? (retryErrorCode || "manual-retry-failed") : "",
+                    }
+                    : entry
+                ));
+                try { localStorage.setItem(storageKey, JSON.stringify(merged)); } catch {}
+                return merged;
+              });
+
+              setCurrentOrder((prev) => prev?.serial === currentOrder.serial
+                ? {
+                  ...prev,
+                  emailDeliveryStatus: retryStatus,
+                  emailDeliveryUpdatedAt: retryUpdatedAt,
+                  emailDeliveryError: retryStatus === "failed" ? (retryErrorCode || "manual-retry-failed") : "",
+                }
+                : prev);
+
+              setOrderEmailRetryBusy(false);
+            }}
+            style={{
+              marginTop: 10,
+              padding: "7px 12px",
+              borderRadius: 10,
+              border: `1px solid ${t.gold}`,
+              background: "transparent",
+              color: t.gold,
+              fontSize: 11,
+              fontWeight: 900,
+              fontFamily: "'Cairo',sans-serif",
+              cursor: orderEmailRetryBusy ? "not-allowed" : "pointer",
+              opacity: orderEmailRetryBusy ? 0.65 : 1,
+            }}
+          >
+            {orderEmailRetryBusy
+              ? (isAr ? "جارٍ إعادة الإرسال..." : "Retrying...")
+              : (isAr ? "إعادة إرسال الإيميل" : "Retry Email")}
+          </button>
+        )}
       </div>
       <div style={card}>
         <PaidSectionHead icon="📋" label={isAr?"ملخص الطلب":"Order Summary"} t={t} />
