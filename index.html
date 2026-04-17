@@ -51,7 +51,29 @@
         text-decoration: underline;
       }
     </style>
-  </head>
+  <!-- AdSense start -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6810176545596111" crossorigin="anonymous"></script>
+    <!-- AdSense end -->
+    <style>
+      #crawlable-intro {
+        max-width: 960px;
+        margin: 16px auto;
+        padding: 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #f8fafc;
+        color: #0f172a;
+        font-family: Tahoma, Arial, sans-serif;
+        line-height: 1.8;
+      }
+      #crawlable-intro h1 { margin: 0 0 8px; font-size: 22px; }
+      #crawlable-intro p { margin: 0 0 10px; }
+      #crawlable-intro ul { margin: 0 0 12px; padding-inline-start: 20px; }
+      #crawlable-intro .legal-links { display: flex; flex-wrap: wrap; gap: 10px; }
+      #crawlable-intro .legal-links a { color: #0369a1; text-decoration: none; }
+      #crawlable-intro .legal-links a:hover { text-decoration: underline; }
+    </style>
+</head>
   <body>
     <section id="crawlable-intro" dir="rtl" lang="ar" aria-label="معلومات تعريفية عن الموقع">
       <h1>مكاتب السفريات الموثوقة</h1>
@@ -71,7 +93,32 @@
         <a href="/contact.html">اتصل بنا</a>
       </nav>
     </section>
+    
+    <section id="crawlable-intro" dir="rtl" lang="ar" aria-label="معلومات تعريفية عن الموقع">
+      <h1>مكاتب السفريات الموثوقة</h1>
+      <p>منصة عربية تساعد المستخدمين على الوصول إلى مكاتب سفريات موثوقة وخدمات مرتبطة بالسفر والعمل، مع واجهة واضحة ودعم للمستخدمين.</p>
+      <p>الخدمات المتاحة داخل المنصة تشمل:</p>
+      <ul>
+        <li>عرض مكاتب السفريات الموثوقة حسب الدولة.</li>
+        <li>معلومات تواصل مفيدة وروابط داعمة للمستخدم.</li>
+        <li>خدمات رقمية مدفوعة متعلقة بالتقديم والعمل والسيرة الذاتية.</li>
+      </ul>
+      <nav class="legal-links" aria-label="روابط قانونية">
+        <a href="/privacy-policy.html">سياسة الخصوصية</a>
+        <a href="/terms.html">الشروط والأحكام</a>
+        <a href="/contact.html">اتصل بنا</a>
+      </nav>
+    </section>
     <div id="root"></div>
+    <script>
+      window.addEventListener('DOMContentLoaded', function () {
+        var intro = document.getElementById('crawlable-intro');
+        if (!intro) return;
+        requestAnimationFrame(function () {
+          intro.style.display = 'none';
+        });
+      });
+    </script>
     <script>
       window.addEventListener('DOMContentLoaded', function () {
         var intro = document.getElementById('crawlable-intro');
