@@ -167,7 +167,7 @@ const T = {
     otherCountryServices: [
       { icon: "🏖️", label: "طلب تأشيرة سياحة" },
       { icon: "✈️", label: "طلب تأشيرة عمل" },
-      { icon: "🆓", label: "طلب تأشيرة حرة" },
+      { icon: "📋", label: "طلب تأشيرة نظامية" },
       { icon: "⚖️", label: "مطلوب محامي عمال" },
     ],
   },
