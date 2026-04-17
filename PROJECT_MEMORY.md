@@ -179,3 +179,11 @@
   2. `npx cap sync`
   3. `npm run dev`
 
+## Save History
+
+- 2026-04-17:
+  - تم تنفيذ مزامنة أندرويد بنجاح: `npx cap sync android`
+  - تم حفظ ورفع التعديلات على GitHub
+  - Commit: `2ca3ef529cdc3c15b93fa86e373d5b0e343fedc2`
+  - Message: `chore: sync android assets + jordan offices + ui tweak (2026-04-17)`
+
