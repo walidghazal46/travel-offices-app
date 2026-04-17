@@ -852,6 +852,7 @@ export default function App() {
   });
   const [selectedGov, setSelectedGov] = useState(null);
   const [search, setSearch] = useState("");
+  const [selectedServiceFilter, setSelectedServiceFilter] = useState(null);
   const [activeTab, setActiveTab] = useState("ministry");
   const [selectedEmbassyCountry, setSelectedEmbassyCountry] = useState("مصر");
   const [showOtherEmbassies, setShowOtherEmbassies] = useState(false);
@@ -4621,6 +4622,19 @@ export default function App() {
     return [];
   }, [effectiveOffices, isSameGovernorate, saudiOffices, selectedCountry, selectedGov]);
   const hasSelectedNationality = Boolean(String(selectedNationality || "").trim());
+  const availableSaudiServices = useMemo(() => {
+    if (selectedCountry !== "المملكة العربية السعودية" || !selectedGov) return [];
+    const servicesSet = new Set();
+    saudiOffices
+      .filter((o) => isSameGovernorate(o.gov, selectedGov))
+      .forEach((o) => {
+        if (Array.isArray(o.services)) {
+          o.services.forEach((s) => { if (s) servicesSet.add(String(s).trim()); });
+        }
+      });
+    return Array.from(servicesSet).sort((a, b) => a.localeCompare(b, "ar"));
+  }, [isSameGovernorate, saudiOffices, selectedCountry, selectedGov]);
+
   const filteredOffices = useMemo(() => {
     let list = [];
     if (selectedCountry === "مصر") {
@@ -4632,6 +4646,11 @@ export default function App() {
     }
 
     if (selectedGov) list = list.filter((o) => isSameGovernorate(o.gov, selectedGov));
+    if (selectedServiceFilter) {
+      list = list.filter((o) =>
+        Array.isArray(o.services) && o.services.some((s) => String(s || "").trim() === selectedServiceFilter)
+      );
+    }
     if (search.trim()) {
       const query = search.trim().toLowerCase();
       list = list.filter((o) =>
@@ -4644,7 +4663,7 @@ export default function App() {
       );
     }
     return list;
-  }, [effectiveOffices, isSameGovernorate, saudiOffices, search, selectedCountry, selectedGov]);
+  }, [effectiveOffices, isSameGovernorate, saudiOffices, search, selectedCountry, selectedGov, selectedServiceFilter]);
   const guestOfficeLimit = useMemo(() => {
     if (!isGuestUser || !selectedGov) return 0;
     const totalInSelectedRegion = countryOffices.length;
@@ -4675,7 +4694,11 @@ export default function App() {
 
   useEffect(() => {
     setOfficePage(1);
-  }, [selectedGov, search, selectedCountry]);
+  }, [selectedGov, search, selectedCountry, selectedServiceFilter]);
+
+  useEffect(() => {
+    setSelectedServiceFilter(null);
+  }, [selectedGov, selectedCountry]);
 
   useEffect(() => {
     try {
@@ -9822,6 +9845,35 @@ export default function App() {
                     {lang === "ar"
                       ? `أنت داخل كضيف. متاح لك ${guestOfficeLimit} مكاتب فقط هنا، وباقي المكاتب (${guestLockedOfficesCount}) تتطلب تسجيل الدخول.`
                       : `You are in guest mode. Only ${guestOfficeLimit} offices are available here, and the remaining (${guestLockedOfficesCount}) require sign-in.`}
+                  </div>
+                )}
+                {selectedCountry === "المملكة العربية السعودية" && availableSaudiServices.length > 0 && (
+                  <div style={{ padding: "8px 10px 4px", overflowX: "auto", display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => setSelectedServiceFilter(null)}
+                      style={{
+                        flexShrink: 0, borderRadius: 999, padding: "5px 12px", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'Cairo',sans-serif",
+                        border: !selectedServiceFilter ? "none" : `1px solid ${t.border}`,
+                        background: !selectedServiceFilter ? t.gold : t.inputBg,
+                        color: !selectedServiceFilter ? "#000" : t.subText,
+                      }}
+                    >
+                      {lang === "ar" ? "الكل" : "All"}
+                    </button>
+                    {availableSaudiServices.map((service) => (
+                      <button
+                        key={service}
+                        onClick={() => setSelectedServiceFilter(selectedServiceFilter === service ? null : service)}
+                        style={{
+                          flexShrink: 0, borderRadius: 999, padding: "5px 12px", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'Cairo',sans-serif",
+                          border: selectedServiceFilter === service ? "none" : `1px solid ${t.border}`,
+                          background: selectedServiceFilter === service ? t.gold : t.inputBg,
+                          color: selectedServiceFilter === service ? "#000" : t.subText,
+                        }}
+                      >
+                        {service}
+                      </button>
+                    ))}
                   </div>
                 )}
                 <div style={{ ...styles.searchWrap, background: t.inputBg, border: `1px solid ${t.border}` }}>
