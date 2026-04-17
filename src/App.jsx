@@ -4506,11 +4506,12 @@ export default function App() {
       || null,
     [availableEmbassyCountries, selectedEmbassyCountry, nationalityEmbassyCountry]
   );
+  const mergedOfficeOverrides = useMemo(() => ({
+    ...(officeOverrides || {}),
+    ...(remoteOfficeOverrides || {}),
+  }), [officeOverrides, remoteOfficeOverrides]);
+
   const effectiveOffices = useMemo(() => {
-    const mergedOverrides = {
-      ...(officeOverrides || {}),
-      ...(remoteOfficeOverrides || {}),
-    };
 
     const mergedAddedMap = new Map();
     [...(adminAddedOffices || []), ...(remoteAddedOffices || [])].forEach((entry) => {
@@ -4523,24 +4524,27 @@ export default function App() {
       });
     });
 
-    return (
-    [
-      ...officesData.map((office) => {
-        const override = mergedOverrides?.[office.id] || null;
-        return override ? { ...office, ...override } : office;
-      }),
+    const mergedBase = [
+      ...officesData,
       ...Array.from(mergedAddedMap.values()),
-    ]
+    ];
+
+    return mergedBase
+      .map((office) => {
+        const override = mergedOfficeOverrides?.[office.id] || null;
+        if (override?.__deleted) return null;
+        return override ? { ...office, ...override } : office;
+      })
+      .filter(Boolean)
       .slice()
       .sort((a, b) => {
         const govCompare = String(a?.gov || "").localeCompare(String(b?.gov || ""), "ar");
         if (govCompare !== 0) return govCompare;
         const licenseDiff = (Number(a?.license) || 0) - (Number(b?.license) || 0);
         if (licenseDiff !== 0) return licenseDiff;
-        return (Number(a?.id) || 0) - (Number(b?.id) || 0);
-      })
-  );
-  }, [adminAddedOffices, officeOverrides, remoteAddedOffices, remoteOfficeOverrides]);
+        return String(a?.id || "").localeCompare(String(b?.id || ""), "ar");
+      });
+  }, [adminAddedOffices, mergedOfficeOverrides, remoteAddedOffices]);
 
   const saudiOffices = useMemo(() => {
     const normalized = Object.entries(saudiOfficesData || {}).flatMap(([cityName, offices]) => (
@@ -4559,6 +4563,12 @@ export default function App() {
     ));
 
     return normalized
+      .map((office) => {
+        const override = mergedOfficeOverrides?.[office.id] || null;
+        if (override?.__deleted) return null;
+        return override ? { ...office, ...override } : office;
+      })
+      .filter(Boolean)
       .slice()
       .sort((a, b) => {
         const cityCompare = String(a?.gov || "").localeCompare(String(b?.gov || ""), "ar");
@@ -4567,7 +4577,7 @@ export default function App() {
         if (nameCompare !== 0) return nameCompare;
         return String(a?.id || "").localeCompare(String(b?.id || ""));
       });
-  }, []);
+  }, [mergedOfficeOverrides]);
 
   useEffect(() => {
     try {
@@ -8067,13 +8077,14 @@ export default function App() {
 
         const saveAdminOfficeEditor = async () => {
           if (!isAdminUser) return;
+          const isEgyptOffice = String(off?.country || selectedCountry || "") === "مصر";
           const nextName = String(adminOfficeDraft.name || "").trim();
           const nextLicenseRaw = String(adminOfficeDraft.license || "").trim();
           const nextLicense = Number(nextLicenseRaw.replace(/[^0-9]/g, ""));
           const nextAddress = String(adminOfficeDraft.address || "").trim();
           const nextGov = String(adminOfficeDraft.gov || "").trim();
 
-          if (!nextName || !nextAddress || !nextGov || !nextLicenseRaw) {
+          if (!nextName || !nextAddress || !nextGov || (isEgyptOffice && !nextLicenseRaw)) {
             setAdminOfficeEditError(
               lang === "ar"
                 ? "أدخل اسم المكتب ورقم الترخيص والعنوان والمحافظة بشكل صحيح."
@@ -8082,7 +8093,7 @@ export default function App() {
             return;
           }
 
-          if (!Number.isFinite(nextLicense) || nextLicense <= 0) {
+          if (isEgyptOffice && (!Number.isFinite(nextLicense) || nextLicense <= 0)) {
             setAdminOfficeEditError(
               lang === "ar"
                 ? "رقم الترخيص غير صحيح."
@@ -8094,7 +8105,7 @@ export default function App() {
           const updatedOffice = {
             ...off,
             name: nextName,
-            license: nextLicense,
+            license: isEgyptOffice ? nextLicense : off.license,
             address: nextAddress,
             gov: nextGov,
           };
@@ -8120,7 +8131,7 @@ export default function App() {
               ...(prev || {}),
               [off.id]: {
                 name: nextName,
-                license: nextLicense,
+                license: isEgyptOffice ? nextLicense : off.license,
                 address: nextAddress,
                 gov: nextGov,
               },
@@ -8129,7 +8140,7 @@ export default function App() {
               ...(prev || {}),
               [off.id]: {
                 name: nextName,
-                license: nextLicense,
+                license: isEgyptOffice ? nextLicense : off.license,
                 address: nextAddress,
                 gov: nextGov,
               },
@@ -8152,20 +8163,46 @@ export default function App() {
         };
 
         const handleAdminDeleteOffice = async () => {
-          if (!isAdminUser || !isManuallyAddedOffice) return;
+          if (!isAdminUser) return;
+          const isManualOffice = isManuallyAddedOffice;
           const confirmed = typeof window === "undefined" || window.confirm(
             lang === "ar"
-              ? "تأكيد حذف هذا المكتب المُضاف يدويًا؟"
-              : "Confirm deleting this manually added office?"
+              ? (isManualOffice ? "تأكيد حذف هذا المكتب المُضاف يدويًا؟" : "تأكيد حذف هذا المكتب من التطبيق؟")
+              : (isManualOffice ? "Confirm deleting this manually added office?" : "Confirm hiding this office from the app?")
           );
           if (!confirmed) return;
-          setAdminAddedOffices((prev) => prev.filter((entry) => Number(entry?.id) !== Number(off.id)));
-          setRemoteAddedOffices((prev) => prev.filter((entry) => Number(entry?.id) !== Number(off.id)));
-          try {
-            await deleteAddedOfficeInFirebase(off.id);
-          } catch (error) {
-            console.warn("Deleting added office from Firebase failed", error);
+
+          if (isManualOffice) {
+            setAdminAddedOffices((prev) => prev.filter((entry) => Number(entry?.id) !== Number(off.id)));
+            setRemoteAddedOffices((prev) => prev.filter((entry) => Number(entry?.id) !== Number(off.id)));
+            try {
+              await deleteAddedOfficeInFirebase(off.id);
+            } catch (error) {
+              console.warn("Deleting added office from Firebase failed", error);
+            }
+          } else {
+            const deletedOverride = {
+              ...(mergedOfficeOverrides?.[off.id] || {}),
+              __deleted: true,
+            };
+            setOfficeOverrides((prev) => ({
+              ...(prev || {}),
+              [off.id]: deletedOverride,
+            }));
+            setRemoteOfficeOverrides((prev) => ({
+              ...(prev || {}),
+              [off.id]: deletedOverride,
+            }));
+            try {
+              await saveOfficeOverrideInFirebase({
+                ...off,
+                ...deletedOverride,
+              });
+            } catch (error) {
+              console.warn("Saving office delete override to Firebase failed", error);
+            }
           }
+
           closeOfficeEditorState();
           setSelectedOffice(null);
         };
@@ -8392,7 +8429,7 @@ export default function App() {
                 </div>
               </div>
 
-              {isAdminUser && selectedCountry === "مصر" && (
+              {isAdminUser && (
                 <div style={{ background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", borderRadius: 14, border: `1px solid ${t.border}`, padding: "10px", marginBottom: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <div style={{ fontSize: 12, fontWeight: 900, color: t.text }}>
@@ -8426,13 +8463,15 @@ export default function App() {
                         placeholder={lang === "ar" ? "اسم المكتب" : "Office name"}
                         style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box" }}
                       />
-                      <input
-                        value={adminOfficeDraft.license}
-                        onChange={(e) => setAdminOfficeDraft((prev) => ({ ...prev, license: String(e.target.value || "").replace(/[^0-9]/g, "") }))}
-                        placeholder={lang === "ar" ? "رقم الترخيص" : "License number"}
-                        inputMode="numeric"
-                        style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box" }}
-                      />
+                      {selectedCountry === "مصر" && (
+                        <input
+                          value={adminOfficeDraft.license}
+                          onChange={(e) => setAdminOfficeDraft((prev) => ({ ...prev, license: String(e.target.value || "").replace(/[^0-9]/g, "") }))}
+                          placeholder={lang === "ar" ? "رقم الترخيص" : "License number"}
+                          inputMode="numeric"
+                          style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box" }}
+                        />
+                      )}
                       <textarea
                         rows={2}
                         value={adminOfficeDraft.address}
@@ -8440,15 +8479,24 @@ export default function App() {
                         placeholder={lang === "ar" ? "العنوان" : "Address"}
                         style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box", resize: "vertical" }}
                       />
-                      <select
-                        value={adminOfficeDraft.gov}
-                        onChange={(e) => setAdminOfficeDraft((prev) => ({ ...prev, gov: e.target.value }))}
-                        style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box" }}
-                      >
-                        {egyptGovernorates.map((govItem) => (
-                          <option key={govItem.name} value={govItem.name}>{govItem.name}</option>
-                        ))}
-                      </select>
+                      {selectedCountry === "مصر" ? (
+                        <select
+                          value={adminOfficeDraft.gov}
+                          onChange={(e) => setAdminOfficeDraft((prev) => ({ ...prev, gov: e.target.value }))}
+                          style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box" }}
+                        >
+                          {egyptGovernorates.map((govItem) => (
+                            <option key={govItem.name} value={govItem.name}>{govItem.name}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          value={adminOfficeDraft.gov}
+                          onChange={(e) => setAdminOfficeDraft((prev) => ({ ...prev, gov: e.target.value }))}
+                          placeholder={lang === "ar" ? "المدينة" : "City"}
+                          style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box" }}
+                        />
+                      )}
                       {!!adminOfficeEditError && (
                         <div style={{ color: "#fca5a5", fontSize: 10, fontWeight: 700 }}>{adminOfficeEditError}</div>
                       )}
@@ -8458,14 +8506,14 @@ export default function App() {
                       >
                         {lang === "ar" ? "حفظ بيانات المكتب" : "Save office data"}
                       </button>
-                      {isManuallyAddedOffice && (
-                        <button
-                          onClick={handleAdminDeleteOffice}
-                          style={{ border: "none", background: "linear-gradient(135deg,#ef4444,#b91c1c)", color: "#fff", borderRadius: 10, padding: "7px", fontSize: 11, fontWeight: 900, cursor: "pointer" }}
-                        >
-                          {lang === "ar" ? "حذف المكتب المُضاف يدويًا" : "Delete manually added office"}
-                        </button>
-                      )}
+                      <button
+                        onClick={handleAdminDeleteOffice}
+                        style={{ border: "none", background: "linear-gradient(135deg,#ef4444,#b91c1c)", color: "#fff", borderRadius: 10, padding: "7px", fontSize: 11, fontWeight: 900, cursor: "pointer" }}
+                      >
+                        {isManuallyAddedOffice
+                          ? (lang === "ar" ? "حذف المكتب المُضاف يدويًا" : "Delete manually added office")
+                          : (lang === "ar" ? "حذف المكتب من العرض" : "Hide office from app")}
+                      </button>
                     </div>
                   )}
                 </div>
