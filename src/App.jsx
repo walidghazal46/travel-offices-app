@@ -11461,7 +11461,7 @@ export default function App() {
                 { icon: "🔄", label: tx.settingsUpdate, desc: tx.settingsUpdateDesc, href: PLAY_STORE_URL },
                 { icon: "⭐", label: tx.settingsRate, desc: tx.settingsRateDesc, href: PLAY_STORE_URL },
                 { icon: "📧", label: tx.settingsSupport, desc: tx.settingsSupportDesc, href: "mailto:walidghazal46@gmail.com?subject=دعم فني - تطبيق مكاتب السفريات الموثوقة" },
-                { icon: "🔒", label: tx.settingsPrivacy, desc: tx.settingsPrivacyDesc, href: "https://sites.google.com/d/149I0TNJRDLyEf8NMYi_Z5E796g9_BXM-/p/1kqQ57yFdt9D31OeMcMQWd9_fqz_DgqDT/edit" },
+                { icon: "🔒", label: tx.settingsPrivacy, desc: tx.settingsPrivacyDesc, href: "/privacy-policy.html" },
               ].map((item, i) => {
                 const inner = (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 3 }}>
