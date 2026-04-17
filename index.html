@@ -30,7 +30,7 @@
     </style>
   </head>
   <body>
-    <section id="crawlable-intro" dir="rtl" lang="ar" aria-label="معلومات تعريفية عن الموقع">
+    <section id="crawlable-intro" dir="rtl" lang="ar" aria-label="معلومات تعريفية عن الموقع" style="display:none">
       <h1>مكاتب السفريات الموثوقة</h1>
       <p>منصة عربية تساعد المستخدمين على الوصول إلى مكاتب سفريات موثوقة وخدمات مرتبطة بالسفر والعمل، مع واجهة واضحة ودعم للمستخدمين.</p>
       <p>الخدمات المتاحة داخل المنصة تشمل:</p>
@@ -46,13 +46,6 @@
       </nav>
     </section>
     <div id="root"></div>
-    <script>
-      window.addEventListener('DOMContentLoaded', function () {
-        var intro = document.getElementById('crawlable-intro');
-        if (!intro) return;
-        requestAnimationFrame(function () { intro.style.display = 'none'; });
-      });
-    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
