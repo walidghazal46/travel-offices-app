@@ -4481,6 +4481,47 @@ export default function App() {
   const t = dark ? themes.dark : themes.light;
   const tx = lang === "ar" ? T.ar : T.en;
   const isCompactPhone = typeof window !== "undefined" && window.innerWidth <= 430;
+  const landingAdConfig = {
+    enabled: false,
+    web: { client: "ca-pub-xxxxxxxxxxxxxxxx", slot: "1234567890" },
+    mobile: { androidUnitId: "ca-app-pub-xxxxxxxxxxxxxxxx/1234567890" },
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    if (isNativePlatform || !landingAdConfig.enabled || view !== "landing") return;
+
+    const adClient = String(landingAdConfig.web.client || "").trim();
+    if (!adClient || adClient.includes("xxxx")) return;
+
+    const scriptId = "adsbygoogle-script";
+    const initPendingAdSlots = () => {
+      const pendingSlots = document.querySelectorAll("ins.adsbygoogle:not([data-ad-ready='1'])");
+      pendingSlots.forEach((slot) => {
+        try {
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+          slot.setAttribute("data-ad-ready", "1");
+        } catch {
+          // Keep silent to avoid interrupting UI if the ad provider rejects a request.
+        }
+      });
+    };
+
+    const existingScript = document.getElementById(scriptId);
+    if (existingScript) {
+      initPendingAdSlots();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = scriptId;
+    script.async = true;
+    script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adClient}`;
+    script.crossOrigin = "anonymous";
+    script.onload = () => initPendingAdSlots();
+    document.head.appendChild(script);
+  }, [isNativePlatform, landingAdConfig.enabled, landingAdConfig.web.client, view]);
+
   const cvOfferDeadline = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() + 5);
@@ -9030,15 +9071,15 @@ export default function App() {
                   </p>
                 </div>
 
-                <div style={{ ...styles.sectionCard, background: t.cardBg, border: `1px solid ${t.border}`, padding: "14px 12px", boxShadow: dark ? "none" : "0 14px 34px rgba(15,23,42,0.06)" }}>
-                  <div style={{ marginBottom: 14, borderRadius: 18, padding: "7.2px 13px", background: dark ? "linear-gradient(135deg, rgba(14,116,144,0.26), rgba(6,182,212,0.12))" : "linear-gradient(135deg, #ecfeff, #dbeafe)", border: "1px solid rgba(14,165,233,0.26)", boxShadow: dark ? "0 0 20px rgba(34,211,238,0.14), inset 0 1px 0 rgba(255,255,255,0.05)" : "0 0 18px rgba(14,165,233,0.12), 0 10px 20px rgba(14,165,233,0.08)", position: "relative", overflow: "hidden" }}>
+                <div style={{ ...styles.sectionCard, background: t.cardBg, border: `1px solid ${t.border}`, padding: "14px 12px", boxShadow: dark ? "none" : "0 14px 34px rgba(15,23,42,0.06)", zoom: isCompactPhone ? 0.88 : 1, margin: "0 auto" }}>
+                  <div style={{ marginBottom: 14, borderRadius: 18, padding: "5.2px 13px", background: dark ? "linear-gradient(135deg, rgba(14,116,144,0.26), rgba(6,182,212,0.12))" : "linear-gradient(135deg, #ecfeff, #dbeafe)", border: "1px solid rgba(14,165,233,0.26)", boxShadow: dark ? "0 0 20px rgba(34,211,238,0.14), inset 0 1px 0 rgba(255,255,255,0.05)" : "0 0 18px rgba(14,165,233,0.12), 0 10px 20px rgba(14,165,233,0.08)", position: "relative", overflow: "hidden" }}>
                     <div style={{ position: "absolute", top: -26, left: lang === "ar" ? "auto" : -24, right: lang === "ar" ? -24 : "auto", width: 90, height: 90, borderRadius: "50%", background: "radial-gradient(circle, rgba(56,189,248,0.26), rgba(56,189,248,0))" }} />
-                    <div style={{ display: "flex", flexDirection: isCompactPhone ? "column" : "row", alignItems: isCompactPhone ? "stretch" : "center", gap: 10, position: "relative" }}>
+                    <div style={{ display: "flex", flexDirection: isCompactPhone ? "column" : "row", alignItems: isCompactPhone ? "stretch" : "center", gap: 7, position: "relative" }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#67e8f9" : "#0f766e", marginBottom: 3, fontFamily: "'Cairo',sans-serif" }}>
+                        <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#67e8f9" : "#0f766e", marginBottom: 2, fontFamily: "'Cairo',sans-serif" }}>
                           {lang === "ar" ? "اختر جنسيتك" : "Choose Your Nationality"}
                         </div>
-                        <div style={{ fontSize: 10, lineHeight: 1.7, color: dark ? "#d5f5ff" : "#155e75", fontFamily: "'Cairo',sans-serif" }}>
+                        <div style={{ fontSize: 10, lineHeight: 1.45, color: dark ? "#d5f5ff" : "#155e75", fontFamily: "'Cairo',sans-serif" }}>
                           {lang === "ar" ? "اختيار الجنسية يجعل قسم تواصل مع سفارتك يعرض سفارتك المناسبة مباشرة داخل كل دولة." : "Choosing your nationality makes the Contact Your Embassy section show the right embassy directly inside each country."}
                         </div>
                       </div>
@@ -9048,7 +9089,7 @@ export default function App() {
                           onChange={(e) => setSelectedNationality(e.target.value)}
                           style={{
                             width: "100%",
-                            padding: "10px 12px",
+                            padding: "7px 12px",
                             borderRadius: 12,
                             border: `1px solid ${dark ? "rgba(125,211,252,0.28)" : "rgba(14,165,233,0.26)"}`,
                             background: dark ? "rgba(8,47,73,0.72)" : "rgba(255,255,255,0.95)",
@@ -9084,7 +9125,7 @@ export default function App() {
                             : (dark ? "rgba(255,255,255,0.03)" : "#f9fbff"),
                           border: `1px solid ${!hasSelectedNationality ? "rgba(148,163,184,0.35)" : t.border}`,
                           borderRadius: 18,
-                          padding: "12px 6px 10px",
+                          padding: "10px 6px 8px",
                           cursor: !hasSelectedNationality ? "not-allowed" : "pointer",
                           display: "flex",
                           flexDirection: "column",
@@ -9092,7 +9133,7 @@ export default function App() {
                           justifyContent: "center",
                           gap: 7,
                           boxShadow: !hasSelectedNationality ? "none" : (dark ? "none" : "0 8px 20px rgba(15,23,42,0.05)"),
-                          minHeight: 96,
+                          minHeight: 77,
                           transition: "transform .18s ease, box-shadow .18s ease, border-color .18s ease",
                           opacity: !hasSelectedNationality ? 0.58 : 1,
                           filter: !hasSelectedNationality ? "grayscale(0.25)" : "none",
@@ -9124,15 +9165,15 @@ export default function App() {
                       {lang === "ar" ? "اختر الجنسية أولًا لتفعيل الدول." : "Choose your nationality first to enable countries."}
                     </div>
                   )}
-                  <div style={{ marginTop: 18, borderRadius: 18, padding: "12px 14px", background: dark ? "linear-gradient(135deg, rgba(22,163,74,0.18), rgba(34,197,94,0.10))" : "linear-gradient(135deg, #f0fdf4, #dcfce7)", border: "1px solid rgba(34,197,94,0.28)", textAlign: "center", boxShadow: dark ? "0 0 24px rgba(34,197,94,0.16), inset 0 1px 0 rgba(255,255,255,0.04)" : "0 0 18px rgba(34,197,94,0.16), 0 10px 24px rgba(34,197,94,0.10)", position: "relative", overflow: "hidden" }}>
+                  <div style={{ marginTop: 11, borderRadius: 18, padding: "6px 14px", background: dark ? "linear-gradient(135deg, rgba(22,163,74,0.18), rgba(34,197,94,0.10))" : "linear-gradient(135deg, #f0fdf4, #dcfce7)", border: "1px solid rgba(34,197,94,0.28)", textAlign: "center", boxShadow: dark ? "0 0 24px rgba(34,197,94,0.16), inset 0 1px 0 rgba(255,255,255,0.04)" : "0 0 18px rgba(34,197,94,0.16), 0 10px 24px rgba(34,197,94,0.10)", position: "relative", overflow: "hidden" }}>
                     <div style={{ position: "absolute", top: -18, left: lang === "ar" ? "auto" : -18, right: lang === "ar" ? -18 : "auto", width: 74, height: 74, borderRadius: "50%", background: "radial-gradient(circle, rgba(74,222,128,0.22), rgba(74,222,128,0))" }} />
-                    <div style={{ fontSize: 11, fontWeight: 800, color: "#15803d", lineHeight: 1.9, fontFamily: "'Cairo',sans-serif", position: "relative", textShadow: dark ? "0 0 10px rgba(74,222,128,0.18)" : "0 1px 0 rgba(255,255,255,0.45)" }}>
+                    <div style={{ fontSize: 9, fontWeight: 800, color: "#15803d", lineHeight: 1.35, fontFamily: "'Cairo',sans-serif", position: "relative", textShadow: dark ? "0 0 10px rgba(74,222,128,0.18)" : "0 1px 0 rgba(255,255,255,0.45)" }}>
                       {lang === "ar" ? "ملحوظة: جميع المستخدمين يمكنهم الدخول إلى أي دولة وطلب الخدمة بكل سهولة." : "Note: All users can enter any country page and request the service easily."}
                     </div>
                   </div>
 
-                  <div style={{ marginTop: 16, borderRadius: 20, padding: "14px 10px 16px", background: dark ? "rgba(255,255,255,0.04)" : "#ffffff", border: `1px solid ${dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.07)"}`, boxShadow: dark ? "none" : "0 4px 20px rgba(0,0,0,0.06)" }}>
-                    <div style={{ textAlign: "center", fontSize: 12, color: dark ? "#94a3b8" : "#475569", fontWeight: 800, marginBottom: 12, fontFamily: "'Cairo',sans-serif" }}>
+                  <div style={{ marginTop: 13, borderRadius: 20, padding: "9.5px 10px 10.5px", background: dark ? "rgba(255,255,255,0.04)" : "#ffffff", border: `1px solid ${dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.07)"}`, boxShadow: dark ? "none" : "0 4px 20px rgba(0,0,0,0.06)" }}>
+                    <div style={{ textAlign: "center", fontSize: 12, color: dark ? "#94a3b8" : "#475569", fontWeight: 800, marginBottom: 7.6, fontFamily: "'Cairo',sans-serif" }}>
                       {lang === "ar" ? "روابط مهمة" : "Important Links"}
                     </div>
                     <div className="landing-links-row">
@@ -9168,6 +9209,106 @@ export default function App() {
                         </a>
                       ))}
                     </div>
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 12,
+                      borderRadius: 16,
+                      minHeight: isCompactPhone ? 151 : 165,
+                      padding: "12px 12px",
+                      border: `1px dashed ${dark ? "rgba(148,163,184,0.42)" : "rgba(100,116,139,0.34)"}`,
+                      background: dark
+                        ? "linear-gradient(135deg, rgba(30,41,59,0.42), rgba(15,23,42,0.30))"
+                        : "linear-gradient(135deg, #f8fafc, #f1f5f9)",
+                      position: "relative",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 6,
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        fontSize: 9,
+                        fontWeight: 800,
+                        letterSpacing: 0.2,
+                        padding: "2px 8px",
+                        borderRadius: 999,
+                        border: `1px solid ${dark ? "rgba(148,163,184,0.45)" : "rgba(100,116,139,0.28)"}`,
+                        background: dark ? "rgba(15,23,42,0.72)" : "rgba(255,255,255,0.82)",
+                        color: dark ? "#cbd5e1" : "#64748b",
+                        fontFamily: "'Cairo',sans-serif",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      {lang === "ar" ? "مساحة إعلانية" : "Ad Space"}
+                    </div>
+                    {landingAdConfig.enabled ? (
+                      !isNativePlatform ? (
+                        <div style={{ width: "100%" }}>
+                          <div style={{ fontSize: 10, fontWeight: 800, marginBottom: 8, color: dark ? "#cbd5e1" : "#64748b", fontFamily: "'Cairo',sans-serif" }}>
+                            {lang === "ar" ? "إعلان ممول" : "Sponsored"}
+                          </div>
+                          <ins
+                            className="adsbygoogle"
+                            style={{ display: "block", width: "100%", minHeight: 50 }}
+                            data-ad-client={landingAdConfig.web.client}
+                            data-ad-slot={landingAdConfig.web.slot}
+                            data-ad-format="auto"
+                            data-full-width-responsive="true"
+                          />
+                        </div>
+                      ) : (
+                        <div style={{ fontFamily: "'Cairo',sans-serif" }}>
+                          <div style={{ fontSize: 10, fontWeight: 900, color: dark ? "#f8fafc" : "#0f172a" }}>
+                            {lang === "ar" ? "موضع إعلان التطبيق (AdMob)" : "App Ad Slot (AdMob)"}
+                          </div>
+                          <div style={{ fontSize: 9, marginTop: 4, color: dark ? "#94a3b8" : "#64748b" }}>
+                            {landingAdConfig.mobile.androidUnitId}
+                          </div>
+                        </div>
+                      )
+                    ) : (
+                      <div style={{ fontFamily: "'Cairo',sans-serif", maxWidth: 320, width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                        <div style={{ fontSize: 11, fontWeight: 900, color: dark ? "#f8fafc" : "#0f172a", marginTop: 8 }}>
+                          {lang === "ar" ? "هل تريد الإعلان في التطبيق؟" : "Want to advertise in the app?"}
+                        </div>
+                        <a
+                          href={`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
+                            lang === "ar"
+                              ? "مرحبًا، أرغب في حجز إعلان داخل المساحة الإعلانية في التطبيق."
+                              : "Hello, I want to book an ad inside the app ad space."
+                          )}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 8,
+                            minHeight: 38,
+                            padding: "8px 14px",
+                            borderRadius: 12,
+                            textDecoration: "none",
+                            fontSize: 11,
+                            fontWeight: 900,
+                            fontFamily: "'Cairo',sans-serif",
+                            color: "#eafff1",
+                            border: "1px solid rgba(37,211,102,0.46)",
+                            background: "linear-gradient(135deg, rgba(16,99,53,0.46), rgba(20,150,71,0.36))",
+                            boxShadow: "0 0 14px rgba(37,211,102,0.24)",
+                          }}
+                        >
+                          <span style={{ fontSize: 14, lineHeight: 1 }}>☏</span>
+                          <span>{lang === "ar" ? "تواصل للإعلان عبر واتساب" : "Contact via WhatsApp for Ads"}</span>
+                        </a>
+                      </div>
+                    )}
                   </div>
 
                 </div>
