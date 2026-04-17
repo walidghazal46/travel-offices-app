@@ -5297,7 +5297,13 @@ export default function App() {
     }
 
     if (view === "list") {
-      goHome();
+      if (selectedCountry && selectedCountry !== "مصر") {
+        setSelectedGov(null);
+        setSearch("");
+        setView("countryTrusted");
+      } else {
+        goHome();
+      }
       return;
     }
 
@@ -9030,7 +9036,7 @@ export default function App() {
                 </div>
 
                 <div style={{ ...styles.sectionCard, background: t.cardBg, border: `1px solid ${t.border}`, padding: "14px 12px", boxShadow: dark ? "none" : "0 14px 34px rgba(15,23,42,0.06)" }}>
-                  <div style={{ marginBottom: 14, borderRadius: 18, padding: "11px 13px", background: dark ? "linear-gradient(135deg, rgba(14,116,144,0.26), rgba(6,182,212,0.12))" : "linear-gradient(135deg, #ecfeff, #dbeafe)", border: "1px solid rgba(14,165,233,0.26)", boxShadow: dark ? "0 0 20px rgba(34,211,238,0.14), inset 0 1px 0 rgba(255,255,255,0.05)" : "0 0 18px rgba(14,165,233,0.12), 0 10px 20px rgba(14,165,233,0.08)", position: "relative", overflow: "hidden" }}>
+                  <div style={{ marginBottom: 14, borderRadius: 18, padding: "7.2px 13px", background: dark ? "linear-gradient(135deg, rgba(14,116,144,0.26), rgba(6,182,212,0.12))" : "linear-gradient(135deg, #ecfeff, #dbeafe)", border: "1px solid rgba(14,165,233,0.26)", boxShadow: dark ? "0 0 20px rgba(34,211,238,0.14), inset 0 1px 0 rgba(255,255,255,0.05)" : "0 0 18px rgba(14,165,233,0.12), 0 10px 20px rgba(14,165,233,0.08)", position: "relative", overflow: "hidden" }}>
                     <div style={{ position: "absolute", top: -26, left: lang === "ar" ? "auto" : -24, right: lang === "ar" ? -24 : "auto", width: 90, height: 90, borderRadius: "50%", background: "radial-gradient(circle, rgba(56,189,248,0.26), rgba(56,189,248,0))" }} />
                     <div style={{ display: "flex", flexDirection: isCompactPhone ? "column" : "row", alignItems: isCompactPhone ? "stretch" : "center", gap: 10, position: "relative" }}>
                       <div style={{ flex: 1 }}>
