@@ -4614,13 +4614,10 @@ export default function App() {
   const isSameGovernorate = (leftGov, rightGov) => normalizeGovernorateName(leftGov) === normalizeGovernorateName(rightGov);
   const countryOffices = useMemo(() => {
     if (!selectedGov) return [];
-    if (selectedCountry === "مصر") {
-      return effectiveOffices.filter((office) => isSameGovernorate(office.gov, selectedGov));
-    }
     if (selectedCountry === "المملكة العربية السعودية") {
       return saudiOffices.filter((office) => isSameGovernorate(office.gov, selectedGov));
     }
-    return [];
+    return effectiveOffices.filter((office) => isSameGovernorate(office.gov, selectedGov));
   }, [effectiveOffices, isSameGovernorate, saudiOffices, selectedCountry, selectedGov]);
   const hasSelectedNationality = Boolean(String(selectedNationality || "").trim());
   const availableSaudiServices = useMemo(() => {
@@ -4645,12 +4642,10 @@ export default function App() {
 
   const filteredOffices = useMemo(() => {
     let list = [];
-    if (selectedCountry === "مصر") {
-      list = effectiveOffices;
-    } else if (selectedCountry === "المملكة العربية السعودية") {
+    if (selectedCountry === "المملكة العربية السعودية") {
       list = saudiOffices;
     } else {
-      return [];
+      list = effectiveOffices;
     }
 
     if (selectedGov) list = list.filter((o) => isSameGovernorate(o.gov, selectedGov));
@@ -9640,29 +9635,27 @@ export default function App() {
                   <div style={{ color: t.subText, fontSize: 11, marginBottom: 10 }}>
                     {selectedCountry === "المملكة العربية السعودية"
                       ? (lang === "ar" ? "اختر المدينة لعرض المكاتب الموثوقة المتاحة" : "Choose a city to browse available trusted offices")
-                      : tx.citiesComingSoon}
+                      : (lang === "ar" ? "اختر المدينة لعرض المكاتب المتاحة" : "Choose a city to browse available offices")}
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
                     {country.cities.map(city => {
                       const cityTotalOffices = selectedCountry === "المملكة العربية السعودية"
                         ? ((saudiOfficesData?.[city] || []).length)
-                        : 0;
-                      const cityVisibleOffices = isGuestUser && selectedCountry === "المملكة العربية السعودية"
+                        : effectiveOffices.filter((office) => isSameGovernorate(office.gov, city)).length;
+                      const cityVisibleOffices = isGuestUser && (selectedCountry === "المملكة العربية السعودية")
                         ? Math.min(3, cityTotalOffices)
                         : cityTotalOffices;
 
                       return (
-                      <button key={city} onClick={() => selectedCountry === "المملكة العربية السعودية" ? handleGovSelect(city) : openCityModal(lang === "en" ? (cityNamesEn[city] || city) : city)}
+                      <button key={city} onClick={() => cityTotalOffices > 0 ? handleGovSelect(city) : openCityModal(lang === "en" ? (cityNamesEn[city] || city) : city)}
                         style={{ background: t.cardBg, border: `1px solid ${t.border}`, borderRadius: 12, padding: "12px 6px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, transition: "all 0.2s", fontFamily: "'Cairo',sans-serif" }}>
                         <span style={{ fontSize: 28 }}>{selectedCountry === "المملكة العربية السعودية" ? (saudiCityIcons[city] || "🏙️") : (cityIcons[city] || "🏙️")}</span>
                         <span style={{ fontSize: 10, color: t.text, fontWeight: 600, textAlign: "center" }}>{lang === "en" ? (cityNamesEn[city] || city) : city}</span>
-                        {selectedCountry === "المملكة العربية السعودية" && (
-                          <span style={{ fontSize: 9, color: t.subText, textAlign: "center", lineHeight: 1.3 }}>
-                            {isGuestUser
-                              ? (lang === "ar" ? `${cityVisibleOffices}/${cityTotalOffices} متاح للضيف` : `${cityVisibleOffices}/${cityTotalOffices} guest visible`)
-                              : (lang === "ar" ? `${cityTotalOffices} مكتب` : `${cityTotalOffices} offices`)}
-                          </span>
-                        )}
+                        <span style={{ fontSize: 9, color: t.subText, textAlign: "center", lineHeight: 1.3 }}>
+                          {selectedCountry === "المملكة العربية السعودية" && isGuestUser
+                            ? (lang === "ar" ? `${cityVisibleOffices}/${cityTotalOffices} متاح للضيف` : `${cityVisibleOffices}/${cityTotalOffices} guest visible`)
+                            : (lang === "ar" ? `${cityTotalOffices} مكتب` : `${cityTotalOffices} offices`)}
+                        </span>
                       </button>
                     );
                     })}
@@ -9929,9 +9922,26 @@ export default function App() {
             {view === "list" && (
               <div>
                 <div style={{ ...styles.listHeader, background: t.cardBg, borderBottom: `1px solid ${t.border}` }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>{lang === "ar" ? "مكاتب" : "Offices:"} <span style={{ color: t.gold }}>{getGovernorateLabel(selectedGov)}</span></div>
-                <div style={{ color: t.subText, fontSize: 12 }}>{visibleFilteredOffices.length} {tx.officesAvail}</div>
-              </div>
+                  <button
+                    onClick={handleAppBackNavigation}
+                    style={{
+                      borderRadius: 10,
+                      padding: "5px 9px",
+                      border: `1px solid ${t.border}`,
+                      background: t.inputBg,
+                      color: t.text,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      fontFamily: "'Cairo',sans-serif",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {lang === "ar" ? "‹ رجوع" : "Back ›"}
+                  </button>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>{lang === "ar" ? "مكاتب" : "Offices:"} <span style={{ color: t.gold }}>{getGovernorateLabel(selectedGov)}</span></div>
+                  <div style={{ color: t.subText, fontSize: 12 }}>{visibleFilteredOffices.length} {tx.officesAvail}</div>
+                </div>
                 {isAdminUser && (
                   <div style={{ display: "flex", justifyContent: "center", marginTop: 10, marginBottom: 10 }}>
                     <button
@@ -10740,7 +10750,7 @@ export default function App() {
               )}
 
               {!cvMode ? (
-                cvJobSitesCard
+                <div style={{ marginTop: -11 }}>{cvJobSitesCard}</div>
               ) : cvMode === "builder" ? (
                 cvBuilderScreen === "menu" ? (
                   <div style={{ display:"grid", gap:14, marginTop:16 }}>
