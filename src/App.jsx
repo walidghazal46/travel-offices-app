@@ -9886,52 +9886,59 @@ export default function App() {
                     onClick={() => { setView("countryTrusted"); }}
                     style={{
                       width: "100%",
+                      maxWidth: "100%",
+                      boxSizing: "border-box",
                       textAlign: lang === "ar" ? "right" : "left",
                       background: dark ? "linear-gradient(135deg, rgba(22,163,74,0.24), rgba(34,197,94,0.10))" : "linear-gradient(135deg, #f0fdf4, #ecfdf5)",
                       border: "1px solid #16a34a33",
-                      borderRadius: 20,
-                      padding: "8px 11px",
+                      borderRadius: 22,
+                      padding: "12px 13px",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: 8,
-                      boxShadow: dark ? "0 0 18px #16a34a18" : "0 10px 22px #16a34a12",
+                      gap: 11,
+                      minHeight: 82,
+                      overflow: "hidden",
+                      boxShadow: dark ? "0 0 16px #16a34a16" : "0 10px 22px #16a34a10",
                       fontFamily: "'Cairo',sans-serif",
                     }}
                   >
-                    <div style={{ width: 34, height: 34, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #16a34a28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🏙️</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: "#16a34a", marginBottom: 2 }}>{lang === "ar" ? "المكاتب الموثوقة" : "Trusted Offices"}</div>
-                      <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? "ادخل إلى المحتوى الموثوق الحالي كما هو داخل هذه الدولة." : "Open the trusted verified content inside this country."}</div>
+                    <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #16a34a28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🏙️</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: "#16a34a", marginBottom: 3 }}>{lang === "ar" ? "المكاتب الموثوقة" : "Trusted Offices"}</div>
+                      <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? "ادخل إلى المحتوى الموثوق الحالي كما هو داخل هذه الدولة." : "Open the trusted verified content inside this country."}</div>
                     </div>
-                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#16a34a18", color: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#16a34a18", color: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                   </button>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
                     <div
                       style={{
                         width: "100%",
+                        maxWidth: "100%",
+                        boxSizing: "border-box",
                         textAlign: lang === "ar" ? "right" : "left",
                         background: dark ? "linear-gradient(135deg, rgba(229,62,62,0.12), rgba(229,62,62,0.06))" : "linear-gradient(135deg, #fff5f5, #fffafa)",
                         border: "1px solid #e53e3e28",
-                        borderRadius: 20,
-                        padding: "8px 10px",
+                        borderRadius: 22,
+                        padding: "12px 12px",
                         display: "flex",
                         alignItems: "center",
-                        gap: 8,
+                        gap: 11,
                         boxShadow: dark ? "0 0 18px #e53e3e14" : "0 10px 22px #e53e3e0d",
                         fontFamily: "'Cairo',sans-serif",
-                        minHeight: 67,
+                        minHeight: 82,
+                        overflow: "hidden",
                         opacity: 0.86
                       }}
                     >
-                      <div style={{ width: 32, height: 32, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #e53e3e20", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }}>🚫</div>
-                      <div style={{ flex: 1 }}>
+                      <div style={{ width: 38, height: 38, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #e53e3e20", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🚫</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                          <div style={{ fontSize: 13, fontWeight: 900, color: "#e53e3e" }}>{lang === "ar" ? "مكاتب محظورة" : "Blocked Offices"}</div>
+                          <div style={{ fontSize: 14, fontWeight: 900, color: "#e53e3e" }}>{lang === "ar" ? "مكاتب محظورة" : "Blocked Offices"}</div>
                           <span style={{ fontSize: 9, fontWeight: 800, color: "#e53e3e", background: "#e53e3e14", border: "1px solid #e53e3e28", borderRadius: 999, padding: "2px 7px" }}>{lang === "ar" ? "قريبًا" : "Soon"}</span>
                         </div>
-                        <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? "هذا القسم سيُضاف لاحقًا في هذه الدولة." : "This section will be added later for this country."}</div>
+                        <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? "هذا القسم سيُضاف لاحقًا في هذه الدولة." : "This section will be added later for this country."}</div>
                       </div>
                     </div>
                   </div>
@@ -9940,76 +9947,87 @@ export default function App() {
                     onClick={() => { setCountryPaidScreen("list"); setView("countryPaid"); }}
                     style={{
                       width: "100%",
+                      maxWidth: "100%",
+                      boxSizing: "border-box",
                       textAlign: lang === "ar" ? "right" : "left",
                       background: dark ? "linear-gradient(135deg, rgba(14,116,144,0.24), rgba(6,182,212,0.12))" : "linear-gradient(135deg, #ecfeff, #f0fdfa)",
                       border: "1px solid #0f766e33",
-                      borderRadius: 20,
-                      padding: "8px 11px",
+                      borderRadius: 22,
+                      padding: "12px 13px",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: 8,
-                      boxShadow: dark ? "0 0 18px #0f766e18" : "0 10px 22px #0f766e12",
+                      gap: 11,
+                      minHeight: 82,
+                      overflow: "hidden",
+                      boxShadow: dark ? "0 0 16px #0f766e16" : "0 10px 22px #0f766e10",
                       fontFamily: "'Cairo',sans-serif",
                     }}
                   >
-                    <div style={{ width: 34, height: 34, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #0f766e28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🛂</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: "#0f766e", marginBottom: 2 }}>{lang === "ar" ? "خدمات مدفوعة" : "Paid Services"}</div>
-                      <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? `هنا تجد الخدمات المدفوعة والوزارة والطوارئ في ${country.name}.` : `Here you will find paid services, ministry, and emergency contacts in ${countryNamesEn[country.name] || country.name}.`}</div>
+                    <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #0f766e28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🛂</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: "#0f766e", marginBottom: 3 }}>{lang === "ar" ? "خدمات مدفوعة" : "Paid Services"}</div>
+                      <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? `هنا تجد الخدمات المدفوعة والوزارة والطوارئ في ${country.name}.` : `Here you will find paid services, ministry, and emergency contacts in ${countryNamesEn[country.name] || country.name}.`}</div>
                     </div>
-                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#0f766e18", color: "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#0f766e18", color: "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                   </button>
 
                   <button
                     onClick={openProviderPortalOrPromptLogin}
                     style={{
                       width: "100%",
+                      maxWidth: "100%",
+                      boxSizing: "border-box",
                       textAlign: lang === "ar" ? "right" : "left",
                       background: dark ? "linear-gradient(135deg, rgba(202,138,4,0.24), rgba(245,158,11,0.10))" : "linear-gradient(135deg, #fffbeb, #fef3c7)",
                       border: "1px solid rgba(202,138,4,0.30)",
-                      borderRadius: 20,
-                      padding: "8px 11px",
+                      borderRadius: 22,
+                      padding: "12px 13px",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: 8,
-                      boxShadow: dark ? "0 0 18px rgba(202,138,4,0.18)" : "0 10px 22px rgba(202,138,4,0.12)",
+                      gap: 11,
+                      minHeight: 82,
+                      overflow: "hidden",
+                      boxShadow: dark ? "0 0 16px rgba(202,138,4,0.16)" : "0 10px 22px rgba(202,138,4,0.10)",
                       fontFamily: "'Cairo',sans-serif",
                     }}
                   >
-                    <div style={{ width: 34, height: 34, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(202,138,4,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🧰</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fde68a" : "#a16207", marginBottom: 2 }}>{lang === "ar" ? "ضيف خدمتك" : "Add Your Service"}</div>
-                      <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? `سجل خدمتك داخل ${country.name} ليتم مراجعتها واعتمادها.` : `Submit your service in ${countryNamesEn[country.name] || country.name} for admin review and approval.`}</div>
+                    <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(202,138,4,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🧰</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#fde68a" : "#a16207", marginBottom: 3 }}>{lang === "ar" ? "ضيف خدمتك" : "Add Your Service"}</div>
+                      <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? `سجل خدمتك داخل ${country.name} ليتم مراجعتها واعتمادها.` : `Submit your service in ${countryNamesEn[country.name] || country.name} for admin review and approval.`}</div>
                     </div>
-                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                   </button>
 
                   <button
                     onClick={() => { setView("countryEmbassies"); }}
                     style={{
                       width: "100%",
+                      maxWidth: "100%",
+                      boxSizing: "border-box",
                       textAlign: lang === "ar" ? "right" : "left",
                       background: dark ? "linear-gradient(135deg, rgba(8,145,178,0.24), rgba(14,165,233,0.10))" : "linear-gradient(135deg, #ecfeff, #e0f2fe)",
                       border: "1px solid rgba(14,165,233,0.28)",
-                      borderRadius: 20,
-                      padding: "8px 10px",
+                      borderRadius: 22,
+                      padding: "12px 12px",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: 8,
-                      boxShadow: dark ? "0 0 18px rgba(14,165,233,0.18)" : "0 10px 22px rgba(14,165,233,0.12)",
+                      gap: 11,
+                      overflow: "hidden",
+                      boxShadow: dark ? "0 0 16px rgba(14,165,233,0.16)" : "0 10px 22px rgba(14,165,233,0.10)",
                       fontFamily: "'Cairo',sans-serif",
-                      minHeight: 67
+                      minHeight: 82
                     }}
                   >
-                    <div style={{ width: 32, height: 32, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(14,165,233,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }}>🏛️</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#67e8f9" : "#0f766e", marginBottom: 2 }}>{lang === "ar" ? "تواصل مع سفارتك" : "Contact Your Embassy"}</div>
-                      <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? `الوصول السريع إلى سفارتك داخل ${country.name}${selectedNationality ? ` - الجنسية الحالية: ${selectedNationality}` : ""}` : `Quick access to your embassy inside ${countryNamesEn[country.name] || country.name}${selectedNationality ? ` - current nationality: ${countryNamesEn[selectedNationality] || selectedNationality}` : ""}`}</div>
+                    <div style={{ width: 38, height: 38, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(14,165,233,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🏛️</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#67e8f9" : "#0f766e", marginBottom: 3 }}>{lang === "ar" ? "تواصل مع سفارتك" : "Contact Your Embassy"}</div>
+                      <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? `الوصول السريع إلى سفارتك داخل ${country.name}${selectedNationality ? ` - الجنسية الحالية: ${selectedNationality}` : ""}` : `Quick access to your embassy inside ${countryNamesEn[country.name] || country.name}${selectedNationality ? ` - current nationality: ${countryNamesEn[selectedNationality] || selectedNationality}` : ""}`}</div>
                     </div>
-                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(14,165,233,0.16)", color: dark ? "#67e8f9" : "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(14,165,233,0.16)", color: dark ? "#67e8f9" : "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                   </button>
 
                 </div>
