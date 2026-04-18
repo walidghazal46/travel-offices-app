@@ -969,7 +969,22 @@ export default function App() {
     }
   });
   const [adminOfficeEditOpen, setAdminOfficeEditOpen] = useState(false);
-  const [adminOfficeDraft, setAdminOfficeDraft] = useState({ name: "", license: "", address: "", gov: "" });
+  const [adminOfficeDraft, setAdminOfficeDraft] = useState({
+    name: "",
+    license: "",
+    address: "",
+    gov: "",
+    registrationType: "",
+    registrationNumber: "",
+    taxNumber: "",
+    issuingAuthority: "",
+    officialSourceUrl: "",
+    officialVerificationStatus: "",
+    mapPlaceId: "",
+    mapLat: "",
+    mapLng: "",
+    mapVerificationStatus: "",
+  });
   const [adminOfficeEditError, setAdminOfficeEditError] = useState("");
   const [adminAddedOffices, setAdminAddedOffices] = useState(() => {
     try {
@@ -5107,7 +5122,22 @@ export default function App() {
   const closeOfficeEditorState = useCallback(() => {
     setAdminOfficeEditOpen(false);
     setAdminOfficeEditError("");
-    setAdminOfficeDraft({ name: "", license: "", address: "", gov: "" });
+    setAdminOfficeDraft({
+      name: "",
+      license: "",
+      address: "",
+      gov: "",
+      registrationType: "",
+      registrationNumber: "",
+      taxNumber: "",
+      issuingAuthority: "",
+      officialSourceUrl: "",
+      officialVerificationStatus: "",
+      mapPlaceId: "",
+      mapLat: "",
+      mapLng: "",
+      mapVerificationStatus: "",
+    });
   }, []);
 
   const hasUnsavedOfficeEditorChanges = useCallback((office = selectedOffice) => {
@@ -5116,19 +5146,49 @@ export default function App() {
     const draftLicense = String(adminOfficeDraft.license || "").replace(/[^0-9]/g, "");
     const draftAddress = String(adminOfficeDraft.address || "").trim();
     const draftGov = String(adminOfficeDraft.gov || "").trim();
+    const draftRegistrationType = String(adminOfficeDraft.registrationType || "").trim();
+    const draftRegistrationNumber = String(adminOfficeDraft.registrationNumber || "").trim();
+    const draftTaxNumber = String(adminOfficeDraft.taxNumber || "").trim();
+    const draftIssuingAuthority = String(adminOfficeDraft.issuingAuthority || "").trim();
+    const draftOfficialSourceUrl = String(adminOfficeDraft.officialSourceUrl || "").trim();
+    const draftOfficialVerificationStatus = String(adminOfficeDraft.officialVerificationStatus || "").trim();
+    const draftMapPlaceId = String(adminOfficeDraft.mapPlaceId || "").trim();
+    const draftMapLat = String(adminOfficeDraft.mapLat || "").trim();
+    const draftMapLng = String(adminOfficeDraft.mapLng || "").trim();
+    const draftMapVerificationStatus = String(adminOfficeDraft.mapVerificationStatus || "").trim();
 
     const officeName = String(office.name || "").trim();
     const officeLicense = String(office.license || "").replace(/[^0-9]/g, "");
     const officeAddress = String(office.address || "").trim();
     const officeGov = String(office.gov || "").trim();
+    const officeRegistrationType = String(office.registrationType || "").trim();
+    const officeRegistrationNumber = String(office.registrationNumber || "").trim();
+    const officeTaxNumber = String(office.taxNumber || "").trim();
+    const officeIssuingAuthority = String(office.issuingAuthority || "").trim();
+    const officeOfficialSourceUrl = String(office.officialSourceUrl || "").trim();
+    const officeOfficialVerificationStatus = String(office.officialVerificationStatus || "").trim();
+    const officeMapPlaceId = String(office.mapPlaceId || "").trim();
+    const officeMapLat = String(office.mapLat || "").trim();
+    const officeMapLng = String(office.mapLng || "").trim();
+    const officeMapVerificationStatus = String(office.mapVerificationStatus || "").trim();
 
     return (
       draftName !== officeName ||
       draftLicense !== officeLicense ||
       draftAddress !== officeAddress ||
-      draftGov !== officeGov
+      draftGov !== officeGov ||
+      draftRegistrationType !== officeRegistrationType ||
+      draftRegistrationNumber !== officeRegistrationNumber ||
+      draftTaxNumber !== officeTaxNumber ||
+      draftIssuingAuthority !== officeIssuingAuthority ||
+      draftOfficialSourceUrl !== officeOfficialSourceUrl ||
+      draftOfficialVerificationStatus !== officeOfficialVerificationStatus ||
+      draftMapPlaceId !== officeMapPlaceId ||
+      draftMapLat !== officeMapLat ||
+      draftMapLng !== officeMapLng ||
+      draftMapVerificationStatus !== officeMapVerificationStatus
     );
-  }, [adminOfficeDraft.address, adminOfficeDraft.gov, adminOfficeDraft.license, adminOfficeDraft.name, adminOfficeEditOpen, selectedOffice]);
+  }, [adminOfficeDraft.address, adminOfficeDraft.gov, adminOfficeDraft.issuingAuthority, adminOfficeDraft.license, adminOfficeDraft.mapLat, adminOfficeDraft.mapLng, adminOfficeDraft.mapPlaceId, adminOfficeDraft.mapVerificationStatus, adminOfficeDraft.name, adminOfficeDraft.officialSourceUrl, adminOfficeDraft.officialVerificationStatus, adminOfficeDraft.registrationNumber, adminOfficeDraft.registrationType, adminOfficeDraft.taxNumber, adminOfficeEditOpen, selectedOffice]);
 
   const confirmDiscardOfficeEditorChanges = useCallback((office = selectedOffice) => {
     if (!hasUnsavedOfficeEditorChanges(office)) {
@@ -5711,6 +5771,36 @@ export default function App() {
             </div>
             <div style={{ fontSize: 13, color: t.text, lineHeight: 1.9, textAlign: "center", marginBottom: 8, fontFamily: "'Cairo',sans-serif" }}>
               {modal.msg}
+            </div>
+          </>
+        ) : modal.type === "guestLinksAlert" ? (
+          <>
+            <div style={{ fontSize: 36, textAlign: "center", marginBottom: 10 }}>🔐</div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: "#2563eb", textAlign: "center", marginBottom: 10, fontFamily: "'Cairo',sans-serif" }}>
+              {modal.title}
+            </div>
+            <div style={{ fontSize: 13, color: t.text, lineHeight: 1.9, textAlign: "center", marginBottom: 18, fontFamily: "'Cairo',sans-serif" }}>
+              {modal.msg}
+            </div>
+            <div style={{ display:"grid", gap:10 }}>
+              <button
+                onClick={() => {
+                  setModal(null);
+                  setAuthPreviewMode("login");
+                  setAuthPreviewOpen(true);
+                }}
+                style={{ width: "100%", padding: "11px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "#fff", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "'Cairo',sans-serif" }}>
+                {lang === "ar" ? "تسجيل دخول" : "Sign In"}
+              </button>
+              <button
+                onClick={() => {
+                  setModal(null);
+                  setAuthPreviewMode("register");
+                  setAuthPreviewOpen(true);
+                }}
+                style={{ width: "100%", padding: "11px", borderRadius: 12, border: `1px solid #2563eb`, background: "transparent", color: "#2563eb", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "'Cairo',sans-serif" }}>
+                {lang === "ar" ? "إنشاء حساب جديد" : "Create Account"}
+              </button>
             </div>
           </>
         ) : (
@@ -8115,14 +8205,44 @@ export default function App() {
         const officeAddressLabel = getOfficeAddressLabel(off.address);
         const officeGovLabel = getGovernorateLabel(off.gov);
         const officeCountryLabel = String(off?.country || selectedCountry || "");
-        const mapQuery = encodeURIComponent(`${officeCountryLabel} ${officeNameLabel} ${officeAddressLabel}`);
-        const mapUrl = `https://www.google.com/maps/search/${mapQuery}`;
+        const mapPlaceId = String(off?.mapPlaceId || "").trim();
+        const mapLatValue = String(off?.mapLat ?? "").trim();
+        const mapLngValue = String(off?.mapLng ?? "").trim();
+        const mapLat = mapLatValue ? Number(mapLatValue) : NaN;
+        const mapLng = mapLngValue ? Number(mapLngValue) : NaN;
+        const hasMapCoordinates = Number.isFinite(mapLat) && Number.isFinite(mapLng);
+        const mapQueryText = `${officeCountryLabel} ${officeNameLabel} ${officeAddressLabel}`.trim();
+        const mapQuery = encodeURIComponent(mapQueryText);
+        const mapUrl = mapPlaceId
+          ? `https://www.google.com/maps/search/?api=1&query=${mapQuery}&query_place_id=${encodeURIComponent(mapPlaceId)}`
+          : hasMapCoordinates
+            ? `https://www.google.com/maps/search/?api=1&query=${mapLat},${mapLng}`
+            : (String(off?.mapUrl || "").trim() || `https://www.google.com/maps/search/${mapQuery}`);
         const rating = officeRatings[off.id] || { avg: 0, count: 0 };
         const offReviews = reviews[off.id] || [];
         const currentReviewerUid = String(authPreviewUser?.uid || "").trim();
         const userAlreadyReviewedOffice = !!currentReviewerUid
           && offReviews.some((entry) => String(entry?.reviewerUid || "").trim() === currentReviewerUid);
         const isManuallyAddedOffice = adminAddedOffices.some((entry) => Number(entry?.id) === Number(off.id));
+        const officeRegistrationType = String(off?.registrationType || "").trim();
+        const officeRegistrationNumber = String(off?.registrationNumber || "").trim();
+        const officeTaxNumber = String(off?.taxNumber || "").trim();
+        const officeIssuingAuthority = String(off?.issuingAuthority || "").trim();
+        const officeOfficialSourceUrl = String(off?.officialSourceUrl || "").trim();
+        const officeOfficialVerificationStatus = String(off?.officialVerificationStatus || "").trim();
+        const officeMapVerificationStatus = String(off?.mapVerificationStatus || "").trim();
+        const hasAdminVerificationData = !!(
+          officeRegistrationType
+          || officeRegistrationNumber
+          || officeTaxNumber
+          || officeIssuingAuthority
+          || officeOfficialSourceUrl
+          || officeOfficialVerificationStatus
+          || officeMapVerificationStatus
+          || mapPlaceId
+          || mapLatValue
+          || mapLngValue
+        );
 
         const promptOfficeReviewAuth = () => {
           setOfficeReviewError(
@@ -8144,6 +8264,16 @@ export default function App() {
             license: String(off.license || ""),
             address: String(off.address || ""),
             gov: String(off.gov || ""),
+            registrationType: String(off.registrationType || ""),
+            registrationNumber: String(off.registrationNumber || ""),
+            taxNumber: String(off.taxNumber || ""),
+            issuingAuthority: String(off.issuingAuthority || ""),
+            officialSourceUrl: String(off.officialSourceUrl || ""),
+            officialVerificationStatus: String(off.officialVerificationStatus || ""),
+            mapPlaceId: String(off.mapPlaceId || ""),
+            mapLat: String(off.mapLat ?? ""),
+            mapLng: String(off.mapLng ?? ""),
+            mapVerificationStatus: String(off.mapVerificationStatus || ""),
           });
           setAdminOfficeEditError("");
           setAdminOfficeEditOpen(true);
@@ -8157,6 +8287,19 @@ export default function App() {
           const nextLicense = Number(nextLicenseRaw.replace(/[^0-9]/g, ""));
           const nextAddress = String(adminOfficeDraft.address || "").trim();
           const nextGov = String(adminOfficeDraft.gov || "").trim();
+          const nextRegistrationType = String(adminOfficeDraft.registrationType || "").trim();
+          const nextRegistrationNumber = String(adminOfficeDraft.registrationNumber || "").trim();
+          const nextTaxNumber = String(adminOfficeDraft.taxNumber || "").trim();
+          const nextIssuingAuthority = String(adminOfficeDraft.issuingAuthority || "").trim();
+          const nextOfficialSourceUrlRaw = String(adminOfficeDraft.officialSourceUrl || "").trim();
+          const nextOfficialVerificationStatus = String(adminOfficeDraft.officialVerificationStatus || "").trim();
+          const nextMapPlaceId = String(adminOfficeDraft.mapPlaceId || "").trim();
+          const nextMapLatRaw = String(adminOfficeDraft.mapLat || "").trim();
+          const nextMapLngRaw = String(adminOfficeDraft.mapLng || "").trim();
+          const nextMapVerificationStatus = String(adminOfficeDraft.mapVerificationStatus || "").trim();
+          const nextOfficialSourceUrl = nextOfficialSourceUrlRaw
+            ? (/^https?:\/\//i.test(nextOfficialSourceUrlRaw) ? nextOfficialSourceUrlRaw : `https://${nextOfficialSourceUrlRaw}`)
+            : "";
 
           if (!nextName || !nextAddress || !nextGov || (isEgyptOffice && !nextLicenseRaw)) {
             setAdminOfficeEditError(
@@ -8176,23 +8319,71 @@ export default function App() {
             return;
           }
 
+          const hasOnlyOneCoordinate = (nextMapLatRaw && !nextMapLngRaw) || (!nextMapLatRaw && nextMapLngRaw);
+          if (hasOnlyOneCoordinate) {
+            setAdminOfficeEditError(
+              lang === "ar"
+                ? "أدخل خط العرض وخط الطول معًا أو اتركهما فارغين."
+                : "Enter both latitude and longitude together, or leave both empty."
+            );
+            return;
+          }
+
+          const parsedMapLat = nextMapLatRaw ? Number(nextMapLatRaw) : null;
+          const parsedMapLng = nextMapLngRaw ? Number(nextMapLngRaw) : null;
+          if (nextMapLatRaw && (!Number.isFinite(parsedMapLat) || parsedMapLat < -90 || parsedMapLat > 90)) {
+            setAdminOfficeEditError(lang === "ar" ? "خط العرض غير صحيح." : "Invalid latitude value.");
+            return;
+          }
+          if (nextMapLngRaw && (!Number.isFinite(parsedMapLng) || parsedMapLng < -180 || parsedMapLng > 180)) {
+            setAdminOfficeEditError(lang === "ar" ? "خط الطول غير صحيح." : "Invalid longitude value.");
+            return;
+          }
+
           const updatedOffice = {
             ...off,
             name: nextName,
             license: isEgyptOffice ? nextLicense : off.license,
             address: nextAddress,
             gov: nextGov,
+            registrationType: nextRegistrationType,
+            registrationNumber: nextRegistrationNumber,
+            taxNumber: nextTaxNumber,
+            issuingAuthority: nextIssuingAuthority,
+            officialSourceUrl: nextOfficialSourceUrl,
+            officialVerificationStatus: nextOfficialVerificationStatus,
+            mapPlaceId: nextMapPlaceId,
+            mapLat: parsedMapLat,
+            mapLng: parsedMapLng,
+            mapVerificationStatus: nextMapVerificationStatus,
+          };
+
+          const overridePayload = {
+            name: nextName,
+            license: isEgyptOffice ? nextLicense : off.license,
+            address: nextAddress,
+            gov: nextGov,
+            registrationType: nextRegistrationType,
+            registrationNumber: nextRegistrationNumber,
+            taxNumber: nextTaxNumber,
+            issuingAuthority: nextIssuingAuthority,
+            officialSourceUrl: nextOfficialSourceUrl,
+            officialVerificationStatus: nextOfficialVerificationStatus,
+            mapPlaceId: nextMapPlaceId,
+            mapLat: parsedMapLat,
+            mapLng: parsedMapLng,
+            mapVerificationStatus: nextMapVerificationStatus,
           };
 
           if (isManuallyAddedOffice) {
             setAdminAddedOffices((prev) => prev.map((entry) => (
               Number(entry?.id) === Number(off.id)
-                ? { ...entry, name: nextName, license: nextLicense, address: nextAddress, gov: nextGov }
+                ? { ...entry, ...overridePayload }
                 : entry
             )));
             setRemoteAddedOffices((prev) => prev.map((entry) => (
               Number(entry?.id) === Number(off.id)
-                ? { ...entry, name: nextName, license: nextLicense, address: nextAddress, gov: nextGov }
+                ? { ...entry, ...overridePayload }
                 : entry
             )));
             try {
@@ -8203,21 +8394,11 @@ export default function App() {
           } else {
             setOfficeOverrides((prev) => ({
               ...(prev || {}),
-              [off.id]: {
-                name: nextName,
-                license: isEgyptOffice ? nextLicense : off.license,
-                address: nextAddress,
-                gov: nextGov,
-              },
+              [off.id]: overridePayload,
             }));
             setRemoteOfficeOverrides((prev) => ({
               ...(prev || {}),
-              [off.id]: {
-                name: nextName,
-                license: isEgyptOffice ? nextLicense : off.license,
-                address: nextAddress,
-                gov: nextGov,
-              },
+              [off.id]: overridePayload,
             }));
             try {
               await saveOfficeOverrideInFirebase(updatedOffice);
@@ -8571,6 +8752,76 @@ export default function App() {
                           style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box" }}
                         />
                       )}
+                      <input
+                        value={adminOfficeDraft.registrationType}
+                        onChange={(e) => setAdminOfficeDraft((prev) => ({ ...prev, registrationType: e.target.value }))}
+                        placeholder={lang === "ar" ? "نوع التوثيق (سجل/ترخيص/ضريبي...)" : "Verification type (commercial/license/tax...)"}
+                        style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box" }}
+                      />
+                      <input
+                        value={adminOfficeDraft.registrationNumber}
+                        onChange={(e) => setAdminOfficeDraft((prev) => ({ ...prev, registrationNumber: e.target.value }))}
+                        placeholder={lang === "ar" ? "رقم السجل/الترخيص" : "Registration/license number"}
+                        style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box" }}
+                      />
+                      <input
+                        value={adminOfficeDraft.taxNumber}
+                        onChange={(e) => setAdminOfficeDraft((prev) => ({ ...prev, taxNumber: e.target.value }))}
+                        placeholder={lang === "ar" ? "الرقم الضريبي" : "Tax number"}
+                        style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box" }}
+                      />
+                      <input
+                        value={adminOfficeDraft.issuingAuthority}
+                        onChange={(e) => setAdminOfficeDraft((prev) => ({ ...prev, issuingAuthority: e.target.value }))}
+                        placeholder={lang === "ar" ? "الجهة الرسمية المصدرة" : "Issuing authority"}
+                        style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box" }}
+                      />
+                      <input
+                        value={adminOfficeDraft.officialSourceUrl}
+                        onChange={(e) => setAdminOfficeDraft((prev) => ({ ...prev, officialSourceUrl: e.target.value }))}
+                        placeholder={lang === "ar" ? "رابط المصدر الرسمي" : "Official source URL"}
+                        style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box" }}
+                      />
+                      <select
+                        value={adminOfficeDraft.officialVerificationStatus}
+                        onChange={(e) => setAdminOfficeDraft((prev) => ({ ...prev, officialVerificationStatus: e.target.value }))}
+                        style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box" }}
+                      >
+                        <option value="">{lang === "ar" ? "حالة التوثيق الرسمي" : "Official verification status"}</option>
+                        <option value="verified">{lang === "ar" ? "موثق" : "Verified"}</option>
+                        <option value="pending">{lang === "ar" ? "قيد المراجعة" : "Pending"}</option>
+                        <option value="rejected">{lang === "ar" ? "مرفوض" : "Rejected"}</option>
+                      </select>
+                      <input
+                        value={adminOfficeDraft.mapPlaceId}
+                        onChange={(e) => setAdminOfficeDraft((prev) => ({ ...prev, mapPlaceId: e.target.value }))}
+                        placeholder={lang === "ar" ? "Google Place ID" : "Google Place ID"}
+                        style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box" }}
+                      />
+                      <input
+                        value={adminOfficeDraft.mapLat}
+                        onChange={(e) => setAdminOfficeDraft((prev) => ({ ...prev, mapLat: e.target.value }))}
+                        placeholder={lang === "ar" ? "Latitude (خط العرض)" : "Latitude"}
+                        inputMode="decimal"
+                        style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box" }}
+                      />
+                      <input
+                        value={adminOfficeDraft.mapLng}
+                        onChange={(e) => setAdminOfficeDraft((prev) => ({ ...prev, mapLng: e.target.value }))}
+                        placeholder={lang === "ar" ? "Longitude (خط الطول)" : "Longitude"}
+                        inputMode="decimal"
+                        style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box" }}
+                      />
+                      <select
+                        value={adminOfficeDraft.mapVerificationStatus}
+                        onChange={(e) => setAdminOfficeDraft((prev) => ({ ...prev, mapVerificationStatus: e.target.value }))}
+                        style={{ width: "100%", borderRadius: 10, border: `1px solid ${t.border}`, background: t.inputBg, color: t.text, fontSize: 11, padding: "8px 10px", boxSizing: "border-box" }}
+                      >
+                        <option value="">{lang === "ar" ? "حالة دقة الموقع" : "Map accuracy status"}</option>
+                        <option value="verified">{lang === "ar" ? "الموقع دقيق" : "Verified"}</option>
+                        <option value="pending">{lang === "ar" ? "قيد التدقيق" : "Pending"}</option>
+                        <option value="rejected">{lang === "ar" ? "غير دقيق" : "Rejected"}</option>
+                      </select>
                       {!!adminOfficeEditError && (
                         <div style={{ color: "#fca5a5", fontSize: 10, fontWeight: 700 }}>{adminOfficeEditError}</div>
                       )}
@@ -8588,6 +8839,62 @@ export default function App() {
                           ? (lang === "ar" ? "حذف المكتب المُضاف يدويًا" : "Delete manually added office")
                           : (lang === "ar" ? "حذف المكتب من العرض" : "Hide office from app")}
                       </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {isAdminUser && hasAdminVerificationData && (
+                <div style={{ background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", borderRadius: 14, border: `1px solid ${t.border}`, padding: "10px", marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: t.text, marginBottom: 8 }}>
+                    {lang === "ar" ? "بيانات التحقق الرسمية (للأدمن فقط)" : "Official verification data (Admin only)"}
+                  </div>
+                  {!!officeRegistrationType && (
+                    <div style={{ fontSize: 10, color: t.text, marginBottom: 4 }}>
+                      <strong>{lang === "ar" ? "نوع التوثيق:" : "Verification type:"}</strong> {officeRegistrationType}
+                    </div>
+                  )}
+                  {!!officeRegistrationNumber && (
+                    <div style={{ fontSize: 10, color: t.text, marginBottom: 4 }}>
+                      <strong>{lang === "ar" ? "رقم السجل/الترخيص:" : "Registration/license no:"}</strong> {officeRegistrationNumber}
+                    </div>
+                  )}
+                  {!!officeTaxNumber && (
+                    <div style={{ fontSize: 10, color: t.text, marginBottom: 4 }}>
+                      <strong>{lang === "ar" ? "الرقم الضريبي:" : "Tax number:"}</strong> {officeTaxNumber}
+                    </div>
+                  )}
+                  {!!officeIssuingAuthority && (
+                    <div style={{ fontSize: 10, color: t.text, marginBottom: 4 }}>
+                      <strong>{lang === "ar" ? "الجهة المصدرة:" : "Issuing authority:"}</strong> {officeIssuingAuthority}
+                    </div>
+                  )}
+                  {!!officeOfficialVerificationStatus && (
+                    <div style={{ fontSize: 10, color: t.text, marginBottom: 4 }}>
+                      <strong>{lang === "ar" ? "حالة التوثيق:" : "Verification status:"}</strong> {officeOfficialVerificationStatus}
+                    </div>
+                  )}
+                  {!!officeOfficialSourceUrl && (
+                    <div style={{ fontSize: 10, color: t.text, marginBottom: 4 }}>
+                      <strong>{lang === "ar" ? "المصدر الرسمي:" : "Official source:"}</strong>{" "}
+                      <a href={officeOfficialSourceUrl} target="_blank" rel="noreferrer" style={{ color: t.gold, textDecoration: "underline" }}>
+                        {lang === "ar" ? "فتح الرابط" : "Open source"}
+                      </a>
+                    </div>
+                  )}
+                  {!!mapPlaceId && (
+                    <div style={{ fontSize: 10, color: t.text, marginBottom: 4 }}>
+                      <strong>Place ID:</strong> {mapPlaceId}
+                    </div>
+                  )}
+                  {(mapLatValue || mapLngValue) && (
+                    <div style={{ fontSize: 10, color: t.text, marginBottom: 4 }}>
+                      <strong>{lang === "ar" ? "الإحداثيات:" : "Coordinates:"}</strong> {mapLatValue || "—"}, {mapLngValue || "—"}
+                    </div>
+                  )}
+                  {!!officeMapVerificationStatus && (
+                    <div style={{ fontSize: 10, color: t.text }}>
+                      <strong>{lang === "ar" ? "حالة دقة الموقع:" : "Map accuracy status:"}</strong> {officeMapVerificationStatus}
                     </div>
                   )}
                 </div>
@@ -9172,44 +9479,52 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div style={{ marginTop: 13, borderRadius: 20, padding: "9.5px 10px 10.5px", background: dark ? "rgba(255,255,255,0.04)" : "#ffffff", border: `1px solid ${dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.07)"}`, boxShadow: dark ? "none" : "0 4px 20px rgba(0,0,0,0.06)" }}>
-                    <div style={{ textAlign: "center", fontSize: 12, color: dark ? "#94a3b8" : "#475569", fontWeight: 800, marginBottom: 7.6, fontFamily: "'Cairo',sans-serif" }}>
-                      {lang === "ar" ? "روابط مهمة" : "Important Links"}
-                    </div>
-                    <div className="landing-links-row">
-                      {[
-                        { key: "passport-book", icon: "📖", labelAr: "كتاب المرور", labelEn: "Passport Book", href: "https://drive.google.com/file/d/1IRen7Ud-lVEoMM1n97Tul6hYhVJrLPNg/view?usp=sharing", accent: "#2563eb", bg: "linear-gradient(145deg, #93c5fd, #3b82f6)", shadow: "rgba(59,130,246,0.45)" },
-                        { key: "qiwa", icon: "🧭", labelAr: "منصة قوي", labelEn: "Qiwa", href: "https://www.qiwa.sa/", accent: "#16a34a", bg: "linear-gradient(145deg, #86efac, #22c55e)", shadow: "rgba(34,197,94,0.45)" },
-                        { key: "gosi", icon: "🛡️", labelAr: "التأمينات", labelEn: "GOSI", href: "https://www.gosi.gov.sa/", accent: "#0891b2", bg: "linear-gradient(145deg, #67e8f9, #06b6d4)", shadow: "rgba(6,182,212,0.45)" },
-                        { key: "labor-law", icon: "⚖️", labelAr: "قانون العمل", labelEn: "Labor Law", href: "https://www.hrsd.gov.sa/knowledge-centre/decisions-and-regulations/regulation-and-procedures/%D9%86%D8%B8%D8%A7%D9%85-%D8%A7%D9%84%D8%B9%D9%85%D9%84", accent: "#d97706", bg: "linear-gradient(145deg, #fde68a, #f59e0b)", shadow: "rgba(245,158,11,0.45)" },
-                        { key: "end-service", icon: "🧮", labelAr: "نهاية الخدمة", labelEn: "End Service", href: "https://www.hrsd.gov.sa/ministry-services/services/end-service-benefit-calculator", accent: "#e11d48", bg: "linear-gradient(145deg, #fca5a5, #f43f5e)", shadow: "rgba(244,63,94,0.45)" },
-                      ].map((item, idx) => (
-                        <a
-                          key={item.key}
-                          href={item.href}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="landing-link-tile"
-                          style={{
-                            animationDelay: `${idx * 0.08}s`,
-                          }}
-                        >
-                            <div
-                              className="landing-link-orb"
-                              style={{
-                                background: item.bg,
-                                boxShadow: `0 6px 18px ${item.shadow}`,
-                              }}
-                            >
+                  {(() => {
+                    const isLockedLinks = !authPreviewUser;
+                    const handleLinkClick = (e, href) => {
+                      if (isLockedLinks) {
+                        e.preventDefault();
+                        setModal({
+                          type: "guestLinksAlert",
+                          title: lang === "ar" ? "تسجيل الدخول مطلوب" : "Login Required",
+                          msg: lang === "ar" ? "يجب تسجيل الدخول أو إنشاء حساب جديد للوصول إلى هذا الرابط" : "You must sign in or create an account to access this link"
+                        });
+                      }
+                    };
+                    return (
+                    <div style={{ marginTop: 13, borderRadius: 20, padding: "9.5px 10px 10.5px", background: dark ? "rgba(255,255,255,0.04)" : "#ffffff", border: `1px solid ${dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.07)"}`, boxShadow: dark ? "none" : "0 4px 20px rgba(0,0,0,0.06)" }}>
+                      <div style={{ textAlign: "center", fontSize: 12, color: dark ? "#94a3b8" : "#475569", fontWeight: 800, marginBottom: 7.6, fontFamily: "'Cairo',sans-serif" }}>
+                        {lang === "ar" ? "روابط مهمة" : "Important Links"}
+                      </div>
+                      <div className="landing-links-row">
+                        {[
+                          { key: "passport-book", icon: "📖", labelAr: "كتاب المرور", labelEn: "Passport Book", href: "https://drive.google.com/file/d/1IRen7Ud-lVEoMM1n97Tul6hYhVJrLPNg/view?usp=sharing", accent: "#2563eb", bg: "linear-gradient(145deg, #93c5fd, #3b82f6)", shadow: "rgba(59,130,246,0.45)" },
+                          { key: "qiwa", icon: "🧭", labelAr: "منصة قوي", labelEn: "Qiwa", href: "https://www.qiwa.sa/", accent: "#16a34a", bg: "linear-gradient(145deg, #86efac, #22c55e)", shadow: "rgba(34,197,94,0.45)" },
+                          { key: "gosi", icon: "🛡️", labelAr: "التأمينات", labelEn: "GOSI", href: "https://www.gosi.gov.sa/", accent: "#0891b2", bg: "linear-gradient(145deg, #67e8f9, #06b6d4)", shadow: "rgba(6,182,212,0.45)" },
+                          { key: "labor-law", icon: "⚖️", labelAr: "قانون العمل", labelEn: "Labor Law", href: "https://www.hrsd.gov.sa/knowledge-centre/decisions-and-regulations/regulation-and-procedures/%D9%86%D8%B8%D8%A7%D9%85-%D8%A7%D9%84%D8%B9%D9%85%D9%84", accent: "#d97706", bg: "linear-gradient(145deg, #fde68a, #f59e0b)", shadow: "rgba(245,158,11,0.45)" },
+                          { key: "end-service", icon: "🧮", labelAr: "نهاية الخدمة", labelEn: "End Service", href: "https://www.hrsd.gov.sa/ministry-services/services/end-service-benefit-calculator", accent: "#e11d48", bg: "linear-gradient(145deg, #fca5a5, #f43f5e)", shadow: "rgba(244,63,94,0.45)" },
+                        ].map((item, idx) => (
+                          <a
+                            key={item.key}
+                            href={item.href}
+                            target={isLockedLinks ? undefined : "_blank"}
+                            rel={isLockedLinks ? undefined : "noreferrer"}
+                            onClick={(e) => handleLinkClick(e, item.href)}
+                            className="landing-link-tile"
+                            style={{ animationDelay: `${idx * 0.08}s`, cursor: "pointer" }}
+                          >
+                            <div className="landing-link-orb" style={{ background: item.bg, boxShadow: `0 6px 18px ${item.shadow}` }}>
                               {item.icon}
                             </div>
-                          <span className="landing-link-label" style={{ color: dark ? "#e2e8f0" : "#0f172a" }}>
-                            {lang === "ar" ? item.labelAr : item.labelEn}
-                          </span>
-                        </a>
-                      ))}
+                            <span className="landing-link-label" style={{ color: dark ? "#e2e8f0" : "#0f172a" }}>
+                              {lang === "ar" ? item.labelAr : item.labelEn}
+                            </span>
+                          </a>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                    );
+                  })()}
 
                   <div
                     style={{
@@ -9586,8 +9901,8 @@ export default function App() {
                   >
                     <div style={{ width: 34, height: 34, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #16a34a28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🏙️</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: "#16a34a", marginBottom: 2 }}>{lang === "ar" ? "المدن والمكاتب الموثوقة" : "Trusted Cities & Offices"}</div>
-                      <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? "ادخل إلى المدن والمحتوى الموثوق الحالي كما هو داخل هذه الدولة." : "Open the trusted cities and current verified content inside this country."}</div>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: "#16a34a", marginBottom: 2 }}>{lang === "ar" ? "المكاتب الموثوقة" : "Trusted Offices"}</div>
+                      <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? "ادخل إلى المحتوى الموثوق الحالي كما هو داخل هذه الدولة." : "Open the trusted verified content inside this country."}</div>
                     </div>
                     <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#16a34a18", color: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                   </button>
