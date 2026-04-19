@@ -3218,17 +3218,17 @@ export default function App() {
     if (!identifierValue) {
       setAuthPreviewError(
         lang === "ar"
-          ? "اكتب البريد الإلكتروني أو رقم الجوال أولًا."
-          : "Please enter your email address or phone number first."
+          ? "اكتب البريد الإلكتروني أولًا."
+          : "Please enter your email address first."
       );
       return;
     }
 
-    if (identifierType === "phone" && !identifierValue.startsWith("+")) {
+    if (!identifierValue.includes("@")) {
       setAuthPreviewError(
         lang === "ar"
-          ? "يرجى إدخال رقم الهاتف بصيغة: + مفتاح الدولة ثم الرقم (مثال: +966...)."
-          : "Please enter the phone number as: + country code then number (e.g. +966...)."
+          ? "يرجى إدخال بريد إلكتروني صحيح."
+          : "Please enter a valid email address."
       );
       return;
     }
@@ -7652,24 +7652,12 @@ export default function App() {
                 <input
                   value={authPreviewIdentifier}
                   onChange={(e) => setAuthPreviewIdentifier(e.target.value)}
-                  placeholder={lang === "ar" ? "بريد إلكتروني أو رقم الهاتف" : "Email or phone number"}
-                  type="text"
-                  inputMode="text"
-                  style={{ ...authFieldInputStyle, direction: authPreviewIdentifier.includes("@") ? "ltr" : authPreviewIdentifier.startsWith("+") || /^[0-9]/.test(authPreviewIdentifier) ? "ltr" : "rtl", textAlign: authPreviewIdentifier.includes("@") || authPreviewIdentifier.startsWith("+") || /^[0-9]/.test(authPreviewIdentifier) ? "left" : "right" }}
+placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email address"}
+                  type="email"
+                  inputMode="email"
+                  style={{ ...authFieldInputStyle, direction: "rtl", textAlign: "right" }}
                 />
               </div>
-              {(() => {
-                const v = String(authPreviewIdentifier || "").trim();
-                const isPhoneWithoutPlus = v.length > 0 && !v.includes("@") && !v.startsWith("+");
-                if (!isPhoneWithoutPlus) return null;
-                return (
-                  <div style={{ marginTop: -4, marginBottom: 2, padding: "6px 10px", borderRadius: 10, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.35)", color: "#fde68a", fontSize: 11, fontWeight: 700, fontFamily: "'Cairo',sans-serif", lineHeight: 1.6, direction: "rtl", textAlign: "right" }}>
-                    {lang === "ar"
-                      ? "يرجى إدخال رقم الهاتف بصيغة: + مفتاح الدولة ثم الرقم (مثال: +966...)."
-                      : "Please enter the phone number as: + country code then number (e.g. +966...)."}
-                  </div>
-                );
-              })()}
 
               {authPreviewMode !== "forgot" && (
               <div style={authFieldShellStyle}>

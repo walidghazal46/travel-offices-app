@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "376340221289-uuiq485biqrlre4vskfcbah9o5ddq2ts.apps.googleusercontent.com",
+          "client_id": "376340221289-jncqcm9kh62pl2346hqt7jum3l3oo5p5.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.travel.offices",
-            "certificate_hash": "07fd6251e4445590d05ced50afe6a38d5ac94ec2"
+            "certificate_hash": "dab268edfcc2dc5e1b6c7d797f6bd46fecca1ac9"
           }
         },
         {
