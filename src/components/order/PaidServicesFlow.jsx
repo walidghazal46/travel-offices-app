@@ -43,6 +43,8 @@ import {
 import { T } from '../../i18n/translations';
 import { NATIONALITY_DIAL_CODES } from '../../constants/index';
 
+const WHATSAPP = "201064463650";
+
 export function PaidBackBtn({ onClick, isAr, t }) {
   return (
     <button onClick={onClick} style={{ display:"flex", alignItems:"center", gap:6, background:"none", border:`1px solid ${t.border}`, borderRadius:10, padding:"7px 14px", cursor:"pointer", color:t.gold, fontFamily:"'Cairo',sans-serif", fontSize:13, fontWeight:700, marginBottom:14 }}>
@@ -207,6 +209,9 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
   const [orderEmailRetryBusy, setOrderEmailRetryBusy] = useState(false);
   const [coinsSoonModalOpen, setCoinsSoonModalOpen] = useState(false);
   const [coinsSoonCountdown, setCoinsSoonCountdown] = useState(10);
+  const [googlePaySoonModalOpen, setGooglePaySoonModalOpen] = useState(false);
+  const [googlePaySoonCountdown, setGooglePaySoonCountdown] = useState(5);
+  const [deleteConfirmOrder, setDeleteConfirmOrder] = useState(null);
   const [phoneFieldError, setPhoneFieldError] = useState("");
   const [whatsappFieldError, setWhatsappFieldError] = useState("");
   const [adminServiceOrders, setAdminServiceOrders] = useState([]);
@@ -552,6 +557,21 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
     };
   }, [coinsSoonModalOpen]);
 
+  useEffect(() => {
+    if (!googlePaySoonModalOpen) return undefined;
+    setGooglePaySoonCountdown(5);
+    const countdownTimer = setInterval(() => {
+      setGooglePaySoonCountdown((value) => (value > 1 ? value - 1 : 1));
+    }, 1000);
+    const closeTimer = setTimeout(() => {
+      setGooglePaySoonModalOpen(false);
+    }, 5000);
+    return () => {
+      clearInterval(countdownTimer);
+      clearTimeout(closeTimer);
+    };
+  }, [googlePaySoonModalOpen]);
+
   const showRequestLimitNotice = useCallback((details = null) => {
     const windowDays = Number(details?.windowDays) || 7;
     setRequestLimitNoticeTitle(isAr ? "تم الوصول إلى حد الطلبات" : "Request limit reached");
@@ -561,9 +581,10 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
   const serviceOrderMatches = useCallback((order, serviceItem) => {
     const serviceKey = String(serviceItem?.key || "").trim();
     const serviceLabel = String(serviceItem?.label || "").trim().toLowerCase();
+    // Exact key match — skip country filter (keys are unique per service)
+    if (serviceKey && String(order?.serviceKeyNorm || "") === serviceKey) return true;
     const orderCountry = String(order?.countryName || order?.country || "").trim();
     if (activeCountry && orderCountry && orderCountry !== activeCountry) return false;
-    if (serviceKey && String(order?.serviceKeyNorm || "") === serviceKey) return true;
     const orderService = String(order?.serviceNameNorm || "").trim().toLowerCase();
     return !!serviceLabel && orderService.includes(serviceLabel);
   }, [activeCountry]);
@@ -691,6 +712,43 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
       setAdminServiceBusyOrderId("");
     }
   }, [canManageServiceReviews, isAr, refreshSharedReviewsForUI]);
+
+  const handleAdminDeleteServiceOrder = useCallback(async (orderItem) => {
+    const firebaseId = String(orderItem?.firebaseId || orderItem?.id || "").trim();
+    if (!firebaseId) {
+      setAdminServiceOrdersError(isAr ? "معرّف الطلب غير صالح للحذف." : "Invalid order identifier for deletion.");
+      return;
+    }
+
+    setDeleteConfirmOrder(orderItem);
+  }, [adminSelectedServiceOrderId, currentOrder, isAr]);
+
+  const handleAdminDeleteConfirmed = useCallback(async () => {
+    const orderItem = deleteConfirmOrder;
+    setDeleteConfirmOrder(null);
+    if (!orderItem) return;
+    const firebaseId = String(orderItem?.firebaseId || orderItem?.id || "").trim();
+    if (!firebaseId) return;
+
+    setAdminServiceBusyOrderId(firebaseId);
+    setAdminServiceOrdersError("");
+    try {
+      await deleteOrderInFirebase(firebaseId);
+      setAdminServiceOrders((prev) => prev.filter((entry) => String(entry.firebaseId || entry.id || "") !== firebaseId));
+      setExistingOrders((prev) => prev.filter((entry) => String(entry.firebaseId || entry.id || "") !== firebaseId));
+      if (adminSelectedServiceOrderId === firebaseId) {
+        setAdminSelectedServiceOrderId("");
+      }
+      if (currentOrder && String(currentOrder.firebaseId || currentOrder.id || "") === firebaseId) {
+        setCurrentOrder(null);
+      }
+    } catch (error) {
+      console.error("Admin service order delete failed", error);
+      setAdminServiceOrdersError(isAr ? "تعذر حذف الطلب الآن." : "Unable to delete the order now.");
+    } finally {
+      setAdminServiceBusyOrderId("");
+    }
+  }, [deleteConfirmOrder, adminSelectedServiceOrderId, currentOrder, isAr]);
 
   const handleAdminToggleOrderStage = useCallback(async (orderItem, stageKey, stageIndex) => {
     const firebaseId = String(orderItem?.firebaseId || "").trim();
@@ -905,6 +963,10 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
   const handlePaymentMethodSelect = (key) => {
     const method = banks[key];
     setFirebaseSubmitError("");
+    if (key === "tabbyTamara") {
+      setGooglePaySoonModalOpen(true);
+      return;
+    }
     setForm((prev) => ({ ...prev, paymentMethod:key, receiptName:"", receiptMeta:null, receiptFile:null }));
     if (method?.coinsSoon) {
       setCoinsSoonModalOpen(true);
@@ -912,6 +974,18 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
     }
     if (method?.disabled) return;
     setScreen("paymentInfo");
+  };
+
+  const renderPaymentMethodIcon = (key, bank) => {
+    if (key === "coins" || bank?.coinsSoon) {
+      return (
+        <div style={{ width: 22, height: 22, borderRadius: "50%", background: "linear-gradient(145deg,#fbbf24,#f59e0b)", border: "1px solid rgba(180,83,9,0.38)", boxShadow: "inset 0 1px 2px rgba(255,255,255,0.45), 0 2px 8px rgba(180,83,9,0.24)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <span style={{ fontSize: 9, fontWeight: 900, color: "#7c2d12", fontFamily: "'Cairo',sans-serif", lineHeight: 1 }}>C</span>
+        </div>
+      );
+    }
+
+    return <span style={{ fontSize:18, width:22, textAlign:"center" }}>{bank.icon}</span>;
   };
 
   const handleReceiptChange = (event) => {
@@ -1476,58 +1550,94 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
                   const oid = String(orderItem.firebaseId || orderItem.id || "");
                   const safeOrder = hydratePaidOrder(orderItem || {});
                   const orderStageIndex = Number.isInteger(safeOrder.statusIndex) ? safeOrder.statusIndex : 0;
+                  const isOrderBusy = adminServiceBusyOrderId === oid;
                   const stageLabel = steps[orderStageIndex]?.label || steps[0]?.label || "-";
                   const stageTone = getStageTone(orderStageIndex);
                   return (
-                    <button
-                      key={oid}
-                      onClick={() => setAdminSelectedServiceOrderId(oid)}
-                      style={{
-                        width:"100%",
-                        border:`1px solid ${detailOrderId === oid ? t.gold : t.border}`,
-                        background: dark
-                          ? "linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(30,41,59,0.92) 100%)"
-                          : "linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)",
-                        borderRadius:16,
-                        padding:"10px 9px",
-                        cursor:"pointer",
-                        textAlign:isAr ? "right" : "left",
-                        fontFamily:"'Cairo',sans-serif",
-                        minHeight:132,
-                        display:"flex",
-                        flexDirection:"column",
-                        gap:6,
-                        boxShadow: dark
-                          ? "0 10px 22px rgba(2,6,23,0.22)"
-                          : "0 10px 20px rgba(148,163,184,0.14)",
-                      }}
-                    >
-                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:6 }}>
-                        <div style={{ fontSize:10, fontWeight:900, color:t.gold, direction:"ltr", textAlign:isAr ? "right" : "left" }}>
-                          {orderItem.orderSerial || safeOrder.serial || "-"}
+                    <div key={oid} style={{ position: "relative" }}>
+                      <button
+                        onClick={() => setAdminSelectedServiceOrderId(oid)}
+                        disabled={isOrderBusy}
+                        style={{
+                          width:"100%",
+                          border:`1px solid ${detailOrderId === oid ? t.gold : t.border}`,
+                          background: dark
+                            ? "linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(30,41,59,0.92) 100%)"
+                            : "linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)",
+                          borderRadius:16,
+                          padding:"10px 9px",
+                          cursor:isOrderBusy ? "not-allowed" : "pointer",
+                          textAlign:isAr ? "right" : "left",
+                          fontFamily:"'Cairo',sans-serif",
+                          minHeight:132,
+                          display:"flex",
+                          flexDirection:"column",
+                          gap:6,
+                          boxShadow: dark
+                            ? "0 10px 22px rgba(2,6,23,0.22)"
+                            : "0 10px 20px rgba(148,163,184,0.14)",
+                          opacity: isOrderBusy ? 0.72 : 1,
+                        }}
+                      >
+                        <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:6 }}>
+                          <div style={{ fontSize:10, fontWeight:900, color:t.gold, direction:"ltr", textAlign:isAr ? "right" : "left" }}>
+                            {orderItem.orderSerial || safeOrder.serial || "-"}
+                          </div>
+                          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:5 }}>
+                            <div style={{ fontSize:8.5, color:stageTone.color, background:stageTone.background, border:`1px solid ${stageTone.border}`, borderRadius:999, padding:"2px 6px", fontWeight:900, whiteSpace:"nowrap" }}>
+                              {isAr ? "الحالة" : "Status"}
+                            </div>
+                            <span
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                handleAdminDeleteServiceOrder(orderItem);
+                              }}
+                              role="button"
+                              aria-label={isAr ? "حذف الطلب" : "Delete order"}
+                              title={isAr ? "حذف الطلب" : "Delete order"}
+                              style={{
+                                width: 24,
+                                height: 24,
+                                borderRadius: 6,
+                                border: "1px solid rgba(220,38,38,0.45)",
+                                background: "rgba(220,38,38,0.12)",
+                                color: "#dc2626",
+                                fontSize: 12,
+                                fontWeight: 900,
+                                cursor: isOrderBusy ? "not-allowed" : "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                lineHeight: 1,
+                                opacity: isOrderBusy ? 0.6 : 1,
+                                pointerEvents: isOrderBusy ? "none" : "auto",
+                              }}
+                            >
+                              ×
+                            </span>
+                          </div>
                         </div>
-                        <div style={{ fontSize:8.5, color:stageTone.color, background:stageTone.background, border:`1px solid ${stageTone.border}`, borderRadius:999, padding:"2px 6px", fontWeight:900, whiteSpace:"nowrap" }}>
-                          {isAr ? "الحالة" : "Status"}
+                        <div style={{ fontSize:11, fontWeight:800, color:t.text, lineHeight:1.5 }}>
+                          {orderItem.customerName || safeOrder.name || (isAr ? "بدون اسم" : "No name")}
                         </div>
-                      </div>
-                      <div style={{ fontSize:11, fontWeight:800, color:t.text, lineHeight:1.5 }}>
-                        {orderItem.customerName || safeOrder.name || (isAr ? "بدون اسم" : "No name")}
-                      </div>
-                      <div style={{ fontSize:9, color:t.subText, lineHeight:1.6, direction:"ltr", textAlign:isAr ? "right" : "left" }}>
-                        {safeOrder.phone || (isAr ? "بدون رقم" : "No phone")}
-                      </div>
-                      <div style={{ fontSize:8.5, color:stageTone.color, lineHeight:1.6, fontWeight:900, background:stageTone.background, border:`1px solid ${stageTone.border}`, borderRadius:10, padding:"5px 6px" }}>
-                        {stageLabel}
-                      </div>
-                      <div style={{ marginTop:"auto", fontSize:9, color: orderItem.reviewedValue ? "#16a34a" : "#dc2626", fontWeight:800 }}>
-                        {orderItem.reviewedValue
-                          ? (isAr ? `التقييم ${orderItem.ratingValue}/5` : `Rating ${orderItem.ratingValue}/5`)
-                          : (isAr ? "بدون تقييم" : "No review")}
-                      </div>
-                      <div style={{ fontSize:8.5, color:t.subText, fontWeight:800, lineHeight:1.5 }}>
-                        {isAr ? "اضغط لعرض التفاصيل والمتابعة" : "Tap for details and tracking"}
-                      </div>
-                    </button>
+                        <div style={{ fontSize:9, color:t.subText, lineHeight:1.6, direction:"ltr", textAlign:isAr ? "right" : "left" }}>
+                          {safeOrder.phone || (isAr ? "بدون رقم" : "No phone")}
+                        </div>
+                        <div style={{ fontSize:8.5, color:stageTone.color, lineHeight:1.6, fontWeight:900, background:stageTone.background, border:`1px solid ${stageTone.border}`, borderRadius:10, padding:"5px 6px" }}>
+                          {stageLabel}
+                        </div>
+                        <div style={{ marginTop:"auto", fontSize:9, color: orderItem.reviewedValue ? "#16a34a" : "#dc2626", fontWeight:800 }}>
+                          {orderItem.reviewedValue
+                            ? (isAr ? `التقييم ${orderItem.ratingValue}/5` : `Rating ${orderItem.ratingValue}/5`)
+                            : (isAr ? "بدون تقييم" : "No review")}
+                        </div>
+                        <div style={{ fontSize:8.5, color:t.subText, fontWeight:800, lineHeight:1.5 }}>
+                          {isAr ? "اضغط لعرض التفاصيل والمتابعة" : "Tap for details and tracking"}
+                        </div>
+                      </button>
+
+                    </div>
                   );
                 })}
               </div>
@@ -1688,6 +1798,23 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
       <button onClick={openPaidNewRequest} style={{ ...btnStyle(goldGrad), marginBottom:12 }}>
         ➕ {isAr?"طلب جديد":"New Request"}
       </button>
+      {
+        <a
+          href={`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(isAr ? "السلام عليكم، في حالة فشل إرسال الطلب أرسل لكم كل البيانات للمساعدة." : "Hello, if the request fails to submit, I will send all details for support.")}`}
+          target="_blank"
+          rel="noreferrer"
+          className="support-whatsapp-tile"
+          style={{ marginBottom:12, display:"flex", alignItems:"center", gap:10, padding:"11px 14px", borderRadius:14, background: dark ? "rgba(37,211,102,0.07)" : "#f0fdf4", border:"1px solid rgba(37,211,102,0.22)", textDecoration:"none", fontFamily:"'Cairo',sans-serif" }}
+        >
+          <div style={{ flex:1, fontSize:11, color: dark ? "#86efac" : "#166534", lineHeight:1.8, fontWeight:700, textAlign:isAr ? "right" : "left" }}>
+            {isAr ? "في حالة فشل إرسال الطلب يرجى التواصل بالدعم الفني وإرسال كافة البيانات له" : "If the request fails to submit, please contact technical support and send all your data."}
+          </div>
+          <div style={{ flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
+            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" style={{ width:31, height:31, borderRadius:"50%", background:"#ffffff", padding:2, flexShrink:0 }} />
+            <span style={{ fontSize:10, fontWeight:900, color: dark ? "#f0fdf4" : "#0f172a", whiteSpace:"nowrap" }}>{isAr ? "الدعم الفني" : "Support"}</span>
+          </div>
+        </a>
+      }
       {existingOrders.length > 0 ? (
         <button onClick={() => setScreen("previousOrders")} style={{ ...btnStyle(t.inputBg, t.gold), border:`1px solid ${t.gold}`, boxShadow:"none" }}>
           📋 {isAr?`طلباتي السابقة (${existingOrders.length})`:`My Previous Orders (${existingOrders.length})`}
@@ -1703,20 +1830,49 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
     <div dir={dir} style={{ fontFamily:"'Cairo',sans-serif", color:t.text }}>
       <div style={{ fontSize:13, fontWeight:700, color:t.subText, marginBottom:10 }}>📋 {isAr?"طلباتي السابقة":"My Previous Orders"}</div>
       {existingOrders.map((o,i) => (
-        <button key={o.serial || i} onClick={() => { setCurrentOrder(hydratePaidOrder(o)); setScreen("status"); }}
-          style={{ display:"flex", alignItems:"center", gap:12, width:"100%", padding:"12px 14px", borderRadius:12, background:t.cardBg, border:`1px solid ${t.border}`, cursor:"pointer", marginBottom:8, fontFamily:"'Cairo',sans-serif" }}>
-          <div style={{ width:36, height:36, borderRadius:10, background:t.goldBg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>{o.serviceIcon||"💳"}</div>
-          <div style={{ flex:1, textAlign:isAr?"right":"left" }}>
-            <div style={{ fontSize:12, fontWeight:700, color:t.text }}>{o.service}</div>
-            <div style={{ fontSize:10, color:t.subText }}>{o.serial}</div>
-            <div style={{ fontSize:10, color:t.subText }}>{o.dateStr}</div>
-          </div>
-          <div style={{ fontSize:10, background:"#22c55e18", color:"#22c55e", border:"1px solid #22c55e30", borderRadius:8, padding:"3px 8px", fontWeight:700 }}>{isAr?"متابعة":"Track"}</div>
-        </button>
+        <div key={o.serial || i} style={{ marginBottom:8 }}>
+          <button onClick={() => { setCurrentOrder(hydratePaidOrder(o)); setScreen("status"); }}
+            style={{ display:"flex", alignItems:"center", gap:12, width:"100%", padding:"12px 14px", borderRadius:12, background:t.cardBg, border:`1px solid ${t.border}`, cursor:"pointer", fontFamily:"'Cairo',sans-serif" }}>
+            <div style={{ width:36, height:36, borderRadius:10, background:t.goldBg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>{o.serviceIcon||"💳"}</div>
+            <div style={{ flex:1, textAlign:isAr?"right":"left" }}>
+              <div style={{ fontSize:12, fontWeight:700, color:t.text }}>{o.service}</div>
+              <div style={{ fontSize:10, color:t.subText }}>{o.serial}</div>
+              <div style={{ fontSize:10, color:t.subText }}>{o.dateStr}</div>
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:5 }}>
+              {isAdminUser && (
+                <span onClick={(e) => { e.stopPropagation(); handleAdminDeleteServiceOrder(o); }}
+                  style={{ fontSize:10, background:"#ef444418", color:"#ef4444", border:"1px solid #ef444430", borderRadius:8, padding:"3px 8px", fontWeight:700, cursor:"pointer", fontFamily:"'Cairo',sans-serif", boxShadow:"0 0 8px #ef444430" }}>
+                  {isAr?"حذف":"Delete"}
+                </span>
+              )}
+              <div style={{ fontSize:10, background:"#22c55e18", color:"#22c55e", border:"1px solid #22c55e30", borderRadius:8, padding:"3px 8px", fontWeight:700 }}>{isAr?"متابعة":"Track"}</div>
+            </div>
+          </button>
+        </div>
       ))}
       <button onClick={() => setScreen("existingOrNew")} style={{ ...btnStyle(t.inputBg, t.gold), border:`1px solid ${t.gold}`, boxShadow:"none", marginTop:12 }}>
         {isAr ? "رجوع" : "Back"}
       </button>
+      {deleteConfirmOrder && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.55)", zIndex:10000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }} onClick={() => setDeleteConfirmOrder(null)}>
+          <div style={{ width:"100%", maxWidth:360, borderRadius:22, padding:"28px 22px 22px", background:"linear-gradient(160deg,#1a0404 0%,#2d0808 55%,#3f0a0a 100%)", border:"1px solid rgba(239,68,68,0.5)", boxShadow:"0 0 40px rgba(239,68,68,0.45), 0 20px 60px rgba(0,0,0,0.6)", textAlign:"center", fontFamily:"'Cairo',sans-serif" }} onClick={e => e.stopPropagation()}>
+            <div style={{ width:54, height:54, borderRadius:"50%", background:"linear-gradient(145deg,#ef4444,#b91c1c)", boxShadow:"0 0 28px rgba(239,68,68,0.7), inset 0 2px 6px rgba(255,255,255,0.15)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px", fontSize:24 }}>🗑️</div>
+            <div style={{ fontSize:16, fontWeight:900, color:"#fca5a5", marginBottom:8 }}>{isAr ? "حذف الطلب" : "Delete Order"}</div>
+            <div style={{ fontSize:12, color:"rgba(252,165,165,0.7)", marginBottom:20, lineHeight:1.8 }}>
+              {isAr ? "هل تريد حذف هذا الطلب نهائيًا من النظام؟ لا يمكن التراجع عن هذا الإجراء." : "Are you sure you want to permanently delete this order? This action cannot be undone."}
+            </div>
+            <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
+              <button onClick={() => setDeleteConfirmOrder(null)} style={{ flex:1, padding:"10px 0", borderRadius:12, border:"1px solid rgba(239,68,68,0.3)", background:"rgba(239,68,68,0.08)", color:"#fca5a5", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"'Cairo',sans-serif" }}>
+                {isAr ? "إلغاء" : "Cancel"}
+              </button>
+              <button onClick={handleAdminDeleteConfirmed} style={{ flex:1, padding:"10px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#ef4444,#b91c1c)", boxShadow:"0 0 18px rgba(239,68,68,0.5)", color:"#fff", fontSize:13, fontWeight:900, cursor:"pointer", fontFamily:"'Cairo',sans-serif" }}>
+                {isAr ? "حذف نهائي" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -1952,7 +2108,7 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
                     style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"space-between", gap:5, width:"100%", minHeight:82, padding:"8px 6px", borderRadius:12, border:`2px solid ${form.paymentMethod===key?bank.color:t.border}`, background: form.paymentMethod===key?`${bank.color}15`:t.cardBg, cursor:"pointer", fontFamily:"'Cairo',sans-serif", opacity: bank.disabled ? 0.82 : 1, textAlign:"center" }}>
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", gap:8 }}>
                       {bank.soon ? <div style={{ fontSize:8.5, background:"rgba(239,68,68,0.16)", color:"#ef4444", border:"1px solid rgba(239,68,68,0.45)", borderRadius:999, padding:"2px 6px", fontWeight:900, boxShadow:"0 0 12px rgba(239,68,68,0.28)" }}>{isAr?"قريبًا":"Soon"}</div> : <span />}
-                      <span style={{ fontSize:18, width:22, textAlign:"center" }}>{bank.icon}</span>
+                      {renderPaymentMethodIcon(key, bank)}
                     </div>
                     <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", width:"100%" }}>
                       <div style={{ fontSize:11, fontWeight:800, color:t.text, marginBottom:2 }}>{isAr?bank.label:bank.labelEn}</div>
@@ -1977,7 +2133,12 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
                   >
                     {isAr ? "إغلاق" : "Close"}
                   </button>
-                  <div style={{ fontSize:28, marginBottom:8, textAlign:"center" }}>🪙</div>
+                  <div style={{ display:"flex", justifyContent:"center", marginBottom:8 }}>
+                    <div style={{ position:"relative", width:44, height:44 }}>
+                      <div style={{ position:"absolute", inset:0, borderRadius:"50%", background:"linear-gradient(145deg,#fbbf24,#f59e0b)", boxShadow:"inset 0 2px 5px rgba(255,255,255,0.45), 0 8px 18px rgba(180,83,9,0.28)", border:"1px solid rgba(180,83,9,0.35)" }} />
+                      <div style={{ position:"absolute", inset:8, borderRadius:"50%", border:"1px solid rgba(255,255,255,0.6)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:900, color:"#7c2d12", fontFamily:"'Cairo',sans-serif" }}>C</div>
+                    </div>
+                  </div>
                   <div style={{ fontSize:16, fontWeight:900, color:"#b45309", textAlign:"center", marginBottom:8 }}>
                     {isAr ? "نظام الكوينز قريبًا" : "Coins System Coming Soon"}
                   </div>
@@ -1988,6 +2149,43 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
                   </div>
                   <div style={{ marginTop:10, textAlign:"center", fontSize:11, fontWeight:800, color:"#a16207" }}>
                     {isAr ? `إغلاق تلقائي خلال ${coinsSoonCountdown} ثوانٍ` : `Auto close in ${coinsSoonCountdown}s`}
+                  </div>
+                </div>
+              </div>
+            )}
+            {deleteConfirmOrder && (
+              <div style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.55)", zIndex:10000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }} onClick={() => setDeleteConfirmOrder(null)}>
+                <div style={{ width:"100%", maxWidth:360, borderRadius:22, padding:"28px 22px 22px", background:"linear-gradient(160deg,#1a0404 0%,#2d0808 55%,#3f0a0a 100%)", border:"1px solid rgba(239,68,68,0.5)", boxShadow:"0 0 40px rgba(239,68,68,0.45), 0 20px 60px rgba(0,0,0,0.6)", textAlign:"center", fontFamily:"'Cairo',sans-serif", position:"relative" }} onClick={e => e.stopPropagation()}>
+                  <div style={{ width:54, height:54, borderRadius:"50%", background:"linear-gradient(145deg,#ef4444,#b91c1c)", boxShadow:"0 0 28px rgba(239,68,68,0.7), inset 0 2px 6px rgba(255,255,255,0.15)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px", fontSize:24 }}>🗑️</div>
+                  <div style={{ fontSize:16, fontWeight:900, color:"#fca5a5", marginBottom:8 }}>{isAr ? "حذف الطلب" : "Delete Order"}</div>
+                  <div style={{ fontSize:12, color:"#fca5a580", marginBottom:20, lineHeight:1.8 }}>
+                    {isAr ? "هل تريد حذف هذا الطلب نهائيًا من النظام؟ لا يمكن التراجع عن هذا الإجراء." : "Are you sure you want to permanently delete this order? This action cannot be undone."}
+                  </div>
+                  <div style={{ display:"flex", gap:10, justifyContent:"center" }}>
+                    <button onClick={() => setDeleteConfirmOrder(null)} style={{ flex:1, padding:"10px 0", borderRadius:12, border:"1px solid rgba(239,68,68,0.3)", background:"rgba(239,68,68,0.08)", color:"#fca5a5", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"'Cairo',sans-serif" }}>
+                      {isAr ? "إلغاء" : "Cancel"}
+                    </button>
+                    <button onClick={handleAdminDeleteConfirmed} style={{ flex:1, padding:"10px 0", borderRadius:12, border:"none", background:"linear-gradient(135deg,#ef4444,#b91c1c)", boxShadow:"0 0 18px rgba(239,68,68,0.5)", color:"#fff", fontSize:13, fontWeight:900, cursor:"pointer", fontFamily:"'Cairo',sans-serif" }}>
+                      {isAr ? "حذف نهائي" : "Delete"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {googlePaySoonModalOpen && (
+              <div style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.35)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+                <div style={{ width:"100%", maxWidth:360, borderRadius:20, padding:"18px 16px", background: dark ? "linear-gradient(160deg,#0f172a 0%,#1e293b 100%)" : "linear-gradient(160deg,#ffffff 0%,#f8fafc 100%)", border:`1px solid ${dark ? "rgba(148,163,184,0.32)" : "rgba(148,163,184,0.28)"}`, boxShadow: dark ? "0 18px 50px rgba(2,6,23,0.45)" : "0 16px 45px rgba(15,23,42,0.18)", textAlign:"center", fontFamily:"'Cairo',sans-serif" }}>
+                  <div style={{ display:"flex", justifyContent:"center", marginBottom:8 }}>
+                    <div style={{ minWidth:92, height:36, borderRadius:999, padding:"0 12px", display:"inline-flex", alignItems:"center", justifyContent:"center", gap:8, background: dark ? "rgba(15,23,42,0.55)" : "#ffffff", border:`1px solid ${dark ? "rgba(148,163,184,0.4)" : "rgba(148,163,184,0.35)"}`, boxShadow: dark ? "0 8px 20px rgba(2,6,23,0.35)" : "0 8px 20px rgba(15,23,42,0.12)" }}>
+                      <span style={{ width:18, height:18, borderRadius:"50%", display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, color:"#fff", background:"linear-gradient(145deg,#34a853,#16a34a)" }}>G</span>
+                      <span style={{ fontSize:12, fontWeight:900, color: dark ? "#e2e8f0" : "#0f172a", letterSpacing:0.2 }}>Pay</span>
+                    </div>
+                  </div>
+                  <div style={{ fontSize:15, fontWeight:900, color: dark ? "#f8fafc" : "#0f172a", marginBottom:6 }}>
+                    {isAr ? "قريبا سيتم تفعيل الخدمة" : "Service will be activated soon"}
+                  </div>
+                  <div style={{ fontSize:11, color: dark ? "#cbd5e1" : "#475569" }}>
+                    {isAr ? `إغلاق تلقائي خلال ${googlePaySoonCountdown} ثوانٍ` : `Auto close in ${googlePaySoonCountdown}s`}
                   </div>
                 </div>
               </div>
