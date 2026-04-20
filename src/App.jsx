@@ -54,6 +54,7 @@ import {
   uploadReceiptToFirebase,
   verifyCurrentUserPhoneUpdateCode,
   verifyPhoneVerificationCode,
+  fetchAdConfig,
 } from "./firebase";
 import { officesData } from "./data/offices";
 import { officeIdAliases, egyptGovernorates, cityIcons, cityNamesEn, countryNamesEn } from "./data/egyptData";
@@ -842,6 +843,7 @@ export default function App() {
   const [view, setView] = useState("landing");
   const [dark, setDark] = useState(false);
   const [lang, setLang] = useState("ar");
+  const [adRemote, setAdRemote] = useState({ enabled: false, imageUrl: "", linkUrl: "" });
   const [selectedCountry, setSelectedCountry] = useState("مصر");
   const [selectedNationality, setSelectedNationality] = useState(() => {
     try {
@@ -4536,6 +4538,12 @@ export default function App() {
     script.onload = () => initPendingAdSlots();
     document.head.appendChild(script);
   }, [isNativePlatform, landingAdConfig.enabled, landingAdConfig.web.client, view]);
+
+  useEffect(() => {
+    fetchAdConfig().then((cfg) => {
+      if (cfg.enabled && cfg.imageUrl) setAdRemote(cfg);
+    }).catch(() => {});
+  }, []);
 
   const cvOfferDeadline = useMemo(() => {
     const d = new Date();
@@ -9546,19 +9554,21 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     style={{
                       marginTop: 12,
                       borderRadius: 16,
-                      minHeight: 190,
-                      padding: "12px 12px",
+                      minHeight: adRemote.enabled && adRemote.imageUrl ? 0 : 190,
+                      padding: adRemote.enabled && adRemote.imageUrl ? 0 : "12px 12px",
                       border: `1px dashed ${dark ? "rgba(148,163,184,0.42)" : "rgba(100,116,139,0.34)"}`,
-                      background: dark
+                      background: adRemote.enabled && adRemote.imageUrl ? "transparent" : (dark
                         ? "linear-gradient(135deg, rgba(30,41,59,0.42), rgba(15,23,42,0.30))"
-                        : "linear-gradient(135deg, #f8fafc, #f1f5f9)",
+                        : "linear-gradient(135deg, #f8fafc, #f1f5f9)"),
                       position: "relative",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       textAlign: "center",
+                      overflow: "hidden",
                     }}
                   >
+                    {!(adRemote.enabled && adRemote.imageUrl) && (
                     <div
                       style={{
                         position: "absolute",
@@ -9579,7 +9589,29 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     >
                       {lang === "ar" ? "مساحة إعلانية" : "Ad Space"}
                     </div>
-                    {landingAdConfig.enabled ? (
+                    )}
+                    {adRemote.enabled && adRemote.imageUrl ? (
+                      adRemote.linkUrl ? (
+                        <a
+                          href={adRemote.linkUrl}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          style={{ display: "block", width: "100%", lineHeight: 0 }}
+                        >
+                          <img
+                            src={adRemote.imageUrl}
+                            alt="ad"
+                            style={{ width: "100%", height: "auto", display: "block", borderRadius: 14 }}
+                          />
+                        </a>
+                      ) : (
+                        <img
+                          src={adRemote.imageUrl}
+                          alt="ad"
+                          style={{ width: "100%", height: "auto", display: "block", borderRadius: 14 }}
+                        />
+                      )
+                    ) : landingAdConfig.enabled ? (
                       !isNativePlatform ? (
                         <div style={{ width: "100%" }}>
                           <div style={{ fontSize: 10, fontWeight: 800, marginBottom: 8, color: dark ? "#cbd5e1" : "#64748b", fontFamily: "'Cairo',sans-serif" }}>
@@ -9641,6 +9673,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                         </a>
                       </div>
                     )}
+                    {!adRemote.enabled && (
                     <div
                       style={{
                         position: "absolute",
@@ -9660,6 +9693,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     >
                       {lang === "ar" ? "مقاس صورة الإعلان المناسب: 1280×330 بكسل (نسبة 4:1)" : "Recommended ad image size: 1280x330 px (4:1 ratio)"}
                     </div>
+                    )}
                   </div>
 
                 </div>

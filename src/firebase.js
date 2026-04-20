@@ -41,6 +41,7 @@ import {
   getFirestore,
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getRemoteConfig, fetchAndActivate, getValue } from "firebase/remote-config";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDr4xrvIrZw3FOd4cMpjVZ-d7E0g1q_3Oo",
@@ -57,6 +58,27 @@ export const firestoreDb = getFirestore(app);
 export const firebaseStorage = getStorage(app);
 
 export const firebaseAuth = getAuth(app);
+
+// Remote Config
+export const remoteConfig = getRemoteConfig(app);
+remoteConfig.settings = { minimumFetchIntervalMillis: 3600000 }; // 1 hour cache
+remoteConfig.defaultConfig = {
+  ad_enabled: false,
+  ad_image_url: "",
+  ad_link_url: "",
+};
+export async function fetchAdConfig() {
+  try {
+    await fetchAndActivate(remoteConfig);
+    return {
+      enabled: getValue(remoteConfig, "ad_enabled").asBoolean(),
+      imageUrl: getValue(remoteConfig, "ad_image_url").asString(),
+      linkUrl: getValue(remoteConfig, "ad_link_url").asString(),
+    };
+  } catch {
+    return { enabled: false, imageUrl: "", linkUrl: "" };
+  }
+}
 export const CREATE_ORDER_FUNCTION_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/createOrder";
 export const UPLOAD_ORDER_RECEIPT_FUNCTION_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/uploadOrderReceipt";
 export const EXCHANGE_CUSTOM_TOKEN_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/exchangeIdTokenForCustomToken";
