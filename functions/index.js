@@ -680,7 +680,7 @@ exports.cleanupOldOrders = onSchedule(
     timeZone: "Africa/Cairo",
   },
   async () => {
-    const cutoffMs = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    const cutoffMs = Date.now() - (50 * 24 * 60 * 60 * 1000);
     const snapshot = await firestoreDb.collection("orders").get();
 
     const staleRefs = snapshot.docs
