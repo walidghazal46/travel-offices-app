@@ -20,7 +20,11 @@
       "Bash(cp c:/Users/admin/test1/backups/backup_before_refactor_20260415_224515/package.json c:/Users/admin/test1/package.json)",
       "Bash(cp c:/Users/admin/test1/backups/backup_before_refactor_20260415_224515/src/App.jsx c:/Users/admin/test1/src/App.jsx)",
       "Bash(cp c:/Users/admin/test1/backups/backup_before_refactor_20260415_224515/src/components/PhoneAuth.jsx c:/Users/admin/test1/src/components/PhoneAuth.jsx)",
-      "Bash(node node_modules/vite/bin/vite.js build)"
+      "Bash(node node_modules/vite/bin/vite.js build)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('homepage','لا يوجد'\\)\\)\")"
     ]
   }
 }
