@@ -8176,8 +8176,25 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
   );
 
   return (
-    <div dir={dir} style={{ ...styles.root, background: t.bg, color: t.text }}>
-      <div style={{ ...styles.bgPattern, opacity: dark ? 1 : 0.3 }} />
+    <div dir={dir} style={{ ...styles.root, background: t.bgGradient || t.bg, color: t.text }}>
+      {/* ── Cinematic Background — Floating Light Orbs ─────────────────── */}
+      <div className="cinematic-bg">
+        {/* Primary orbs */}
+        <div className="cinematic-orb cinematic-orb-1" style={{ opacity: dark ? 0.28 : 0.14 }} />
+        <div className="cinematic-orb cinematic-orb-2" style={{ opacity: dark ? 0.22 : 0.1  }} />
+        <div className="cinematic-orb cinematic-orb-3" style={{ opacity: dark ? 0.18 : 0.08 }} />
+        <div className="cinematic-orb cinematic-orb-4" style={{ opacity: dark ? 0.2  : 0.09 }} />
+        {/* Subtle particle glow dots */}
+        {dark && <>
+          <div className="particle-dot" style={{ top: "18%",  left: "12%",  animationDelay: "0s",    animationDuration: "5s"  }} />
+          <div className="particle-dot" style={{ top: "42%",  left: "78%",  animationDelay: "1.2s",  animationDuration: "6s"  }} />
+          <div className="particle-dot" style={{ top: "72%",  left: "30%",  animationDelay: "2.4s",  animationDuration: "4.5s"}} />
+          <div className="particle-dot" style={{ top: "85%",  left: "65%",  animationDelay: "0.8s",  animationDuration: "5.5s"}} />
+          <div className="particle-dot" style={{ top: "25%",  left: "50%",  animationDelay: "1.8s",  animationDuration: "7s",   background: "rgba(59,130,246,0.5)", boxShadow: "0 0 6px rgba(59,130,246,0.4)"  }} />
+          <div className="particle-dot" style={{ top: "60%",  left: "88%",  animationDelay: "3s",    animationDuration: "5.2s", background: "rgba(139,92,246,0.5)", boxShadow: "0 0 6px rgba(139,92,246,0.4)" }} />
+        </>}
+      </div>
+      <div style={{ ...styles.bgPattern, opacity: dark ? 0.6 : 0.2 }} />
 
       {/* ── EXIT CONFIRM MODAL ───────────────────────────────────────────── */}
       {showExitConfirm && (
@@ -9106,31 +9123,84 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
       {Modal()}
 
       {/* ── HEADER ───────────────────────────────────────────────────────── */}
-<header style={{
-  ...styles.header,
-  background: t.headerBg,
-  borderBottom: `1px solid ${t.border}`,
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  zIndex: 1000
-}}>
-  <div style={styles.headerInner}>
+<header
+  className="premium-header"
+  style={{
+    ...styles.header,
+    background: t.headerGradient,
+    borderBottom: `1px solid ${dark ? "rgba(130,160,220,0.12)" : "rgba(30,64,175,0.08)"}`,
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    boxShadow: dark
+      ? "0 2px 24px rgba(0,0,0,0.35), 0 0 40px rgba(26,86,219,0.06)"
+      : "0 2px 20px rgba(15,27,58,0.07), 0 1px 0 rgba(255,255,255,0.8)",
+  }}
+>
+  {/* Animated gradient border at bottom */}
+  <div style={{
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    background: "linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.5) 25%, rgba(59,130,246,0.5) 75%, transparent 100%)",
+    backgroundSize: "200% 100%",
+    animation: "headerLineGlow 5s ease infinite",
+    pointerEvents: "none",
+  }} />
 
-    <div style={styles.logoIcon}>
-      <img src={logo} alt="logo" style={{ width: 30, height: 30 }} />
+  <div style={styles.headerInner}>
+    {/* Logo badge with cinematic glow */}
+    <div
+      className="logo-badge-glow"
+      style={{
+        ...styles.logoIcon,
+        background: dark
+          ? "linear-gradient(145deg, #0a1e50, #0f2870)"
+          : "linear-gradient(145deg, #0e2d6e, #1a3c8a)",
+        boxShadow: dark
+          ? "0 4px 20px rgba(212,175,55,0.45), 0 0 0 1px rgba(212,175,55,0.22), 0 0 32px rgba(26,86,219,0.2), inset 0 1px 0 rgba(255,255,255,0.12)"
+          : "0 4px 18px rgba(212,175,55,0.38), 0 0 0 1px rgba(212,175,55,0.18), inset 0 1px 0 rgba(255,255,255,0.2)",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* Inner light reflection */}
+      <div style={{
+        position: "absolute",
+        top: -4,
+        left: -4,
+        right: "50%",
+        bottom: "50%",
+        background: "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.18), transparent)",
+        borderRadius: "50%",
+        pointerEvents: "none",
+      }} />
+      <img src={logo} alt="logo" style={{ width: 30, height: 30, position: "relative", zIndex: 1 }} />
     </div>
 
-    <div>
-      <div style={{ ...styles.logoTitle, color: t.text }}>
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{
+        ...styles.logoTitle,
+        color: t.text,
+        fontWeight: 900,
+        letterSpacing: 0.2,
+      }}>
         {tx.appTitle}
       </div>
-      <div style={{ ...styles.logoSub, color: t.gold }}>
+      <div style={{
+        ...styles.logoSub,
+        color: t.gold,
+        letterSpacing: 1.5,
+        textTransform: "uppercase",
+        fontSize: 8.5,
+      }}>
         {tx.appSub}
       </div>
     </div>
-
   </div>
 </header>
 
@@ -9144,7 +9214,16 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
 
 
         return (
-          <div style={{ background: t.cardBg, borderBottom: `1px solid ${t.border}`, position: "relative" }}>
+          <div style={{
+            background: dark
+              ? "rgba(4,10,22,0.85)"
+              : "rgba(255,255,255,0.92)",
+            borderBottom: `1px solid ${dark ? "rgba(130,160,220,0.1)" : "rgba(30,64,175,0.07)"}`,
+            backdropFilter: "blur(16px) saturate(1.4)",
+            WebkitBackdropFilter: "blur(16px) saturate(1.4)",
+            position: "relative",
+            boxShadow: dark ? "0 2px 12px rgba(0,0,0,0.2)" : "0 2px 8px rgba(15,27,58,0.05)",
+          }}>
             <div style={{ display: "flex", alignItems: "center", overflowX: "auto", padding: "6px 10px", gap: 4, scrollbarWidth: "none" }}>
 
               {/* مصر */}
@@ -9154,9 +9233,42 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 const active = selectedCountry === cName;
                 return (
                   <button key={cName} onClick={() => { handleCountrySelect(cName); setShowOtherDropdown(false); }}
-                    style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "6px 10px", borderRadius: 10, border: "none", background: active ? `${t.gold}18` : "transparent", cursor: "pointer", flexShrink: 0, position: "relative" }}>
-                    <img src={c.flagImg} alt={cName} style={{ width: 32, height: 22, borderRadius: 4, objectFit: "cover", border: `1px solid ${t.border}` }} />
-                    <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, color: active ? t.gold : t.subText, fontFamily: "'Cairo',sans-serif", whiteSpace: "nowrap" }}>
+                    className="country-bar-tab"
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 3,
+                      padding: "6px 12px",
+                      borderRadius: 12,
+                      border: `1px solid ${active ? t.borderGold : "transparent"}`,
+                      background: active
+                        ? (dark ? `rgba(212,175,55,0.14)` : `rgba(184,134,11,0.08)`)
+                        : "transparent",
+                      cursor: "pointer",
+                      flexShrink: 0,
+                      position: "relative",
+                    }}>
+                    {active && (
+                      <div style={{
+                        position: "absolute",
+                        bottom: 0,
+                        left: "20%",
+                        right: "20%",
+                        height: 2,
+                        borderRadius: "2px 2px 0 0",
+                        background: `linear-gradient(90deg, transparent, ${t.gold}, transparent)`,
+                      }} />
+                    )}
+                    <img src={c.flagImg} alt={cName} style={{
+                      width: 34,
+                      height: 23,
+                      borderRadius: 5,
+                      objectFit: "cover",
+                      border: `1px solid ${active ? t.borderGold : t.border}`,
+                      boxShadow: active ? `0 0 8px ${t.gold}30` : "none",
+                    }} />
+                    <span style={{ fontSize: 10, fontWeight: active ? 800 : 500, color: active ? t.gold : t.subText, fontFamily: "'Cairo',sans-serif", whiteSpace: "nowrap" }}>
                       {cName === "المملكة العربية السعودية" ? "السعودية" : cName === "الإمارات العربية المتحدة" ? "الإمارات" : cName}
                     </span>
                   </button>
@@ -9165,12 +9277,27 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
 
               {/* زر دول أخر */}
               <button onClick={() => setShowOtherDropdown(v => !v)}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "6px 10px", borderRadius: 10, border: "none", background: isOther ? `${t.gold}18` : "transparent", cursor: "pointer", flexShrink: 0, position: "relative" }}>
+                className="country-bar-tab"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 3,
+                  padding: "6px 12px",
+                  borderRadius: 12,
+                  border: `1px solid ${isOther ? t.borderGold : "transparent"}`,
+                  background: isOther
+                    ? (dark ? `rgba(212,175,55,0.14)` : `rgba(184,134,11,0.08)`)
+                    : "transparent",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  position: "relative",
+                }}>
                 {isOther
-                  ? <img src={countriesData.find(c => c.name === selectedCountry)?.flagImg} alt={selectedCountry} style={{ width: 32, height: 22, borderRadius: 4, objectFit: "cover", border: `1px solid ${t.border}` }} />
-                  : <span style={{ fontSize: 24, lineHeight: 1 }}>🌐</span>
+                  ? <img src={countriesData.find(c => c.name === selectedCountry)?.flagImg} alt={selectedCountry} style={{ width: 34, height: 23, borderRadius: 5, objectFit: "cover", border: `1px solid ${t.borderGold}` }} />
+                  : <span style={{ fontSize: 22, lineHeight: 1 }}>🌐</span>
                 }
-                <span style={{ fontSize: 10, fontWeight: isOther ? 700 : 500, color: isOther ? t.gold : t.subText, fontFamily: "'Cairo',sans-serif", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 10, fontWeight: isOther ? 800 : 500, color: isOther ? t.gold : t.subText, fontFamily: "'Cairo',sans-serif", whiteSpace: "nowrap" }}>
                   {isOther ? selectedCountry : "دول أخر"}
                 </span>
               </button>
@@ -9179,13 +9306,47 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
 
             {/* القائمة المنسدلة لباقي الدول */}
             {showOtherDropdown && (
-              <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 500, background: dark ? "#0f1e38" : "#ffffff", border: `1px solid ${t.border}`, borderTop: "none", borderRadius: "0 0 16px 16px", boxShadow: "0 8px 24px rgba(0,0,0,0.15)", padding: "14px 16px" }}>
+              <div style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                zIndex: 500,
+                background: dark
+                  ? "rgba(7,14,36,0.97)"
+                  : "rgba(255,255,255,0.98)",
+                backdropFilter: "blur(20px) saturate(1.5)",
+                WebkitBackdropFilter: "blur(20px) saturate(1.5)",
+                border: `1px solid ${dark ? "rgba(130,160,220,0.14)" : "rgba(30,64,175,0.09)"}`,
+                borderTop: "none",
+                borderRadius: "0 0 20px 20px",
+                boxShadow: dark
+                  ? "0 16px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04)"
+                  : "0 12px 32px rgba(15,27,58,0.15)",
+                padding: "16px",
+                animation: "fadeSlideUp 0.2s ease",
+              }}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
                   {otherCountries.map(c => (
                     <button key={c.name} onClick={() => { handleCountrySelect(c.name); setShowOtherDropdown(false); }}
-                      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "12px 8px", borderRadius: 12, border: `1px solid ${selectedCountry === c.name ? t.gold : t.border}`, background: selectedCountry === c.name ? `${t.gold}18` : t.inputBg, cursor: "pointer", fontFamily: "'Cairo',sans-serif" }}>
-                      <img src={c.flagImg} alt={c.name} style={{ width: 48, height: 32, borderRadius: 6, objectFit: "cover", border: `1px solid ${t.border}` }} />
-                      <span style={{ fontSize: 12, fontWeight: 600, color: selectedCountry === c.name ? t.gold : t.text, textAlign: "center" }}>{c.name}</span>
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "12px 8px",
+                        borderRadius: 14,
+                        border: `1px solid ${selectedCountry === c.name ? t.borderGold : t.border}`,
+                        background: selectedCountry === c.name
+                          ? (dark ? `rgba(212,175,55,0.14)` : `rgba(184,134,11,0.08)`)
+                          : t.inputBg,
+                        cursor: "pointer",
+                        fontFamily: "'Cairo',sans-serif",
+                        boxShadow: selectedCountry === c.name ? `0 0 14px ${t.gold}25` : "none",
+                        transition: "all 0.2s ease",
+                      }}>
+                      <img src={c.flagImg} alt={c.name} style={{ width: 48, height: 32, borderRadius: 8, objectFit: "cover", border: `1px solid ${t.border}` }} />
+                      <span style={{ fontSize: 11, fontWeight: 700, color: selectedCountry === c.name ? t.gold : t.text, textAlign: "center" }}>{c.name}</span>
                     </button>
                   ))}
                 </div>
@@ -9401,7 +9562,21 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 <div style={styles.hero}>
                 </div>
 
-                <div style={{ ...styles.sectionCard, background: t.cardBg, border: `1px solid ${t.border}`, padding: "14px 12px", boxShadow: dark ? "none" : "0 14px 34px rgba(15,23,42,0.06)", zoom: isCompactPhone ? 0.88 : 1, margin: "18px auto 0" }}>
+                <div style={{
+                  ...styles.sectionCard,
+                  background: dark
+                    ? "linear-gradient(160deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.03) 100%)"
+                    : "linear-gradient(160deg, rgba(255,255,255,0.98) 0%, rgba(248,250,255,0.95) 100%)",
+                  border: `1px solid ${dark ? "rgba(130,160,220,0.15)" : "rgba(30,64,175,0.09)"}`,
+                  padding: "16px 14px",
+                  boxShadow: dark
+                    ? "0 8px 40px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)"
+                    : "0 10px 40px rgba(15,27,58,0.08), 0 0 0 1px rgba(255,255,255,0.9), inset 0 1px 0 rgba(255,255,255,1)",
+                  backdropFilter: dark ? "blur(16px) saturate(1.3)" : "none",
+                  WebkitBackdropFilter: dark ? "blur(16px) saturate(1.3)" : "none",
+                  zoom: isCompactPhone ? 0.88 : 1,
+                  margin: "18px auto 0",
+                }}>
                   <div style={{ marginBottom: 14, borderRadius: 18, padding: "5.2px 13px", background: dark ? "linear-gradient(135deg, rgba(14,116,144,0.26), rgba(6,182,212,0.12))" : "linear-gradient(135deg, #ecfeff, #dbeafe)", border: "1px solid rgba(14,165,233,0.26)", boxShadow: dark ? "0 0 20px rgba(34,211,238,0.14), inset 0 1px 0 rgba(255,255,255,0.05)" : "0 0 18px rgba(14,165,233,0.12), 0 10px 20px rgba(14,165,233,0.08)", position: "relative", overflow: "hidden" }}>
                     <div style={{ position: "absolute", top: -26, left: lang === "ar" ? "auto" : -24, right: lang === "ar" ? -24 : "auto", width: 90, height: 90, borderRadius: "50%", background: "radial-gradient(circle, rgba(56,189,248,0.26), rgba(56,189,248,0))" }} />
                     <div style={{ display: "flex", flexDirection: isCompactPhone ? "column" : "row", alignItems: isCompactPhone ? "stretch" : "center", gap: 7, position: "relative" }}>
@@ -9762,13 +9937,47 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     const guestLockedCount = isGuestUser ? Math.max(0, count - guestVisibleCount) : 0;
                     return (
                       <button key={gov.name} onClick={() => count > 0 ? handleGovSelect(gov.name) : null}
-                        style={{ ...styles.govCard, background: t.cardBg, border: `1px solid ${t.border}`, opacity: count === 0 ? 0.5 : 1, cursor: count === 0 ? "default" : "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left", minHeight: 78, padding: "10px 8px", direction: "ltr" }}>
-                        <div style={{ width: 30, height: 30, borderRadius: 10, background: `${t.gold}15`, color: t.gold, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{gov.icon}</div>
+                        className="gov-card-premium"
+                        style={{
+                          ...styles.govCard,
+                          background: dark
+                            ? "linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03))"
+                            : "linear-gradient(145deg, #ffffff, #f8faff)",
+                          border: `1px solid ${count > 0 ? (dark ? "rgba(130,160,220,0.18)" : "rgba(30,64,175,0.1)") : t.border}`,
+                          boxShadow: dark
+                            ? "0 4px 16px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.05)"
+                            : "0 2px 12px rgba(15,27,58,0.07), inset 0 1px 0 rgba(255,255,255,0.9)",
+                          backdropFilter: dark ? "blur(10px)" : "none",
+                          opacity: count === 0 ? 0.45 : 1,
+                          cursor: count === 0 ? "default" : "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          textAlign: "left",
+                          minHeight: 80,
+                          padding: "10px 8px",
+                          direction: "ltr",
+                        }}>
+                        <div style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 12,
+                          background: dark
+                            ? `linear-gradient(145deg, ${t.gold}28, ${t.gold}12)`
+                            : `linear-gradient(145deg, ${t.gold}20, ${t.gold}08)`,
+                          color: t.gold,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 20,
+                          flexShrink: 0,
+                          boxShadow: `0 0 10px ${t.gold}25`,
+                        }}>{gov.icon}</div>
                         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: lang === "ar" ? "flex-end" : "flex-start", textAlign: lang === "ar" ? "right" : "left", justifyContent: "center", lineHeight: 1.25 }}>
                           <div style={{ fontSize: lang === "en" ? 9.1 : 10.5, fontWeight: 800, color: t.text, marginBottom: 3, lineHeight: 1.3 }}>{lang === "en" ? gov.nameEn : gov.name}</div>
                           <div style={{ fontSize: 9.8, fontWeight: 700, color: count > 0 ? t.gold : t.subText, lineHeight: 1.2 }}>{count > 0 ? `${guestVisibleCount} ${lang === "en" ? "offices" : "مكتب"}` : tx.comingSoon}</div>
                           {guestLockedCount > 0 && (
-                            <div style={{ fontSize: 9, fontWeight: 800, color: "#e53e3e", lineHeight: 1.2 }}>
+                            <div style={{ fontSize: 9, fontWeight: 800, color: dark ? "#f87171" : "#dc2626", lineHeight: 1.2 }}>
                               {lang === "ar" ? `${guestLockedCount} مكتب مقفول للضيف` : `${guestLockedCount} offices locked for guest`}
                             </div>
                           )}
@@ -12626,7 +12835,17 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
 
       {/* ── WHATSAPP FLOAT BTN — home tab + home view only ───────────── */}
       {mainTab === "home" && view === "home" && (
-        <a href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noreferrer" style={styles.waBtn}>
+        <a
+          href={`https://wa.me/${WHATSAPP}`}
+          target="_blank"
+          rel="noreferrer"
+          className="wa-float-btn"
+          style={{
+            ...styles.waBtn,
+            background: "linear-gradient(145deg, #25d366, #128c7e)",
+            boxShadow: "0 8px 28px rgba(37,211,102,0.5), 0 0 0 1px rgba(37,211,102,0.2), inset 0 1px 0 rgba(255,255,255,0.2)",
+          }}
+        >
           <svg width="26" height="26" viewBox="0 0 24 24" fill="white">
             <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
           </svg>
@@ -12698,44 +12917,222 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
       )}
 
       {/* ── BOTTOM NAVIGATION BAR ────────────────────────────────────────── */}
-      <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200, background: dark ? "rgba(10,22,40,0.97)" : "rgba(255,255,255,0.97)", borderTop: `1px solid ${t.border}`, backdropFilter: "blur(14px)", display: "flex", alignItems: "stretch", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+      <nav
+        className="premium-nav"
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 200,
+          background: dark
+            ? "rgba(4,10,22,0.92)"
+            : "rgba(255,255,255,0.92)",
+          backdropFilter: "blur(24px) saturate(1.8)",
+          WebkitBackdropFilter: "blur(24px) saturate(1.8)",
+          borderTop: `1px solid ${dark ? "rgba(130,160,220,0.1)" : "rgba(30,64,175,0.07)"}`,
+          display: "flex",
+          alignItems: "stretch",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          boxShadow: dark
+            ? "0 -4px 24px rgba(0,0,0,0.35)"
+            : "0 -4px 24px rgba(15,27,58,0.08)",
+        }}
+      >
         {[
-          { key: "home", icon: "🏠", label: tx.navHome },
-          { key: "cv",   icon: "📄", label: tx.navCV },
+          { key: "home",     icon: "🏠", label: tx.navHome     },
+          { key: "cv",       icon: "📄", label: tx.navCV       },
           { key: "settings", icon: "⚙️", label: tx.navSettings },
         ].map(tab => {
           const active = mainTab === tab.key;
           return (
-            <button key={tab.key} onClick={() => {
-              if (tab.key === "home") {
-                goToCountryLanding();
-              } else if (tab.key === "cv") {
-                setMainTab("cv");
-                setCvMode(null);
-                setSelectedCvPackage(null);
-                setCvBuilderScreen("menu");
-                setSelectedCvBuilderOrder(null);
-                setCvStep(0);
-                setCvUnlocked(false);
-              } else {
-                setMainTab(tab.key);
-              }
-            }}
-              style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, padding: "10px 4px", background: "transparent", border: "none", cursor: "pointer", fontFamily: "'Cairo',sans-serif", position: "relative" }}>
-              {active && <div style={{ position: "absolute", top: 0, left: "20%", right: "20%", height: 3, borderRadius: "0 0 4px 4px", background: `linear-gradient(90deg,${t.gold},##b8860b)` }} />}
-              <span style={{ fontSize: 22, lineHeight: 1, opacity: active ? 1 : 0.5 }}>{tab.icon}</span>
-              <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, color: active ? t.gold : t.subText, transition: "color 0.2s" }}>{tab.label}</span>
+            <button
+              key={tab.key}
+              className="nav-tab-item"
+              onClick={() => {
+                if (tab.key === "home") {
+                  goToCountryLanding();
+                } else if (tab.key === "cv") {
+                  setMainTab("cv");
+                  setCvMode(null);
+                  setSelectedCvPackage(null);
+                  setCvBuilderScreen("menu");
+                  setSelectedCvBuilderOrder(null);
+                  setCvStep(0);
+                  setCvUnlocked(false);
+                } else {
+                  setMainTab(tab.key);
+                }
+              }}
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 4,
+                padding: "10px 4px",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "'Cairo',sans-serif",
+                position: "relative",
+              }}
+            >
+              {/* Active top indicator pill */}
+              {active && (
+                <div
+                  className="nav-active-indicator"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: "56%",
+                    height: 3,
+                    borderRadius: "0 0 6px 6px",
+                    background: `linear-gradient(90deg, ${t.gold}, ${dark ? "#f0c040" : "#c8960a"})`,
+                    boxShadow: `0 0 10px ${t.gold}80`,
+                  }}
+                />
+              )}
+              {/* Active background pill */}
+              {active && (
+                <div style={{
+                  position: "absolute",
+                  inset: "4px 8px",
+                  borderRadius: 12,
+                  background: dark
+                    ? "rgba(212,175,55,0.08)"
+                    : "rgba(184,134,11,0.06)",
+                  pointerEvents: "none",
+                }} />
+              )}
+              {/* Icon with glow when active */}
+              <span style={{
+                fontSize: 22,
+                lineHeight: 1,
+                opacity: active ? 1 : 0.45,
+                filter: active
+                  ? `drop-shadow(0 0 8px ${t.gold}80)`
+                  : "none",
+                transition: "filter 0.25s ease, opacity 0.25s ease",
+                position: "relative",
+                zIndex: 1,
+              }}>
+                {tab.icon}
+              </span>
+              <span style={{
+                fontSize: 10,
+                fontWeight: active ? 800 : 500,
+                color: active ? t.gold : t.subText,
+                transition: "color 0.25s ease, font-weight 0.25s ease",
+                letterSpacing: active ? 0.2 : 0,
+                position: "relative",
+                zIndex: 1,
+              }}>
+                {tab.label}
+              </span>
             </button>
           );
         })}
       </nav>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;900&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Cairo', sans-serif !important; }
-        @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes goldPulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.6); } }
+        body { font-family: 'Cairo', sans-serif !important; -webkit-tap-highlight-color: transparent; }
+
+        /* ── Core Animations ── */
+        @keyframes fadeSlideUp {
+          from { opacity: 0; transform: translateY(18px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0)    scale(1);    }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes goldPulse {
+          0%,100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(212,175,55,0.5); }
+          50%      { opacity: 0.5; transform: scale(0.7); box-shadow: 0 0 0 0 transparent; }
+        }
+        @keyframes waPulseRing {
+          0%  { transform: scale(1);    opacity: 0.65; }
+          70% { transform: scale(1.6);  opacity: 0;   }
+          100%{ transform: scale(1.6);  opacity: 0;   }
+        }
+        @keyframes glowPulse {
+          0%,100% { box-shadow: 0 0 10px rgba(212,175,55,0.35), 0 0 20px rgba(212,175,55,0.12); }
+          50%      { box-shadow: 0 0 24px rgba(212,175,55,0.65), 0 0 48px rgba(212,175,55,0.25); }
+        }
+        @keyframes orbDrift {
+          0%,100% { transform: translate(0,0) scale(1); }
+          33%      { transform: translate(16px,-10px) scale(1.05); }
+          66%      { transform: translate(-10px,12px) scale(0.97); }
+        }
+        @keyframes shimmerSweep {
+          0%  { background-position: -400px 0; }
+          100%{ background-position:  400px 0; }
+        }
+        @keyframes navIndicatorGlow {
+          0%,100% { opacity: 0.9; width: 56%; }
+          50%      { opacity: 1;   width: 68%; }
+        }
+        @keyframes headerLineGlow {
+          0%,100% { background-position: 0% 50%; }
+          50%      { background-position: 100% 50%; }
+        }
+        @keyframes cardEntrance {
+          from { opacity: 0; transform: translateY(14px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes particleFloat {
+          0%,100%{ transform: translateY(0);    opacity: 0.4; }
+          50%    { transform: translateY(-16px); opacity: 0.75; }
+        }
+
+        /* ── Smooth scrolling ── */
+        html { scroll-behavior: smooth; }
+
+        /* ── Tap states ── */
+        button, a { -webkit-tap-highlight-color: transparent; }
+
+        /* ── Select dropdown premium style ── */
+        select { -webkit-appearance: none; appearance: none; }
+
+        /* ── Focus ring override ── */
+        button:focus-visible, a:focus-visible {
+          outline: 2px solid rgba(212,175,55,0.7);
+          outline-offset: 2px;
+        }
+
+        /* ── Premium tooltip glow ── */
+        .tooltip-glow {
+          position: relative;
+        }
+        .tooltip-glow::after {
+          content: attr(data-tip);
+          position: absolute;
+          bottom: calc(100% + 8px);
+          left: 50%;
+          transform: translateX(-50%);
+          background: rgba(5,13,26,0.95);
+          color: #e8edf5;
+          font-size: 11px;
+          font-family: 'Cairo', sans-serif;
+          font-weight: 700;
+          padding: 5px 10px;
+          border-radius: 8px;
+          white-space: nowrap;
+          pointer-events: none;
+          opacity: 0;
+          transition: opacity 0.2s;
+          border: 1px solid rgba(212,175,55,0.25);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+        }
+        .tooltip-glow:hover::after {
+          opacity: 1;
+        }
       `}</style>
     </div>
   );
@@ -12749,41 +13146,268 @@ const InfoRow = ({ label, value, color }) => (
 );
 
 const themes = {
-  dark: { bg: "#0a1628", headerBg: "rgba(10,22,40,0.95)", cardBg: "rgba(255,255,255,0.04)", inputBg: "rgba(255,255,255,0.06)", btnBg: "rgba(212,175,55,0.12)", text: "#ffffff", subText: "rgba(255,255,255,0.55)", border: "rgba(255,255,255,0.1)", gold: "#d4af37" },
-  light: { bg: "#f0f4ff", headerBg: "rgba(255,255,255,0.97)", cardBg: "#ffffff", inputBg: "#f5f7ff", btnBg: "rgba(212,175,55,0.1)", text: "#1a2340", subText: "#556080", border: "rgba(0,0,0,0.1)", gold: "#d4af37" },
+  dark: {
+    bg: "#050d1a",
+    headerBg: "rgba(5,13,26,0.82)",
+    cardBg: "rgba(255,255,255,0.045)",
+    cardGlass: "rgba(255,255,255,0.055)",
+    inputBg: "rgba(255,255,255,0.07)",
+    btnBg: "rgba(212,175,55,0.14)",
+    navBg: "rgba(4,10,22,0.88)",
+    text: "#e8edf5",
+    subText: "rgba(232,237,245,0.5)",
+    border: "rgba(130,160,220,0.14)",
+    borderGold: "rgba(212,175,55,0.22)",
+    gold: "#f0c040",
+    goldDim: "#c8960a",
+    primary: "#3b82f6",
+    primaryDark: "#1d4ed8",
+    emerald: "#10b981",
+    purple: "#8b5cf6",
+    danger: "#f87171",
+    success: "#4ade80",
+    warning: "#fb923c",
+    shadowCard: "0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2)",
+    shadowGold: "0 0 24px rgba(212,175,55,0.25), 0 0 48px rgba(212,175,55,0.1)",
+    glowBlue: "0 0 20px rgba(59,130,246,0.3)",
+    headerGradient: "linear-gradient(180deg, rgba(5,13,26,0.95) 0%, rgba(7,20,40,0.9) 100%)",
+    bgGradient: "linear-gradient(160deg, #050d1a 0%, #071428 50%, #050d1a 100%)",
+    sectionGlow: "0 0 40px rgba(26,86,219,0.08), 0 0 80px rgba(124,58,237,0.06)",
+  },
+  light: {
+    bg: "#f0f4ff",
+    headerBg: "rgba(255,255,255,0.88)",
+    cardBg: "#ffffff",
+    cardGlass: "rgba(255,255,255,0.85)",
+    inputBg: "#f4f7ff",
+    btnBg: "rgba(212,175,55,0.1)",
+    navBg: "rgba(255,255,255,0.92)",
+    text: "#0f1b3a",
+    subText: "#4a6080",
+    border: "rgba(30,64,175,0.1)",
+    borderGold: "rgba(184,134,11,0.25)",
+    gold: "#c8960a",
+    goldDim: "#a07808",
+    primary: "#1a56db",
+    primaryDark: "#1e40af",
+    emerald: "#059669",
+    purple: "#7c3aed",
+    danger: "#dc2626",
+    success: "#16a34a",
+    warning: "#d97706",
+    shadowCard: "0 4px 24px rgba(15,27,58,0.08), 0 1px 4px rgba(15,27,58,0.05)",
+    shadowGold: "0 0 20px rgba(184,134,11,0.2), 0 0 40px rgba(184,134,11,0.08)",
+    glowBlue: "0 0 20px rgba(26,86,219,0.18)",
+    headerGradient: "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,250,255,0.92) 100%)",
+    bgGradient: "linear-gradient(160deg, #eef2ff 0%, #f0f4ff 50%, #e8eeff 100%)",
+    sectionGlow: "0 0 40px rgba(26,86,219,0.05), 0 0 80px rgba(124,58,237,0.03)",
+  },
 };
 
 const styles = {
-  root: { minHeight: "100vh", fontFamily: "'Cairo', sans-serif", position: "relative", overflowX: "hidden", transition: "background 0.3s" },
-  bgPattern: { position: "fixed", inset: 0, backgroundImage: "radial-gradient(ellipse at 20% 10%, rgba(212,175,55,0.08) 0%, transparent 50%), radial-gradient(ellipse at 80% 80%, rgba(30,80,160,0.15) 0%, transparent 50%)", pointerEvents: "none", zIndex: 0 },
-  header: { position: "sticky", top: 0, zIndex: 100, backdropFilter: "blur(12px)", transition: "background 0.3s" },
-  headerInner: { maxWidth: 700, margin: "0 auto", padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 },
-  backBtn: { borderRadius: 10, padding: "6px 14px", fontSize: 20, cursor: "pointer", fontFamily: "'Cairo', sans-serif", flexShrink: 0 },
-  langBtn: { borderRadius: 10, padding: "6px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Cairo', sans-serif", flexShrink: 0, letterSpacing: 0.5 },
-  themeBtn: { borderRadius: 10, padding: "6px 10px", fontSize: 16, cursor: "pointer", fontFamily: "'Cairo', sans-serif", flexShrink: 0 },
-  logoWrap: { display: "flex", alignItems: "center", gap: 10, flex: 1 },
-  logoIcon: { width: 38, height: 38, borderRadius: 12, background: "linear-gradient(135deg, #082555, #082555)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, boxShadow: "0 4px 14px rgba(212,175,55,0.35)", flexShrink: 0 },
-  logoTitle: { fontSize: 14, fontWeight: 700, lineHeight: 1.2 },
-  logoSub: { fontSize: 9, letterSpacing: 1, fontWeight: 400 },
+  root: {
+    minHeight: "100vh",
+    fontFamily: "'Cairo', sans-serif",
+    position: "relative",
+    overflowX: "hidden",
+    transition: "background 0.35s ease",
+  },
+  bgPattern: {
+    position: "fixed",
+    inset: 0,
+    backgroundImage: [
+      "radial-gradient(ellipse at 15% 8%,  rgba(26,86,219,0.18)  0%, transparent 45%)",
+      "radial-gradient(ellipse at 85% 85%, rgba(124,58,237,0.15) 0%, transparent 45%)",
+      "radial-gradient(ellipse at 50% 50%, rgba(212,175,55,0.06) 0%, transparent 55%)",
+    ].join(", "),
+    pointerEvents: "none",
+    zIndex: 0,
+  },
+  header: {
+    position: "sticky",
+    top: 0,
+    zIndex: 100,
+    backdropFilter: "blur(20px) saturate(1.6)",
+    WebkitBackdropFilter: "blur(20px) saturate(1.6)",
+    transition: "background 0.3s ease",
+  },
+  headerInner: {
+    maxWidth: 700,
+    margin: "0 auto",
+    padding: "11px 14px",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  },
+  backBtn: {
+    borderRadius: 12,
+    padding: "6px 14px",
+    fontSize: 20,
+    cursor: "pointer",
+    fontFamily: "'Cairo', sans-serif",
+    flexShrink: 0,
+    transition: "transform 0.2s ease, opacity 0.2s ease",
+  },
+  langBtn: {
+    borderRadius: 20,
+    padding: "5px 12px",
+    fontSize: 11,
+    fontWeight: 800,
+    cursor: "pointer",
+    fontFamily: "'Cairo', sans-serif",
+    flexShrink: 0,
+    letterSpacing: 0.5,
+    transition: "all 0.2s ease",
+  },
+  themeBtn: {
+    borderRadius: 20,
+    padding: "5px 10px",
+    fontSize: 16,
+    cursor: "pointer",
+    fontFamily: "'Cairo', sans-serif",
+    flexShrink: 0,
+    transition: "transform 0.2s ease",
+  },
+  logoWrap: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+  },
+  logoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    background: "linear-gradient(145deg, #0a2060, #0f3080)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#fff",
+    fontWeight: 900,
+    boxShadow: "0 4px 18px rgba(212,175,55,0.4), 0 0 0 1px rgba(212,175,55,0.2), inset 0 1px 0 rgba(255,255,255,0.15)",
+    flexShrink: 0,
+  },
+  logoTitle: { fontSize: 14, fontWeight: 800, lineHeight: 1.2 },
+  logoSub: { fontSize: 9, letterSpacing: 1.2, fontWeight: 500, opacity: 0.8 },
   countryBar: { display: "flex", alignItems: "center", gap: 12, padding: "8px 16px", maxWidth: 700, margin: "0 auto" },
-  countrySelect: { borderRadius: 10, padding: "6px 12px", fontSize: 13, fontFamily: "'Cairo', sans-serif", fontWeight: 600, cursor: "pointer", outline: "none", flex: 1 },
-  main: { maxWidth: 700, margin: "0 auto", padding: "0 14px 120px", position: "relative", zIndex: 1 },
-  hero: { padding: "20px 16px 14px" },
-  heroTag: { display: "inline-block", borderRadius: 20, padding: "4px 14px", fontSize: 12, fontWeight: 600, marginBottom: 10 },
-  heroTitle: { fontSize: 28, fontWeight: 900, marginBottom: 6, lineHeight: 1.2 },
-  heroSub: { fontSize: 13, fontWeight: 400 },
-  // Slightly smaller gov cards
-  govGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, padding: "10px 0 14px" },
-  govCard: { borderRadius: 10, padding: "8px 2px", textAlign: "center", transition: "all 0.2s ease", outline: "none" },
-  listHeader: { padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 60, zIndex: 50 },
-  searchWrap: { display: "flex", alignItems: "center", gap: 10, borderRadius: 14, padding: "10px 16px", margin: "10px 0" },
-  searchInput: { border: "none", outline: "none", fontSize: 14, fontFamily: "'Cairo', sans-serif", width: "100%" },
-  officeCard: { borderRadius: 16, padding: "16px", animation: "fadeSlideUp 0.4s ease both" },
-  sectionCard: { borderRadius: 16, padding: "16px" },
-  waBtn: { position: "fixed", bottom: 80, left: 20, width: 52, height: 52, borderRadius: "50%", background: "linear-gradient(135deg, #25d366, #128c7e)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 6px 24px rgba(37,211,102,0.4)", zIndex: 200, textDecoration: "none" },
-  footer: { position: "fixed", bottom: 0, left: 0, right: 0, padding: "10px 20px", textAlign: "center", zIndex: 150, transition: "background 0.3s" },
-  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 },
-  disclaimerBox: { borderRadius: 20, padding: "26px 22px", maxWidth: 360, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.4)" },
-  modalBox: { borderRadius: 20, padding: "26px 22px", maxWidth: 320, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.4)" },
+  countrySelect: { borderRadius: 12, padding: "6px 12px", fontSize: 13, fontFamily: "'Cairo', sans-serif", fontWeight: 600, cursor: "pointer", outline: "none", flex: 1 },
+  main: {
+    maxWidth: 700,
+    margin: "0 auto",
+    padding: "0 14px 120px",
+    position: "relative",
+    zIndex: 1,
+  },
+  hero: { padding: "22px 16px 14px" },
+  heroTag: {
+    display: "inline-block",
+    borderRadius: 999,
+    padding: "5px 16px",
+    fontSize: 12,
+    fontWeight: 700,
+    marginBottom: 12,
+    letterSpacing: 0.3,
+  },
+  heroTitle: { fontSize: 28, fontWeight: 900, marginBottom: 8, lineHeight: 1.2 },
+  heroSub: { fontSize: 13, fontWeight: 500, lineHeight: 1.6 },
+  govGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 10,
+    padding: "10px 0 16px",
+  },
+  govCard: {
+    borderRadius: 14,
+    padding: "10px 6px",
+    textAlign: "center",
+    transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
+    outline: "none",
+  },
+  listHeader: {
+    padding: "12px 16px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    position: "sticky",
+    top: 60,
+    zIndex: 50,
+  },
+  searchWrap: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    borderRadius: 16,
+    padding: "10px 16px",
+    margin: "10px 0",
+  },
+  searchInput: {
+    border: "none",
+    outline: "none",
+    fontSize: 14,
+    fontFamily: "'Cairo', sans-serif",
+    width: "100%",
+    background: "transparent",
+  },
+  officeCard: {
+    borderRadius: 20,
+    padding: "18px",
+    animation: "fadeSlideUp 0.4s cubic-bezier(0.16,1,0.3,1) both",
+  },
+  sectionCard: {
+    borderRadius: 18,
+    padding: "16px",
+  },
+  waBtn: {
+    position: "fixed",
+    bottom: 82,
+    left: 18,
+    width: 54,
+    height: 54,
+    borderRadius: "50%",
+    background: "linear-gradient(145deg, #25d366, #128c7e)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 8px 28px rgba(37,211,102,0.5), 0 0 0 1px rgba(37,211,102,0.2)",
+    zIndex: 200,
+    textDecoration: "none",
+  },
+  footer: {
+    position: "fixed",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: "10px 20px",
+    textAlign: "center",
+    zIndex: 150,
+    transition: "background 0.3s",
+  },
+  overlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(2,11,24,0.78)",
+    backdropFilter: "blur(8px) saturate(1.2)",
+    WebkitBackdropFilter: "blur(8px) saturate(1.2)",
+    zIndex: 999,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    animation: "fadeIn 0.2s ease",
+  },
+  disclaimerBox: {
+    borderRadius: 24,
+    padding: "28px 24px",
+    maxWidth: 360,
+    width: "100%",
+    boxShadow: "0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.1)",
+  },
+  modalBox: {
+    borderRadius: 24,
+    padding: "28px 24px",
+    maxWidth: 320,
+    width: "100%",
+    boxShadow: "0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.1)",
+  },
 };
 
