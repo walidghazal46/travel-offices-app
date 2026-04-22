@@ -277,7 +277,7 @@ const T = {
 
 const ADMIN_EMAIL = PRIMARY_ADMIN_EMAIL;
 
-const ACCOUNT_HOLDER_NAME = "WALID GHAZAL KALMOUSH";
+const ACCOUNT_HOLDER_NAME = "وليد غزال قلموش";
 const INSTAPAY_HANDLE = "walidghazal51";
 const PAYMENT_MOBILE = "01064463650";
 
@@ -318,7 +318,7 @@ const EGYPT_BANKS_DATA = {
     details: [
       { label: "الاسم", labelEn: "Account Name", value: ACCOUNT_HOLDER_NAME },
       { label: "البنك", labelEn: "Bank", value: "CIB" },
-      { label: "IBAN", labelEn: "IBAN", value: "EG360010013400000100059511771" },
+      { label: "IBAN", labelEn: "IBAN", value: "EG900010013400000100043762267" },
     ],
     hint: "بعد التحويل البنكي أضف إيصال التحويل ثم أكّد الدفع لإرسال الطلب.",
     hintEn: "After the bank transfer, attach the transfer receipt and confirm payment to submit the request.",
@@ -389,8 +389,8 @@ const INTL_BANKS_DATA = {
     requiresReceipt: true,
     details: [
       { label: "الاسم", labelEn: "Account Name", value: ACCOUNT_HOLDER_NAME },
-      { label: "البنك", labelEn: "Bank", value: "مصرف الراجحي" },
-      { label: "IBAN", labelEn: "IBAN", value: "SA46 8000 0996 6080 1754 2586" },
+      { label: "البنك", labelEn: "Bank", value: "CIB" },
+      { label: "IBAN", labelEn: "IBAN", value: "EG900010013400000100043762267" },
     ],
     hint: "بعد التحويل البنكي أضف إيصال التحويل ثم أكّد الدفع لإرسال الطلب.",
     hintEn: "After the bank transfer, attach the transfer receipt and confirm payment to submit the request.",

@@ -1,13 +1,11 @@
 package com.travel.offices;
 
-import android.graphics.Color;
-import android.os.Build;
 import android.os.Bundle;
-import android.view.View;
 import android.view.Window;
-import android.view.WindowInsetsController;
 
 import androidx.appcompat.app.ActionBar;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -23,18 +21,11 @@ public class MainActivity extends BridgeActivity {
 		}
 
 		Window window = getWindow();
-		window.setStatusBarColor(Color.parseColor("#0b1f4a"));
-
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-			WindowInsetsController controller = window.getInsetsController();
-			if (controller != null) {
-				controller.setSystemBarsAppearance(0, WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS);
-			}
-		} else {
-			View decorView = window.getDecorView();
-			decorView.setSystemUiVisibility(
-				decorView.getSystemUiVisibility() & ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-			);
+		WindowCompat.setDecorFitsSystemWindows(window, false);
+		WindowInsetsControllerCompat insetsController = WindowCompat.getInsetsController(window, window.getDecorView());
+		if (insetsController != null) {
+			insetsController.setAppearanceLightStatusBars(false);
+			insetsController.setAppearanceLightNavigationBars(false);
 		}
 	}
 }

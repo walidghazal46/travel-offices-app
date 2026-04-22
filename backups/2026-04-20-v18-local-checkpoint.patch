@@ -1,0 +1,615 @@
+From 2ab7eb5755f9085ac94fb4fd629bcf21301241d2 Mon Sep 17 00:00:00 2001
+From: Walid Ghazal <walidghazal46@gmail.com>
+Date: Mon, 20 Apr 2026 13:24:00 +0300
+Subject: [PATCH] Checkpoint 2026-04-20 v18 (1.0.0.26): landing UI updates
+
+---
+ android/app/build.gradle                      |   4 +-
+ .../assets/public/assets/index-BsNcdPB1.css   |   1 -
+ android/app/src/main/assets/public/index.html |   4 +-
+ src/App.css                                   | 118 ++++++++++-
+ src/App.jsx                                   | 187 ++++++++++++------
+ 5 files changed, 245 insertions(+), 69 deletions(-)
+ delete mode 100644 android/app/src/main/assets/public/assets/index-BsNcdPB1.css
+
+diff --git a/android/app/build.gradle b/android/app/build.gradle
+index 5c512d4..c6f657f 100644
+--- a/android/app/build.gradle
++++ b/android/app/build.gradle
+@@ -7,8 +7,8 @@ android {
+         applicationId "com.travel.offices"
+         minSdkVersion rootProject.ext.minSdkVersion
+         targetSdkVersion rootProject.ext.targetSdkVersion
+-        versionCode 17
+-        versionName "1.0.0.27"
++        versionCode 18
++        versionName "1.0.0.26"
+         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+         aaptOptions {
+              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+diff --git a/android/app/src/main/assets/public/assets/index-BsNcdPB1.css b/android/app/src/main/assets/public/assets/index-BsNcdPB1.css
+deleted file mode 100644
+index 3b82018..0000000
+--- a/android/app/src/main/assets/public/assets/index-BsNcdPB1.css
++++ /dev/null
+@@ -1 +0,0 @@
+-.counter{color:var(--accent);background:var(--accent-bg);border:2px solid #0000;border-radius:5px;margin-bottom:24px;padding:5px 10px;font-size:16px;transition:border-color .3s}.counter:hover{border-color:var(--accent-border)}.counter:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.hero{position:relative}.hero .base,.hero .framework,.hero .vite{margin:0 auto;inset-inline:0}.hero .base{z-index:0;width:170px;position:relative}.hero .framework,.hero .vite{position:absolute}.hero .framework{z-index:1;height:28px;top:34px;transform:perspective(2000px)rotate(300deg)rotateX(44deg)rotateY(39deg)scale(1.4)}.hero .vite{z-index:0;width:auto;height:26px;top:107px;transform:perspective(2000px)rotate(300deg)rotateX(40deg)rotateY(39deg)scale(.8)}#center{flex-direction:column;flex-grow:1;place-content:center;place-items:center;gap:25px;display:flex}@media (width<=1024px){#center{gap:18px;padding:32px 20px 24px}}#next-steps{border-top:1px solid var(--border);text-align:left;display:flex}#next-steps>div{flex:1 1 0;padding:32px}@media (width<=1024px){#next-steps>div{padding:24px 20px}}#next-steps .icon{width:22px;height:22px;margin-bottom:16px}@media (width<=1024px){#next-steps{text-align:center;flex-direction:column}}#docs{border-right:1px solid var(--border)}@media (width<=1024px){#docs{border-right:none;border-bottom:1px solid var(--border)}}#next-steps ul{gap:8px;margin:32px 0 0;padding:0;list-style:none;display:flex}#next-steps ul .logo{height:18px}#next-steps ul a{color:var(--text-h);background:var(--social-bg);border-radius:6px;align-items:center;gap:8px;padding:6px 12px;font-size:16px;text-decoration:none;transition:box-shadow .3s;display:flex}#next-steps ul a:hover{box-shadow:var(--shadow)}#next-steps ul a .button-icon{width:18px;height:18px}@media (width<=1024px){#next-steps ul{flex-wrap:wrap;justify-content:center;margin-top:20px}#next-steps ul li{flex:calc(50% - 8px)}#next-steps ul a{box-sizing:border-box;justify-content:center;width:100%}}#spacer{border-top:1px solid var(--border);height:88px}@media (width<=1024px){#spacer{height:48px}}.ticks{width:100%;position:relative}.ticks:before,.ticks:after{content:"";border:5px solid #0000;position:absolute;top:-4.5px}.ticks:before{border-left-color:var(--border);left:0}.ticks:after{border-right-color:var(--border);right:0}.landing-links-row{flex-direction:row;justify-content:space-between;align-items:flex-start;gap:4px;display:flex}.landing-link-tile{flex-direction:column;flex:1;align-items:center;gap:7px;text-decoration:none;animation:.5s both landing-tile-in;display:flex}.landing-link-orb{will-change:transform, box-shadow;border-radius:50%;justify-content:center;align-items:center;width:58px;height:58px;font-size:26px;transition:transform .22s,box-shadow .22s;display:flex;transform:translateZ(0)}.landing-link-tile:hover .landing-link-orb{transform:translateY(-3px)scale(1.06)}.landing-link-label{text-align:center;font-family:Cairo,sans-serif;font-size:9px;font-weight:800;line-height:1.35}@keyframes landing-tile-in{0%{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}@media (prefers-reduced-motion:reduce){.landing-link-tile{animation:none}.landing-link-orb{transition:none}}
+diff --git a/android/app/src/main/assets/public/index.html b/android/app/src/main/assets/public/index.html
+index 9b565f9..02fe05f 100644
+--- a/android/app/src/main/assets/public/index.html
++++ b/android/app/src/main/assets/public/index.html
+@@ -28,9 +28,9 @@
+       #crawlable-intro .legal-links a { color: #0369a1; text-decoration: none; }
+       #crawlable-intro .legal-links a:hover { text-decoration: underline; }
+     </style>
+-    <script type="module" crossorigin src="./assets/index-BDDHiCTg.js"></script>
++    <script type="module" crossorigin src="./assets/index-DHDPBScA.js"></script>
+     <link rel="modulepreload" crossorigin href="./assets/chunk-B3K2TuZy.js">
+-    <link rel="stylesheet" crossorigin href="./assets/index-BsNcdPB1.css">
++    <link rel="stylesheet" crossorigin href="./assets/index-X1QQJCoV.css">
+   </head>
+   <body>
+     <section id="crawlable-intro" dir="rtl" lang="ar" aria-label="معلومات تعريفية عن الموقع" style="display:none">
+diff --git a/src/App.css b/src/App.css
+index 3e4966d..1fdfd30 100644
+--- a/src/App.css
++++ b/src/App.css
+@@ -1,3 +1,111 @@
++.section-card {
++  transition: transform 0.22s ease, box-shadow 0.22s ease !important;
++}
++.section-card:hover {
++  transform: translateY(-4px) !important;
++  box-shadow: 0 16px 36px rgba(31, 56, 88, 0.15) !important;
++}
++.section-card:active {
++  transform: translateY(-1px) !important;
++}
++
++.cv-pricing-card {
++  transition: transform 0.22s ease, box-shadow 0.25s ease !important;
++  will-change: transform, box-shadow;
++}
++.cv-pricing-card:hover {
++  transform: translateY(-5px) scale(1.012) !important;
++  box-shadow: 0 22px 44px rgba(15, 23, 42, 0.18) !important;
++}
++.cv-pricing-card:active {
++  transform: translateY(-2px) scale(1.006) !important;
++}
++
++.cv-pricing-stats-card {
++  transition: transform 0.2s ease, box-shadow 0.22s ease, filter 0.22s ease;
++  will-change: transform, box-shadow;
++}
++
++.cv-pricing-stats-card:hover {
++  transform: translateY(-3px) scale(1.01);
++  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
++  filter: saturate(1.03);
++}
++
++.cv-pricing-stats-card:active {
++  transform: translateY(-1px) scale(1.005);
++}
++
++.landing-country-card {
++  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
++}
++
++.inner-country-square {
++  transition: transform 0.18s ease, box-shadow 0.18s ease;
++}
++
++.country-flag-img {
++  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.22s ease;
++  will-change: transform, box-shadow;
++}
++
++.landing-country-card:hover .country-flag-img,
++.landing-country-card:focus-visible .country-flag-img {
++  transform: translateY(-2px) scale(1.06);
++  filter: saturate(1.08);
++  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2), 0 0 18px 4px rgba(148, 163, 184, 0.24), 0 8px 18px rgba(15, 23, 42, 0.12);
++}
++
++.landing-country-card:active .country-flag-img {
++  transform: translateY(-1px) scale(1.03);
++}
++
++.support-whatsapp-tile {
++  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease !important;
++}
++
++.support-whatsapp-tile:hover {
++  transform: translateY(-2px) !important;
++  box-shadow: none !important;
++  filter: none;
++}
++
++.support-whatsapp-tile:active {
++  transform: translateY(-1px) !important;
++}
++
++@keyframes shimmer {
++  0% {
++    background-position: -1000px 0;
++  }
++  100% {
++    background-position: 1000px 0;
++  }
++}
++
++.ads-contact-link {
++  transition: all 0.2s ease;
++}
++
++.ads-contact-link:hover {
++  background: linear-gradient(90deg, rgba(34, 197, 94, 0.15) 0%, rgba(74, 222, 128, 0.25) 50%, rgba(34, 197, 94, 0.15) 100%) !important;
++  background-size: 1000px 100% !important;
++  animation: shimmer 1.5s infinite !important;
++}
++
++.job-site-link {
++  transition: transform 0.2s ease;
++}
++
++.job-site-icon {
++  transition: transform 0.2s ease, filter 0.2s ease;
++}
++
++.job-site-link:hover .job-site-icon {
++  transform: scale(1.15) translateY(-2px);
++  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
++}
++
+ .counter {
+   font-size: 16px;
+   padding: 5px 10px;
+@@ -196,19 +304,19 @@
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+-  gap: 7px;
++  gap: 5px;
+   flex: 1;
+   animation: landing-tile-in 0.5s ease both;
+ }
+ 
+ .landing-link-orb {
+-  width: 58px;
+-  height: 58px;
++  width: 46px;
++  height: 46px;
+   border-radius: 50%;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+-  font-size: 26px;
++  font-size: 21px;
+   will-change: transform, box-shadow;
+   transform: translateZ(0);
+   transition: transform 0.22s ease, box-shadow 0.22s ease;
+@@ -219,7 +327,7 @@
+ }
+ 
+ .landing-link-label {
+-  font-size: 9px;
++  font-size: 8px;
+   text-align: center;
+   line-height: 1.35;
+   font-weight: 800;
+diff --git a/src/App.jsx b/src/App.jsx
+index e1242e3..3603bce 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -9136,7 +9136,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                     style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "6px 10px", borderRadius: 10, border: "none", background: active ? `${t.gold}18` : "transparent", cursor: "pointer", flexShrink: 0, position: "relative" }}>
+                     <img src={c.flagImg} alt={cName} style={{ width: 32, height: 22, borderRadius: 4, objectFit: "cover", border: `1px solid ${t.border}` }} />
+                     <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, color: active ? t.gold : t.subText, fontFamily: "'Cairo',sans-serif", whiteSpace: "nowrap" }}>
+-                      {cName === "المملكة العربية السعودية" ? "المملكة العربية السعودية" : cName === "الإمارات العربية المتحدة" ? "الإمارات العربية المتحدة" : cName}
++                      {cName === "المملكة العربية السعودية" ? "السعودية" : cName === "الإمارات العربية المتحدة" ? "الإمارات" : cName}
+                     </span>
+                   </button>
+                 );
+@@ -9193,6 +9193,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                 <div style={{ display: "grid", gap: 10 }}>
+                   <button
+                     onClick={() => { setView("home"); setSelectedGov(null); setSearch(""); }}
++                    className="section-card"
+                     style={{
+                       width: "100%",
+                       textAlign: lang === "ar" ? "right" : "left",
+@@ -9219,6 +9220,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                   <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+                     <button
+                       onClick={() => setView("egyptForbidden")}
++                      className="section-card"
+                       style={{
+                         width: "100%",
+                         textAlign: lang === "ar" ? "right" : "left",
+@@ -9248,6 +9250,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                       setEgyptServicesScreen("list");
+                       setView("egyptServices");
+                     }}
++                    className="section-card"
+                     style={{
+                       width: "100%",
+                       textAlign: lang === "ar" ? "right" : "left",
+@@ -9273,6 +9276,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+ 
+                   <button
+                     onClick={openProviderPortalOrPromptLogin}
++                    className="section-card"
+                     style={{
+                       width: "100%",
+                       textAlign: lang === "ar" ? "right" : "left",
+@@ -9298,6 +9302,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+ 
+                   <button
+                     onClick={() => setView("egyptEmbassies")}
++                    className="section-card"
+                     style={{
+                       width: "100%",
+                       textAlign: lang === "ar" ? "right" : "left",
+@@ -9332,28 +9337,38 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                   )}`}
+                   target="_blank"
+                   rel="noreferrer"
++                  className="support-whatsapp-tile"
+                   style={{
+                     marginTop: 14,
+-                    width: "100%",
+-                    borderRadius: 14,
+-                    border: "1px solid rgba(37,211,102,0.46)",
+-                    background: "linear-gradient(135deg, rgba(16,99,53,0.44), rgba(20,150,71,0.34))",
+-                    color: "#eafff1",
++                    width: 125,
++                    minHeight: 41,
++                    maxWidth: "calc(100% - 6px)",
++                    marginInlineStart: "auto",
++                    borderRadius: 18,
++                    border: "none",
++                    background: "transparent",
++                    color: t.text,
+                     display: "flex",
++                    flexDirection: "row",
+                     alignItems: "center",
+                     justifyContent: "center",
+-                    gap: 8,
++                    gap: 6,
+                     textDecoration: "none",
+-                    padding: "9px 12px",
++                    padding: "5px 10px",
+                     boxSizing: "border-box",
+-                    boxShadow: "0 0 14px rgba(37,211,102,0.24)",
++                    boxShadow: "none",
+                     fontSize: 12,
+                     fontWeight: 900,
+                     fontFamily: "'Cairo',sans-serif",
++                    textAlign: "center",
+                   }}
+                 >
+-                  <span style={{ fontSize: 15, lineHeight: 1 }}>☏</span>
+-                  <span>{lang === "ar" ? "واتساب الدعم الفني" : "Support WhatsApp"}</span>
++                  <span style={{ whiteSpace: "nowrap" }}>{lang === "ar" ? "الدعم الفني" : "Support"}</span>
++                  <img
++                    src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
++                    alt="WhatsApp"
++                    style={{ width: 31, height: 31, borderRadius: "50%", background: "#ffffff", padding: 2, flexShrink: 0 }}
++                  />
+                 </a>
+               </div>
+             )}
+@@ -9361,12 +9376,9 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+             {view === "landing" && (
+               <div>
+                 <div style={styles.hero}>
+-                  <p style={{ ...styles.heroSub, color: t.subText, textAlign: "center" }}>
+-                    {lang === "ar" ? "اختر من بين 10 دول للدخول مباشرة إلى الصفحة الخاصة بها" : "Pick from 10 countries to open the matching page directly"}
+-                  </p>
+                 </div>
+ 
+-                <div style={{ ...styles.sectionCard, background: t.cardBg, border: `1px solid ${t.border}`, padding: "14px 12px", boxShadow: dark ? "none" : "0 14px 34px rgba(15,23,42,0.06)", zoom: isCompactPhone ? 0.88 : 1, margin: "0 auto" }}>
++                <div style={{ ...styles.sectionCard, background: t.cardBg, border: `1px solid ${t.border}`, padding: "14px 12px", boxShadow: dark ? "none" : "0 14px 34px rgba(15,23,42,0.06)", zoom: isCompactPhone ? 0.88 : 1, margin: "18px auto 0" }}>
+                   <div style={{ marginBottom: 14, borderRadius: 18, padding: "5.2px 13px", background: dark ? "linear-gradient(135deg, rgba(14,116,144,0.26), rgba(6,182,212,0.12))" : "linear-gradient(135deg, #ecfeff, #dbeafe)", border: "1px solid rgba(14,165,233,0.26)", boxShadow: dark ? "0 0 20px rgba(34,211,238,0.14), inset 0 1px 0 rgba(255,255,255,0.05)" : "0 0 18px rgba(14,165,233,0.12), 0 10px 20px rgba(14,165,233,0.08)", position: "relative", overflow: "hidden" }}>
+                     <div style={{ position: "absolute", top: -26, left: lang === "ar" ? "auto" : -24, right: lang === "ar" ? -24 : "auto", width: 90, height: 90, borderRadius: "50%", background: "radial-gradient(circle, rgba(56,189,248,0.26), rgba(56,189,248,0))" }} />
+                     <div style={{ display: "flex", flexDirection: isCompactPhone ? "column" : "row", alignItems: isCompactPhone ? "stretch" : "center", gap: 7, position: "relative" }}>
+@@ -9414,43 +9426,59 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                         key={country.name}
+                         onClick={() => handleCountrySelect(country.name)}
+                         disabled={!hasSelectedNationality}
++                        className="landing-country-card"
+                         style={{
+-                          background: !hasSelectedNationality
+-                            ? (dark ? "rgba(148,163,184,0.10)" : "#f1f5f9")
+-                            : (dark ? "rgba(255,255,255,0.03)" : "#f9fbff"),
+-                          border: `1px solid ${!hasSelectedNationality ? "rgba(148,163,184,0.35)" : t.border}`,
+-                          borderRadius: 18,
+-                          padding: "10px 6px 8px",
++                          background: "transparent",
++                          border: "none",
++                          borderRadius: 0,
++                          padding: 0,
+                           cursor: !hasSelectedNationality ? "not-allowed" : "pointer",
+                           display: "flex",
+                           flexDirection: "column",
+                           alignItems: "center",
+                           justifyContent: "center",
+                           gap: 7,
+-                          boxShadow: !hasSelectedNationality ? "none" : (dark ? "none" : "0 8px 20px rgba(15,23,42,0.05)"),
+-                          minHeight: 77,
++                          boxShadow: "none",
++                          minHeight: 0,
+                           transition: "transform .18s ease, box-shadow .18s ease, border-color .18s ease",
++                          outline: "none",
+                           opacity: !hasSelectedNationality ? 0.58 : 1,
+                           filter: !hasSelectedNationality ? "grayscale(0.25)" : "none",
+                         }}
+                       >
+-                        <div style={{
+-                          width: 46,
+-                          height: 46,
+-                          borderRadius: 16,
+-                          background: !hasSelectedNationality
+-                            ? (dark ? "rgba(148,163,184,0.10)" : "#e5e7eb")
+-                            : (dark ? "rgba(255,255,255,0.05)" : "#ffffff"),
+-                          border: `1px solid ${!hasSelectedNationality ? "rgba(148,163,184,0.28)" : t.border}`,
++                        <div
++                          className="inner-country-square"
++                          style={{
++                          width: "auto",
++                          height: "auto",
++                          borderRadius: 0,
++                          background: "transparent",
++                          border: "none",
+                           display: "flex",
+                           alignItems: "center",
+                           justifyContent: "center",
+-                          boxShadow: !hasSelectedNationality ? "none" : (dark ? "none" : "0 8px 18px rgba(15,23,42,0.05)"),
++                          boxShadow: "none",
+                         }}>
+-                          <img src={country.flagImg} alt={country.name} style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover" }} />
++                          <img
++                            src={country.flagImg}
++                            alt={country.name}
++                            className="country-flag-img"
++                            style={{
++                              width: 44.1,
++                              height: 44.1,
++                              borderRadius: "50%",
++                              objectFit: "cover",
++                            }}
++                          />
+                         </div>
+-                        <span style={{ fontSize: 11, fontWeight: 700, color: t.text, textAlign: "center", lineHeight: 1.45, fontFamily: "'Cairo',sans-serif" }}>
+-                          {lang === "ar" ? country.name : (countryNamesEn[country.name] || country.name)}
++                        <span style={{ fontSize: 11.6, fontWeight: 700, color: t.text, textAlign: "center", lineHeight: 1.45, fontFamily: "'Cairo',sans-serif" }}>
++                          {lang === "ar"
++                            ? (country.name === "المملكة العربية السعودية"
++                              ? "السعودية"
++                              : country.name === "الإمارات العربية المتحدة"
++                                ? "الإمارات"
++                                : country.name)
++                            : (countryNamesEn[country.name] || country.name)}
+                         </span>
+                       </button>
+                     ))}
+@@ -9480,8 +9508,8 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                       }
+                     };
+                     return (
+-                    <div style={{ marginTop: 13, borderRadius: 20, padding: "9.5px 10px 10.5px", background: dark ? "rgba(255,255,255,0.04)" : "#ffffff", border: `1px solid ${dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.07)"}`, boxShadow: dark ? "none" : "0 4px 20px rgba(0,0,0,0.06)" }}>
+-                      <div style={{ textAlign: "center", fontSize: 12, color: dark ? "#94a3b8" : "#475569", fontWeight: 800, marginBottom: 7.6, fontFamily: "'Cairo',sans-serif" }}>
++                    <div style={{ marginTop: 10.4, borderRadius: 20, padding: "7.6px 10px 8.4px", background: dark ? "rgba(255,255,255,0.04)" : "#ffffff", border: `1px solid ${dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.07)"}`, boxShadow: dark ? "none" : "0 4px 20px rgba(0,0,0,0.06)" }}>
++                      <div style={{ textAlign: "center", fontSize: 9.6, color: dark ? "#94a3b8" : "#475569", fontWeight: 800, marginBottom: 6, fontFamily: "'Cairo',sans-serif" }}>
+                         {lang === "ar" ? "روابط مهمة" : "Important Links"}
+                       </div>
+                       <div className="landing-links-row">
+@@ -9518,7 +9546,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                     style={{
+                       marginTop: 12,
+                       borderRadius: 16,
+-                      minHeight: isCompactPhone ? 151 : 165,
++                      minHeight: 190,
+                       padding: "12px 12px",
+                       border: `1px dashed ${dark ? "rgba(148,163,184,0.42)" : "rgba(100,116,139,0.34)"}`,
+                       background: dark
+@@ -9589,6 +9617,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                           )}`}
+                           target="_blank"
+                           rel="noreferrer"
++                          className="ads-contact-link"
+                           style={{
+                             display: "inline-flex",
+                             alignItems: "center",
+@@ -9601,17 +9630,36 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                             fontSize: 11,
+                             fontWeight: 900,
+                             fontFamily: "'Cairo',sans-serif",
+-                            color: "#eafff1",
+-                            border: "1px solid rgba(37,211,102,0.46)",
+-                            background: "linear-gradient(135deg, rgba(16,99,53,0.46), rgba(20,150,71,0.36))",
+-                            boxShadow: "0 0 14px rgba(37,211,102,0.24)",
++                            color: "#0f172a",
++                            border: "none",
++                            background: "transparent",
++                            boxShadow: "none",
+                           }}
+                         >
+-                          <span style={{ fontSize: 14, lineHeight: 1 }}>☏</span>
++                          <span style={{ fontSize: 16, lineHeight: 1 }}>📱</span>
+                           <span>{lang === "ar" ? "تواصل للإعلان عبر واتساب" : "Contact via WhatsApp for Ads"}</span>
+                         </a>
+                       </div>
+                     )}
++                    <div
++                      style={{
++                        position: "absolute",
++                        bottom: 8,
++                        left: "50%",
++                        transform: "translateX(-50%)",
++                        width: "100%",
++                        fontSize: 9,
++                        fontWeight: 700,
++                        color: dark ? "#94a3b8" : "#64748b",
++                        fontFamily: "'Cairo',sans-serif",
++                        lineHeight: 1.35,
++                        textAlign: "center",
++                        pointerEvents: "none",
++                        padding: "0 12px",
++                      }}
++                    >
++                      {lang === "ar" ? "مقاس صورة الإعلان المناسب: 1280×330 بكسل (نسبة 4:1)" : "Recommended ad image size: 1280x330 px (4:1 ratio)"}
++                    </div>
+                   </div>
+ 
+                 </div>
+@@ -9872,6 +9920,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                 <div style={{ display: "grid", gap: 10 }}>
+                   <button
+                     onClick={() => { setView("countryTrusted"); }}
++                    className="section-card"
+                     style={{
+                       width: "100%",
+                       maxWidth: "100%",
+@@ -9901,6 +9950,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+ 
+                   <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+                     <div
++                      className="section-card"
+                       style={{
+                         width: "100%",
+                         maxWidth: "100%",
+@@ -9933,6 +9983,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+ 
+                   <button
+                     onClick={() => { setCountryPaidScreen("list"); setView("countryPaid"); }}
++                    className="section-card"
+                     style={{
+                       width: "100%",
+                       maxWidth: "100%",
+@@ -9962,7 +10013,8 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+ 
+                   <button
+                     onClick={openProviderPortalOrPromptLogin}
+-                    style={{
++                      className="section-card"
++                      style={{
+                       width: "100%",
+                       maxWidth: "100%",
+                       boxSizing: "border-box",
+@@ -9991,6 +10043,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+ 
+                   <button
+                     onClick={() => { setView("countryEmbassies"); }}
++                    className="section-card"
+                     style={{
+                       width: "100%",
+                       maxWidth: "100%",
+@@ -10028,28 +10081,38 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                   )}`}
+                   target="_blank"
+                   rel="noreferrer"
++                  className="support-whatsapp-tile"
+                   style={{
+                     marginTop: 14,
+-                    width: "100%",
+-                    borderRadius: 14,
+-                    border: "1px solid rgba(37,211,102,0.46)",
+-                    background: "linear-gradient(135deg, rgba(16,99,53,0.44), rgba(20,150,71,0.34))",
+-                    color: "#eafff1",
++                    width: 125,
++                    minHeight: 41,
++                    maxWidth: "calc(100% - 6px)",
++                    marginInlineStart: "auto",
++                    borderRadius: 18,
++                    border: "none",
++                    background: "transparent",
++                    color: t.text,
+                     display: "flex",
++                    flexDirection: "row",
+                     alignItems: "center",
+                     justifyContent: "center",
+-                    gap: 8,
++                    gap: 6,
+                     textDecoration: "none",
+-                    padding: "9px 12px",
++                    padding: "5px 10px",
+                     boxSizing: "border-box",
+-                    boxShadow: "0 0 14px rgba(37,211,102,0.24)",
++                    boxShadow: "none",
+                     fontSize: 12,
+                     fontWeight: 900,
+                     fontFamily: "'Cairo',sans-serif",
++                    textAlign: "center",
+                   }}
+                 >
+-                  <span style={{ fontSize: 15, lineHeight: 1 }}>☏</span>
+-                  <span>{lang === "ar" ? "واتساب الدعم الفني" : "Support WhatsApp"}</span>
++                  <span style={{ whiteSpace: "nowrap" }}>{lang === "ar" ? "الدعم الفني" : "Support"}</span>
++                  <img
++                    src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
++                    alt="WhatsApp"
++                    style={{ width: 31, height: 31, borderRadius: "50%", background: "#ffffff", padding: 2, flexShrink: 0 }}
++                  />
+                 </a>
+               </div>
+             )}
+@@ -10057,7 +10120,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+             {view === "countryTrusted" && country && (
+               <div>
+                 <div style={{ ...styles.listHeader, background: t.cardBg, borderBottom: `1px solid ${t.border}` }}>
+-                  <div style={{ fontSize: 16, fontWeight: 700, color: t.text }}>{country.flag} <span style={{ color: t.gold }}>{lang === "ar" ? country.name : (countryNamesEn[country.name] || country.name)}</span></div>
++                  <div style={{ fontSize: 16, fontWeight: 700, color: t.text }}>{country.flag} <span style={{ color: t.gold }}>{lang === "ar" ? (country.name === "المملكة العربية السعودية" ? "السعودية" : country.name === "الإمارات العربية المتحدة" ? "الإمارات" : country.name) : (countryNamesEn[country.name] || country.name)}</span></div>
+                 </div>
+                 <div style={{ padding: "14px 0 4px" }}>
+                   {selectedCountry !== "مصر" && (
+@@ -11016,6 +11079,8 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+             { key:"monster", name:"Monster", short:"M", color:"#6C3CF0", url:"https://www.monstergulf.com/" },
+             { key:"tanqeeb", name:"Tanqeeb", short:"T", color:"#E65100", url:"https://tanqeeb.com/" },
+             { key:"mihnati", name:"Mihnati", short:"Mi", color:"#C62828", url:"https://www.mihnati.com/" },
++            { key:"forsana", name:"Forsana", short:"FR", color:"#16A34A", url:"https://www.forsana.com/" },
++            { key:"olxjobs", name:"OLX Jobs", short:"OL", color:"#FF6600", url:"https://jobs.olx.com/" },
+           ];
+           const cvJobSitesCard = (
+             <div style={{ ...cardStyle, padding:"10px 12px", border:`1px solid ${t.border}`, background:dark ? "rgba(255,255,255,0.03)" : "#fbfcff", width:"min(100%, 520px)", marginInline:"auto" }}>
+@@ -11034,12 +11099,13 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                     href={site.url}
+                     target="_blank"
+                     rel="noreferrer"
+-                    style={{ textDecoration:"none", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3, padding:"4px 4px", minHeight:28, borderRadius:12, border:`1px solid ${t.border}`, background:t.cardBg }}
++                    className="job-site-link"
++                    style={{ textDecoration:"none", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3, padding:"4px 4px", minHeight:28, borderRadius:12, border:"none", background:"transparent" }}
+                   >
+-                    <div style={{ width:24, height:24, borderRadius:8, background:site.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, fontWeight:900, fontFamily:"sans-serif" }}>
++                    <div className="job-site-icon" style={{ width:31, height:31, borderRadius:8, background:site.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11.7, fontWeight:900, fontFamily:"sans-serif" }}>
+                       {site.short}
+                     </div>
+-                    <div style={{ fontSize:8.5, color:t.text, textAlign:"center", lineHeight:1.2, fontFamily:"'Cairo',sans-serif" }}>
++                    <div style={{ fontSize:11, color:t.text, textAlign:"center", lineHeight:1.2, fontFamily:"'Cairo',sans-serif" }}>
+                       {site.name}
+                     </div>
+                   </a>
+@@ -11134,6 +11200,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                             setCvMode("services"); setSelectedCvPackage(pkg.key);
+                               try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
+                           }}
++                          className="cv-pricing-card"
+                           style={{
+                             borderRadius:isCompactPhone ? 16 : 24,
+                             padding:isCompactPhone ? "6px 5px" : "14px 12px",
+@@ -11165,7 +11232,9 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                           <div style={{ width:"100%", borderRadius:999, padding:isCompactPhone ? "5px 6px" : "11px 12px", background:pkg.ctaBg, color:pkg.ctaColor, fontSize:cvScaleFont(isCompactPhone ? 7.8 : 13), fontWeight:900, marginTop:isCompactPhone ? 4 : 8, boxShadow:"0 10px 20px rgba(0,0,0,0.16)", border:`1px solid ${pkg.chipBg}` }}>{pkg.cta}</div>
+                         </button>
+                         {statsItem && (
+-                          <div style={{
++                          <div
++                            className="cv-pricing-stats-card"
++                            style={{
+                             borderRadius:isCompactPhone ? 12 : 18,
+                             padding:isCompactPhone ? "6px 5px" : "12px 10px",
+                             border:`1px solid ${statsItem.accent}33`,
+-- 
+2.53.0.windows.3
+

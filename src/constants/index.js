@@ -73,6 +73,6 @@ export const countryNamesEn = {
   "المغرب": "Morocco",
 };
 
-export const ACCOUNT_HOLDER_NAME = 'عبدالرحمن محمد';
-export const INSTAPAY_HANDLE = 'abdurrahman@instapay';
-export const PAYMENT_MOBILE = '0123456789';
+export const ACCOUNT_HOLDER_NAME = 'وليد غزال قلموش';
+export const INSTAPAY_HANDLE = 'walidghazal51';
+export const PAYMENT_MOBILE = '01064463650';
