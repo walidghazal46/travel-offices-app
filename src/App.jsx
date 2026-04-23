@@ -925,6 +925,7 @@ export default function App() {
   const [accountPhonePendingNumber, setAccountPhonePendingNumber] = useState("");
   const [accountPhoneOtp, setAccountPhoneOtp] = useState(["", "", "", "", "", ""]);
   const [accountDeleteConfirm, setAccountDeleteConfirm] = useState(false);
+  const [usageGuideOpen, setUsageGuideOpen] = useState(false);
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
   const [adminSecurityOpen, setAdminSecurityOpen] = useState(false);
   const [adminSecurityCode, setAdminSecurityCode] = useState("");
@@ -6165,6 +6166,29 @@ export default function App() {
           </button>
 
           <button
+            onClick={() => setUsageGuideOpen(true)}
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 14,
+              border: "1px solid rgba(212,175,55,0.38)",
+              background: "rgba(212,175,55,0.08)",
+              color: "#f5d77b",
+              fontSize: 12,
+              fontWeight: 800,
+              fontFamily: "'Cairo',sans-serif",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+            }}
+          >
+            <span>📖</span>
+            {lang === "ar" ? "شرح الاستخدام" : "How to use"}
+          </button>
+
+          <button
             onClick={() => setAccountDeleteConfirm((prev) => !prev)}
             disabled={accountProfileBusy}
             style={{
@@ -6273,6 +6297,110 @@ export default function App() {
           id="account-phone-recaptcha-container"
           style={{ width: 1, height: 1, overflow: "hidden", opacity: 0, pointerEvents: "none", position: "absolute" }}
         />
+      </div>
+    </div>
+  ) : null;
+
+  const USAGE_STEPS = [
+    { emoji: "🌍", titleAr: "اختر دولتك", titleEn: "Choose your country", descAr: "من الشاشة الرئيسية اختر السعودية أو مصر للبدء في تصفح المكاتب.", descEn: "From the home screen, choose Saudi Arabia or Egypt to start browsing offices." },
+    { emoji: "🏢", titleAr: "تصفح المكاتب", titleEn: "Browse offices", descAr: "اختر المحافظة أو المنطقة ثم تصفح قائمة المكاتب الموثوقة ومعلوماتها.", descEn: "Select a governorate or region, then browse the verified offices and their details." },
+    { emoji: "📞", titleAr: "تواصل مع المكتب", titleEn: "Contact the office", descAr: "تستطيع معرفة رقم الترخيص الموثوق وموقع المكتب بدقة، وعمل تقييم للمكتب إذا كان لك تجربة سابقة.", descEn: "You can view the verified license number and the exact office location, and rate the office if you've had a previous experience." },
+    { emoji: "🛎️", titleAr: "اطلب خدمة", titleEn: "Request a service", descAr: "اضغط 'اطلب خدمة' لتقديم طلب رقمي مثل الكفالة أو الوثائق أو السيرة الذاتية.", descEn: "Tap 'Request service' to submit a digital request such as sponsorship transfer, documents, or CV." },
+    { emoji: "📋", titleAr: "تابع طلبك", titleEn: "Track your request", descAr: "ادخل على الحساب لمتابعة حالة طلبك مرحلة بمرحلة حتى اكتماله.", descEn: "Sign in to your account to track your request step by step until completion." },
+    { emoji: "📄", titleAr: "ابنِ سيرتك الذاتية", titleEn: "Build your CV", descAr: "استخدم أداة بناء السيرة الذاتية المدمجة وصدّر ملف PDF باحترافية.", descEn: "Use the built-in CV builder and export a professional PDF file." },
+    { emoji: "💬", titleAr: "تواصل مع الدعم", titleEn: "Contact support", descAr: "في الإعدادات ستجد رابط واتساب للتواصل مع فريق الدعم مباشرة.", descEn: "In Settings you will find a WhatsApp link to contact the support team directly." },
+    { emoji: "🌙", titleAr: "اضبط المظهر واللغة", titleEn: "Adjust theme & language", descAr: "يمكنك التبديل بين الوضع الليلي والنهاري والعربية والإنجليزية من الشريط العلوي.", descEn: "You can switch between dark/light mode and Arabic/English from the top bar." },
+  ];
+
+  const UsageGuideModal = () => usageGuideOpen ? (
+    <div
+      onClick={() => setUsageGuideOpen(false)}
+      style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.82)", backdropFilter: "blur(10px)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 2000, padding: 0 }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%",
+          maxWidth: 480,
+          maxHeight: "88vh",
+          overflowY: "auto",
+          borderRadius: "22px 22px 0 0",
+          background: dark ? "linear-gradient(180deg, rgba(15,23,42,0.99) 0%, rgba(10,15,30,0.99) 100%)" : "linear-gradient(180deg, #0f172a 0%, #0a0f1e 100%)",
+          border: "1px solid rgba(212,175,55,0.38)",
+          borderBottom: "none",
+          boxShadow: "0 -8px 60px rgba(0,0,0,0.55)",
+          padding: "18px 16px 32px",
+          fontFamily: "'Cairo',sans-serif",
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 12, background: "linear-gradient(135deg, rgba(212,175,55,0.28), rgba(212,175,55,0.12))", border: "1px solid rgba(212,175,55,0.45)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>📖</div>
+            <div>
+              <div style={{ color: "#e7c55b", fontSize: 15, fontWeight: 900 }}>{lang === "ar" ? "شرح الاستخدام" : "How to use"}</div>
+              <div style={{ color: "rgba(245,215,123,0.65)", fontSize: 10, fontWeight: 700 }}>{lang === "ar" ? "دليلك الكامل للتطبيق" : "Your complete app guide"}</div>
+            </div>
+          </div>
+          <button
+            onClick={() => setUsageGuideOpen(false)}
+            style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 10, color: "#94a3b8", fontSize: 18, width: 34, height: 34, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >✕</button>
+        </div>
+
+        {/* Guest vs Logged-in comparison */}
+        <div style={{ borderRadius: 16, border: "1px solid rgba(212,175,55,0.28)", background: "rgba(255,255,255,0.03)", padding: "12px 14px", marginBottom: 12, direction: dir }}>
+          <div style={{ color: "#e7c55b", fontSize: 12, fontWeight: 900, marginBottom: 10, textAlign: "center" }}>
+            {lang === "ar" ? "🔑 الفرق بين الحساب والضيف" : "🔑 Account vs Guest"}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div style={{ borderRadius: 12, border: "1px solid rgba(212,175,55,0.35)", background: "rgba(212,175,55,0.07)", padding: "10px 10px" }}>
+              <div style={{ color: "#f5d77b", fontSize: 11, fontWeight: 900, marginBottom: 6, textAlign: "center" }}>👤 {lang === "ar" ? "مستخدم مسجّل" : "Logged-in User"}</div>
+              {[lang === "ar" ? "✅ متابعة الطلبات" : "✅ Track requests", lang === "ar" ? "✅ حفظ السيرة الذاتية" : "✅ Save CV", lang === "ar" ? "✅ تصدير PDF" : "✅ Export PDF", lang === "ar" ? "✅ كوينز ومكافآت" : "✅ Coins & rewards", lang === "ar" ? "✅ سجل الطلبات" : "✅ Order history"].map((f, i) => (
+                <div key={i} style={{ color: "rgba(226,232,240,0.85)", fontSize: 10, fontWeight: 600, lineHeight: 1.7 }}>{f}</div>
+              ))}
+            </div>
+            <div style={{ borderRadius: 12, border: "1px solid rgba(148,163,184,0.25)", background: "rgba(255,255,255,0.03)", padding: "10px 10px" }}>
+              <div style={{ color: "#94a3b8", fontSize: 11, fontWeight: 900, marginBottom: 6, textAlign: "center" }}>🕶️ {lang === "ar" ? "ضيف" : "Guest"}</div>
+              {[lang === "ar" ? "✅ تصفح المكاتب" : "✅ Browse offices", lang === "ar" ? "✅ التواصل المباشر" : "✅ Direct contact", lang === "ar" ? "⚠️ طلبات محدودة" : "⚠️ Limited requests", lang === "ar" ? "❌ لا حفظ للطلبات" : "❌ No saved orders", lang === "ar" ? "❌ لا تصدير PDF" : "❌ No PDF export"].map((f, i) => (
+                <div key={i} style={{ color: "rgba(226,232,240,0.75)", fontSize: 10, fontWeight: 600, lineHeight: 1.7 }}>{f}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Steps */}
+        <div style={{ display: "grid", gap: 10 }}>
+          {USAGE_STEPS.map((step, i) => (
+            <div
+              key={i}
+              style={{
+                borderRadius: 16,
+                border: "1px solid rgba(212,175,55,0.22)",
+                background: "rgba(255,255,255,0.04)",
+                padding: "12px 14px",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 12,
+                direction: dir,
+              }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #e7c55b, #c99a23)", color: "#11244f", fontSize: 11, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</div>
+                <span style={{ fontSize: 20 }}>{step.emoji}</span>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: "#f5d77b", fontSize: 13, fontWeight: 900, marginBottom: 4 }}>{lang === "ar" ? step.titleAr : step.titleEn}</div>
+                <div style={{ color: "rgba(226,232,240,0.82)", fontSize: 11, fontWeight: 600, lineHeight: 1.75 }}>{lang === "ar" ? step.descAr : step.descEn}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div style={{ marginTop: 16, textAlign: "center", color: "rgba(148,163,184,0.7)", fontSize: 11, fontWeight: 700 }}>
+          {lang === "ar" ? "مكاتب السفريات الموثوقة · جميع الحقوق محفوظة" : "Trusted Travel Offices · All rights reserved"}
+        </div>
       </div>
     </div>
   ) : null;
@@ -8223,6 +8351,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
       {AdminPanel()}
       {AdminAddOfficeModal()}
       {SignOutConfirmPanel()}
+      {UsageGuideModal()}
 
       {/* ── OFFICE DETAIL VIEW ───────────────────────────────────────────── */}
       {selectedOffice && (() => {
@@ -9887,6 +10016,30 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       {lang === "ar" ? "مقاس صورة الإعلان المناسب: 1280×330 بكسل (نسبة 4:1)" : "Recommended ad image size: 1280x330 px (4:1 ratio)"}
                     </div>
                     )}
+                  </div>
+
+                  {/* ── Site info box below ad ── */}
+                  <div
+                    dir="rtl"
+                    style={{
+                      marginTop: 10,
+                      borderRadius: 16,
+                      border: `1px dashed ${dark ? "rgba(148,163,184,0.42)" : "rgba(100,116,139,0.34)"}`,
+                      background: dark ? "rgba(30,41,59,0.42)" : "#f8fafc",
+                      padding: "8px 14px",
+                      textAlign: "center",
+                      fontFamily: "'Cairo',sans-serif",
+                    }}
+                  >
+                    <p style={{ margin: 0, fontSize: 11, color: dark ? "#94a3b8" : "#64748b", lineHeight: 1.7 }}>
+                      منصة لمكاتب السفريات الموثوقة وخدمات السفر والعمل.
+                      {" "}
+                      <a href="/privacy-policy.html" style={{ color: dark ? "#7dd3fc" : "#0369a1", fontSize: 11 }}>سياسة الخصوصية</a>
+                      {" · "}
+                      <a href="/terms.html" style={{ color: dark ? "#7dd3fc" : "#0369a1", fontSize: 11 }}>الشروط</a>
+                      {" · "}
+                      <a href="/contact.html" style={{ color: dark ? "#7dd3fc" : "#0369a1", fontSize: 11 }}>اتصل بنا</a>
+                    </p>
                   </div>
 
                 </div>
@@ -12696,6 +12849,31 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 </a>
               </div>
             </div>
+
+            {/* ── زر شرح الاستخدام ── */}
+            <button
+              onClick={() => setUsageGuideOpen(true)}
+              style={{
+                width: "100%",
+                padding: "12px 14px",
+                borderRadius: 16,
+                border: "1px solid rgba(212,175,55,0.38)",
+                background: dark ? "rgba(212,175,55,0.08)" : "rgba(212,175,55,0.10)",
+                color: dark ? "#f5d77b" : "#7c5100",
+                fontSize: 13,
+                fontWeight: 900,
+                fontFamily: "'Cairo',sans-serif",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                marginBottom: 10,
+              }}
+            >
+              <span style={{ fontSize: 16 }}>📖</span>
+              {lang === "ar" ? "شرح الاستخدام" : "How to use"}
+            </button>
 
             {!!authPreviewUser && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>

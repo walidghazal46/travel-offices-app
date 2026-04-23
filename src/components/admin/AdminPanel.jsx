@@ -189,8 +189,8 @@ export default function AdminPanel({
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 18 }}>
           <div style={{ color: "rgba(255,255,255,0.76)", fontSize: 12, fontWeight: 700, fontFamily: "'Cairo',sans-serif" }}>
             {lang === "ar"
-              ? `المستخدمون: ${adminUsers.length} | الطلبات: ${adminOrders.length} | مزودو الخدمات: ${adminProviderRequests.length}`
-              : `Users: ${adminUsers.length} | Orders: ${adminOrders.length} | Providers: ${adminProviderRequests.length}`}
+              ? `المستخدمون: ${adminUsers.length} | الطلبات: ${adminOrders.length} | مزودو الخدمات: ${providerRequestsVisible.length}`
+              : `Users: ${adminUsers.length} | Orders: ${adminOrders.length} | Providers: ${providerRequestsVisible.length}`}
           </div>
           <button
             onClick={() => {
