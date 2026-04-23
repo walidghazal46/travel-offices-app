@@ -130,6 +130,7 @@ export default function ServiceProviderPortalFlow({
 
     setSubmitting(true);
     setSubmitError("");
+    setSubmitSuccess(null);
     setEmailFailureFallback(null);
     const serial = generateServiceProviderSerial();
     const payload = {
@@ -368,13 +369,13 @@ export default function ServiceProviderPortalFlow({
       </div>
 
       {!!submitError && (
-        <div style={{ ...card, background:"rgba(127,29,29,0.18)", border:"1px solid rgba(248,113,113,0.38)", color:"#fecaca", fontSize:11, fontWeight:800, lineHeight:1.8 }}>
+        <div style={{ ...card, background:"#dc2626", border:"1px solid #ef4444", color:"#ffffff", fontSize:12, fontWeight:800, lineHeight:1.8 }}>
           {submitError}
         </div>
       )}
 
       {!!submitSuccess && (
-        <div style={{ ...card, background:"rgba(22,163,74,0.16)", border:"1px solid rgba(34,197,94,0.42)", color:"#ffffff", fontSize:11, fontWeight:800, lineHeight:1.8 }}>
+        <div style={{ ...card, background:"#16a34a", border:"1px solid #22c55e", color:"#ffffff", fontSize:12, fontWeight:800, lineHeight:1.8 }}>
           {isAr
             ? `تم إرسال طلبك بنجاح. رقم الطلب: ${submitSuccess.serial}`
             : `Your request was submitted successfully. Request number: ${submitSuccess.serial}`}
@@ -382,7 +383,7 @@ export default function ServiceProviderPortalFlow({
       )}
 
       {!!emailFailureFallback && (
-        <div style={{ ...card, background:"rgba(245,158,11,0.14)", border:"1px solid rgba(245,158,11,0.42)", color:"#ffffff", fontSize:11, fontWeight:800, lineHeight:1.8 }}>
+        <div style={{ ...card, background:"#b45309", border:"1px solid #f59e0b", color:"#ffffff", fontSize:12, fontWeight:800, lineHeight:1.8 }}>
           <div style={{ marginBottom: 8 }}>
             {isAr
               ? "تم حفظ الطلب على فايربيز لكن حدث فشل في إرسال الإيميل."

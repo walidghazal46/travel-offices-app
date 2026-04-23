@@ -854,6 +854,15 @@ export default function App() {
       return "";
     }
   });
+  const [nationalityInputText, setNationalityInputText] = useState(() => {
+    try {
+      return localStorage.getItem("preferredNationality") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [nationalityConfirmToast, setNationalityConfirmToast] = useState("");
+  const [nationalityEditMode, setNationalityEditMode] = useState(!localStorage.getItem("preferredNationality"));
   const [selectedGov, setSelectedGov] = useState(null);
   const [search, setSearch] = useState("");
   const [selectedServiceFilter, setSelectedServiceFilter] = useState(null);
@@ -962,6 +971,7 @@ export default function App() {
   const [adminPanelSection, setAdminPanelSection] = useState("overview");
   const [adminSelectedProviderRequestId, setAdminSelectedProviderRequestId] = useState("");
   const [providerApprovalSnapshot, setProviderApprovalSnapshot] = useState(null);
+  const [providerAllRequests, setProviderAllRequests] = useState([]);
   const [providerPortalMode, setProviderPortalMode] = useState("service");
   const [providerPortalAddNew, setProviderPortalAddNew] = useState(false);
   const [providerPortalGuestNotice, setProviderPortalGuestNotice] = useState("");
@@ -1302,6 +1312,10 @@ export default function App() {
         const profileCoins = Number(profileSnapshot?.requestCredits?.coins) || 0;
         setAccountCoins(profileCoins);
         setAdminSessionRole(profileRole);
+        if (profileSnapshot.nationality) {
+          setSelectedNationality(profileSnapshot.nationality);
+          setNationalityInputText(profileSnapshot.nationality);
+        }
 
         if (DISABLED_ADMIN_EMAILS.includes(normalizedEmail) && profileRole !== "user") {
           await upsertAuthUserProfileInFirebase({
@@ -2387,8 +2401,10 @@ export default function App() {
         const reqCountry = String(entry?.country || "").trim();
         return !selectedCountry || !reqCountry || reqCountry === selectedCountry;
       });
-      const latest = scoped.sort((a, b) => getProviderRequestTimestamp(b) - getProviderRequestTimestamp(a))[0] || null;
-      setProviderApprovalSnapshot(latest);
+      const sorted = scoped.sort((a, b) => getProviderRequestTimestamp(b) - getProviderRequestTimestamp(a));
+      setProviderAllRequests(sorted);
+      const approved = sorted.find((r) => String(r?.status || "").trim().toLowerCase() === "approved") || null;
+      setProviderApprovalSnapshot(approved || sorted[0] || null);
     });
 
     return () => {
@@ -4823,7 +4839,10 @@ export default function App() {
         localStorage.removeItem("preferredNationality");
       }
     } catch {}
-  }, [selectedNationality]);
+    if (selectedNationality && authPreviewUser?.uid) {
+      upsertAuthUserProfileInFirebase({ uid: authPreviewUser.uid, nationality: selectedNationality }).catch(() => {});
+    }
+  }, [selectedNationality, authPreviewUser?.uid]);
 
   useEffect(() => {
     setShowOtherEmbassies(false);
@@ -9616,53 +9635,62 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     className="section-card"
                     style={{
                       width: "100%",
+                      maxWidth: "100%",
+                      boxSizing: "border-box",
                       textAlign: lang === "ar" ? "right" : "left",
                       background: dark ? "linear-gradient(135deg, rgba(22,163,74,0.24), rgba(34,197,94,0.10))" : "linear-gradient(135deg, #f0fdf4, #ecfdf5)",
                       border: "1px solid #16a34a33",
-                      borderRadius: 20,
-                      padding: "8px 11px",
+                      borderRadius: 22,
+                      padding: "12px 13px",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: 8,
+                      gap: 11,
+                      minHeight: 82,
+                      overflow: "hidden",
                       boxShadow: dark ? "0 0 18px #16a34a18" : "0 10px 22px #16a34a12",
                       fontFamily: "'Cairo',sans-serif",
                     }}
                   >
-                    <div style={{ width: 34, height: 34, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #16a34a28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🏢</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: "#16a34a", marginBottom: 2 }}>{lang === "ar" ? "مكاتب السفريات الموثوقة" : "Trusted Travel Offices"}</div>
-                      <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? "ادخل إلى المحافظات والمكاتب المرخصة كما هي بدون أي تغيير في محتواها." : "Open the governorates and licensed offices exactly as they are."}</div>
+                    <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #16a34a28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🏢</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: "#16a34a", marginBottom: 3 }}>{lang === "ar" ? "مكاتب السفريات الموثوقة" : "Trusted Travel Offices"}</div>
+                      <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? "ادخل إلى المحافظات والمكاتب المرخصة كما هي بدون أي تغيير في محتواها." : "Open the governorates and licensed offices exactly as they are."}</div>
                     </div>
-                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#16a34a18", color: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#16a34a18", color: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                   </button>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
-                    <button
-                      onClick={() => setView("egyptForbidden")}
+                    <div
                       className="section-card"
                       style={{
                         width: "100%",
+                        maxWidth: "100%",
+                        boxSizing: "border-box",
                         textAlign: lang === "ar" ? "right" : "left",
-                        background: dark ? "linear-gradient(135deg, rgba(229,62,62,0.18), rgba(229,62,62,0.08))" : "linear-gradient(135deg, #fff5f5, #fffafa)",
-                        border: "1px solid #e53e3e33",
-                        borderRadius: 20,
-                        padding: "8px 10px",
-                        cursor: "pointer",
+                        background: dark ? "linear-gradient(135deg, rgba(229,62,62,0.12), rgba(229,62,62,0.06))" : "linear-gradient(135deg, #fff5f5, #fffafa)",
+                        border: "1px solid #e53e3e28",
+                        borderRadius: 22,
+                        padding: "12px 12px",
                         display: "flex",
                         alignItems: "center",
-                        gap: 8,
-                        boxShadow: dark ? "0 0 18px #e53e3e18" : "0 10px 22px #e53e3e10",
+                        gap: 11,
+                        boxShadow: dark ? "0 0 18px #e53e3e14" : "0 10px 22px #e53e3e0d",
                         fontFamily: "'Cairo',sans-serif",
-                        minHeight: 67
+                        minHeight: 82,
+                        overflow: "hidden",
+                        opacity: 0.86
                       }}
                     >
-                      <div style={{ width: 32, height: 32, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #e53e3e28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }}>🚫</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: "#e53e3e", marginBottom: 2 }}>{lang === "ar" ? "مكاتب السفريات المحظورة" : "Blocked Travel Offices"}</div>
-                        <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? "تحقق أولًا من مصداقية المكتب ورقم الترخيص قبل أي تعامل أو دفع." : "Check office credibility and license number before any deal or payment."}</div>
+                      <div style={{ width: 38, height: 38, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #e53e3e20", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🚫</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                          <div style={{ fontSize: 14, fontWeight: 900, color: "#e53e3e" }}>{lang === "ar" ? "مكاتب محظورة" : "Blocked Offices"}</div>
+                          <span style={{ fontSize: 9, fontWeight: 800, color: "#e53e3e", background: "#e53e3e14", border: "1px solid #e53e3e28", borderRadius: 999, padding: "2px 7px" }}>{lang === "ar" ? "قريبًا" : "Soon"}</span>
+                        </div>
+                        <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? "هذا القسم سيُضاف لاحقًا في هذه الدولة." : "This section will be added later for this country."}</div>
                       </div>
-                    </button>
+                    </div>
                   </div>
 
                   <button
@@ -9673,25 +9701,29 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     className="section-card"
                     style={{
                       width: "100%",
+                      maxWidth: "100%",
+                      boxSizing: "border-box",
                       textAlign: lang === "ar" ? "right" : "left",
                       background: dark ? "linear-gradient(135deg, rgba(14,116,144,0.24), rgba(6,182,212,0.12))" : "linear-gradient(135deg, #ecfeff, #f0fdfa)",
                       border: "1px solid #0f766e33",
-                      borderRadius: 20,
-                      padding: "8px 11px",
+                      borderRadius: 22,
+                      padding: "12px 13px",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: 8,
+                      gap: 11,
+                      minHeight: 82,
+                      overflow: "hidden",
                       boxShadow: dark ? "0 0 18px #0f766e18" : "0 10px 22px #0f766e12",
                       fontFamily: "'Cairo',sans-serif",
                     }}
                   >
-                    <div style={{ width: 34, height: 34, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #0f766e28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🛂</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: "#0f766e", marginBottom: 2 }}>{lang === "ar" ? "خدمات مدفوعة" : "Paid Services"}</div>
-                      <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? "هنا تجد طلب خدمات مدفوعة ووزارة العمل والطوارئ في دولة مصر فقط." : "Here you will find paid service requests, the Ministry of Labor, and emergency contacts in Egypt only."}</div>
+                    <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #0f766e28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🛂</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: "#0f766e", marginBottom: 3 }}>{lang === "ar" ? "خدمات مدفوعة" : "Paid Services"}</div>
+                      <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? "هنا تجد طلب خدمات مدفوعة ووزارة العمل والطوارئ في دولة مصر فقط." : "Here you will find paid service requests, the Ministry of Labor, and emergency contacts in Egypt only."}</div>
                     </div>
-                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#0f766e18", color: "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#0f766e18", color: "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                   </button>
 
                   <button
@@ -9699,25 +9731,29 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     className="section-card"
                     style={{
                       width: "100%",
+                      maxWidth: "100%",
+                      boxSizing: "border-box",
                       textAlign: lang === "ar" ? "right" : "left",
                       background: dark ? "linear-gradient(135deg, rgba(202,138,4,0.24), rgba(245,158,11,0.10))" : "linear-gradient(135deg, #fffbeb, #fef3c7)",
                       border: "1px solid rgba(202,138,4,0.30)",
-                      borderRadius: 20,
-                      padding: "8px 11px",
+                      borderRadius: 22,
+                      padding: "12px 13px",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      gap: 8,
+                      gap: 11,
+                      minHeight: 82,
+                      overflow: "hidden",
                       boxShadow: dark ? "0 0 18px rgba(202,138,4,0.18)" : "0 10px 22px rgba(202,138,4,0.12)",
                       fontFamily: "'Cairo',sans-serif",
                     }}
                   >
-                    <div style={{ width: 34, height: 34, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(202,138,4,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🧰</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fde68a" : "#a16207", marginBottom: 2 }}>{lang === "ar" ? "ضيف خدمتك" : "Add Your Service"}</div>
-                      <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? "سجل خدمتك ليتم مراجعتها واعتمادها من الأدمن." : "Submit your service so it can be reviewed and approved by admin."}</div>
+                    <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(202,138,4,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🧰</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#fde68a" : "#a16207", marginBottom: 3 }}>{lang === "ar" ? "ضيف خدمتك" : "Add Your Service"}</div>
+                      <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? "سجل خدمتك ليتم مراجعتها واعتمادها من الأدمن." : "Submit your service so it can be reviewed and approved by admin."}</div>
                     </div>
-                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                   </button>
 
                   {!isOtherNationalitySelected && (
@@ -9726,26 +9762,29 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       className="section-card"
                       style={{
                         width: "100%",
+                        maxWidth: "100%",
+                        boxSizing: "border-box",
                         textAlign: lang === "ar" ? "right" : "left",
                         background: dark ? "linear-gradient(135deg, rgba(8,145,178,0.24), rgba(14,165,233,0.10))" : "linear-gradient(135deg, #ecfeff, #e0f2fe)",
                         border: "1px solid rgba(14,165,233,0.28)",
-                        borderRadius: 20,
-                        padding: "8px 10px",
+                        borderRadius: 22,
+                        padding: "12px 13px",
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
-                        gap: 8,
+                        gap: 11,
+                        minHeight: 82,
+                        overflow: "hidden",
                         boxShadow: dark ? "0 0 18px rgba(14,165,233,0.18)" : "0 10px 22px rgba(14,165,233,0.12)",
                         fontFamily: "'Cairo',sans-serif",
-                        minHeight: 67
                       }}
                     >
-                      <div style={{ width: 32, height: 32, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(14,165,233,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }}>🏛️</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#67e8f9" : "#0f766e", marginBottom: 2 }}>{lang === "ar" ? "تواصل مع سفارتك" : "Contact Your Embassy"}</div>
-                        <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? `الوصول السريع إلى سفارتك داخل مصر${selectedNationality ? ` - الجنسية الحالية: ${selectedNationality}` : ""}` : `Quick access to your embassy inside Egypt${selectedNationality ? ` - current nationality: ${countryNamesEn[selectedNationality] || selectedNationality}` : ""}`}</div>
+                      <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(14,165,233,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🏛️</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#67e8f9" : "#0f766e", marginBottom: 3 }}>{lang === "ar" ? "تواصل مع سفارتك" : "Contact Your Embassy"}</div>
+                        <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? `الوصول السريع إلى سفارتك داخل مصر${selectedNationality ? ` - الجنسية الحالية: ${selectedNationality}` : ""}` : `Quick access to your embassy inside Egypt${selectedNationality ? ` - current nationality: ${countryNamesEn[selectedNationality] || selectedNationality}` : ""}`}</div>
                       </div>
-                      <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(14,165,233,0.16)", color: dark ? "#67e8f9" : "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(14,165,233,0.16)", color: dark ? "#67e8f9" : "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                     </button>
                   )}
 
@@ -9826,36 +9865,79 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                           {lang === "ar" ? "اختيار الجنسية يجعل قسم تواصل مع سفارتك يعرض سفارتك المناسبة مباشرة داخل كل دولة." : "Choosing your nationality makes the Contact Your Embassy section show the right embassy directly inside each country."}
                         </div>
                       </div>
-                      <div style={{ minWidth: isCompactPhone ? "100%" : 220 }}>
-                        <select
-                          value={selectedNationality}
-                          onChange={(e) => setSelectedNationality(e.target.value)}
-                          style={{
-                            width: "100%",
-                            padding: "7px 12px",
-                            borderRadius: 12,
-                            border: `1px solid ${dark ? "rgba(125,211,252,0.28)" : "rgba(14,165,233,0.26)"}`,
-                            background: dark ? "rgba(8,47,73,0.72)" : "rgba(255,255,255,0.95)",
-                            color: t.text,
-                            fontWeight: 800,
-                            fontSize: 12,
-                            fontFamily: "'Cairo',sans-serif",
-                            outline: "none",
-                            boxShadow: dark ? "0 0 0 1px rgba(103,232,249,0.08)" : "0 6px 12px rgba(14,165,233,0.08)"
-                          }}
-                        >
-                          <option value="" disabled>
-                            {lang === "ar" ? "اختر جنسيتك أولًا" : "Choose your nationality first"}
-                          </option>
-                          {topCountries.map((nationality) => (
-                            <option key={nationality.name} value={nationality.name}>
-                              {lang === "ar" ? `${nationality.flag} ${nationality.name}` : `${nationality.flag} ${countryNamesEn[nationality.name] || nationality.name}`}
-                            </option>
-                          ))}
-                          <option value={OTHER_NATIONALITY_VALUE}>
-                            {lang === "ar" ? "جنسية أخرى" : "Other nationality"}
-                          </option>
-                        </select>
+                      <div style={{ minWidth: isCompactPhone ? "100%" : 220, display: "flex", gap: 6 }}>
+                        {nationalityEditMode || !selectedNationality ? (
+                          <>
+                            <input
+                              type="text"
+                              value={nationalityInputText}
+                              onChange={(e) => setNationalityInputText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && nationalityInputText.trim()) {
+                                  const val = nationalityInputText.trim();
+                                  setSelectedNationality(val);
+                                  setNationalityEditMode(false);
+                                  setNationalityConfirmToast(val);
+                                  setTimeout(() => setNationalityConfirmToast(""), 2500);
+                                }
+                              }}
+                              placeholder={lang === "ar" ? "اكتب جنسيتك..." : "Type your nationality..."}
+                              style={{
+                                flex: 1, padding: "7px 12px", borderRadius: 12,
+                                border: `1px solid ${dark ? "rgba(125,211,252,0.28)" : "rgba(14,165,233,0.26)"}`,
+                                background: dark ? "rgba(8,47,73,0.72)" : "rgba(255,255,255,0.95)",
+                                color: t.text, fontWeight: 800, fontSize: 12,
+                                fontFamily: "'Cairo',sans-serif", outline: "none",
+                                boxShadow: dark ? "0 0 0 1px rgba(103,232,249,0.08)" : "0 6px 12px rgba(14,165,233,0.08)"
+                              }}
+                            />
+                            <button
+                              onClick={() => {
+                                const val = nationalityInputText.trim();
+                                if (!val) return;
+                                setSelectedNationality(val);
+                                setNationalityEditMode(false);
+                                setNationalityConfirmToast(val);
+                                setTimeout(() => setNationalityConfirmToast(""), 2500);
+                              }}
+                              style={{
+                                padding: "7px 13px", borderRadius: 12, border: "none",
+                                background: nationalityInputText.trim() ? (dark ? "rgba(34,211,238,0.22)" : "#0e7490") : (dark ? "rgba(255,255,255,0.07)" : "#e2e8f0"),
+                                color: nationalityInputText.trim() ? (dark ? "#67e8f9" : "#fff") : t.subText,
+                                fontWeight: 800, fontSize: 12, fontFamily: "'Cairo',sans-serif",
+                                cursor: nationalityInputText.trim() ? "pointer" : "not-allowed",
+                                transition: "all 0.2s", whiteSpace: "nowrap",
+                              }}
+                            >
+                              {lang === "ar" ? "تأكيد" : "Confirm"}
+                            </button>
+                          </>
+                        ) : (
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+                            <div style={{
+                              flex: 1, padding: "7px 12px", borderRadius: 12,
+                              border: `1px solid ${dark ? "rgba(34,197,94,0.35)" : "rgba(22,163,74,0.3)"}`,
+                              background: dark ? "rgba(22,163,74,0.15)" : "rgba(220,252,231,0.8)",
+                              color: dark ? "#86efac" : "#15803d", fontWeight: 800, fontSize: 12,
+                              fontFamily: "'Cairo',sans-serif", display: "flex", alignItems: "center", gap: 6,
+                            }}>
+                              <span>✅</span>
+                              <span>{selectedNationality}</span>
+                            </div>
+                            <button
+                              onClick={() => { setNationalityEditMode(true); setNationalityInputText(selectedNationality); }}
+                              style={{
+                                padding: "7px 13px", borderRadius: 12, border: "none",
+                                background: dark ? "rgba(255,255,255,0.09)" : "#e2e8f0",
+                                color: t.text, fontWeight: 800, fontSize: 12,
+                                fontFamily: "'Cairo',sans-serif", cursor: "pointer",
+                                whiteSpace: "nowrap", transition: "all 0.2s",
+                              }}
+                            >
+                              {lang === "ar" ? "تغيير" : "Change"}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -10894,76 +10976,131 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       ? "خدمة إضافة مكتب متاحة لكل الدول ماعدا مصر."
                       : "Add Office is available for all countries except Egypt."}
                   </div>
-                ) : String(providerApprovalSnapshot?.status || "").trim().toLowerCase() === "approved" && !providerPortalAddNew ? (
-                  <div style={{ padding: "0 0 16px" }}>
-                    {/* Box 1: Approved account info */}
-                    <div style={{ borderRadius: 20, border: "1px solid rgba(34,197,94,0.35)", background: dark ? "linear-gradient(135deg,rgba(22,163,74,0.22),rgba(34,197,94,0.10))" : "linear-gradient(135deg,#ecfdf5,#dcfce7)", padding: "14px 16px", marginBottom: 12, fontFamily: "'Cairo',sans-serif" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.06)" : "#ffffff", border: "1px solid rgba(34,197,94,0.28)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🧰</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <div style={{ fontSize: 13, fontWeight: 900, color: "#16a34a" }}>{lang === "ar" ? "حسابك كمزود خدمة" : "Your Service Provider Account"}</div>
-                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 10px #22c55e", flexShrink: 0 }} />
-                          </div>
-                          <div style={{ fontSize: 11, color: "#16a34a", fontWeight: 700, marginTop: 2 }}>✅ {lang === "ar" ? "تم اعتماد طلبك" : "Your request is approved"}</div>
-                        </div>
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 12px", fontSize: 11, color: t.subText, lineHeight: 1.8 }}>
-                        {providerApprovalSnapshot?.providerName ? <div><span style={{ fontWeight: 700, color: t.text }}>{lang === "ar" ? "الاسم: " : "Name: "}</span>{providerApprovalSnapshot.providerName}</div> : null}
-                        {providerApprovalSnapshot?.officeName ? <div><span style={{ fontWeight: 700, color: t.text }}>{lang === "ar" ? "الخدمة: " : "Service: "}</span>{providerApprovalSnapshot.officeName}</div> : null}
-                        {providerApprovalSnapshot?.email ? <div><span style={{ fontWeight: 700, color: t.text }}>{lang === "ar" ? "الإيميل: " : "Email: "}</span>{providerApprovalSnapshot.email}</div> : null}
-                        {providerApprovalSnapshot?.phone ? <div><span style={{ fontWeight: 700, color: t.text }}>{lang === "ar" ? "الهاتف: " : "Phone: "}</span>{providerApprovalSnapshot.phone}</div> : null}
-                      </div>
-                      {(providerApprovalSnapshot?.decisionNote || providerApprovalSnapshot?.adminDecisionNote) ? (
-                        <div style={{ marginTop: 8, fontSize: 11, color: t.subText, lineHeight: 1.75, borderTop: "1px solid rgba(34,197,94,0.2)", paddingTop: 8 }}>
-                          {String(providerApprovalSnapshot?.decisionNote || providerApprovalSnapshot?.adminDecisionNote)}
-                        </div>
-                      ) : null}
-                    </div>
+                ) : providerAllRequests.some((r) => String(r?.status || "").trim().toLowerCase() === "approved") && !providerPortalAddNew ? (
+                  (() => {
+                    const approvedReq = providerAllRequests.find((r) => String(r?.status || "").trim().toLowerCase() === "approved");
+                    const otherReqs = providerAllRequests.filter((r) => r.id !== approvedReq?.id);
+                    const statusLabel = (s) => {
+                      const st = String(s || "").trim().toLowerCase();
+                      if (st === "approved") return { label: lang === "ar" ? "✅ معتمد" : "✅ Approved", color: "#16a34a", bg: dark ? "rgba(22,163,74,0.18)" : "#dcfce7" };
+                      if (st === "rejected") return { label: lang === "ar" ? "❌ مرفوض" : "❌ Rejected", color: "#dc2626", bg: dark ? "rgba(220,38,38,0.18)" : "#fee2e2" };
+                      return { label: lang === "ar" ? "⏳ قيد المراجعة" : "⏳ Pending", color: t.gold, bg: dark ? `${t.gold}20` : "#fef9c3" };
+                    };
+                    return (
+                      <div style={{ padding: "0 0 16px", fontFamily: "'Cairo',sans-serif" }}>
 
-                    {/* Box 2: Add another service */}
-                    <button
-                      type="button"
-                      onClick={() => setProviderPortalAddNew(true)}
-                      style={{
-                        width: "100%",
-                        textAlign: lang === "ar" ? "right" : "left",
-                        background: dark ? "linear-gradient(135deg,rgba(202,138,4,0.22),rgba(245,158,11,0.10))" : "linear-gradient(135deg,#fffbeb,#fef3c7)",
-                        border: "1px solid rgba(202,138,4,0.32)",
-                        borderRadius: 20,
-                        padding: "14px 16px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        fontFamily: "'Cairo',sans-serif",
-                        boxShadow: dark ? "0 0 18px rgba(202,138,4,0.16)" : "0 8px 20px rgba(202,138,4,0.12)",
-                      }}
-                    >
-                      <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.06)" : "#ffffff", border: "1px solid rgba(202,138,4,0.26)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>➕</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fde68a" : "#a16207", marginBottom: 2 }}>{lang === "ar" ? "ضيف خدمة أخرى" : "Add Another Service"}</div>
-                        <div style={{ fontSize: 11, color: t.subText, lineHeight: 1.6 }}>{lang === "ar" ? "أضف خدمة جديدة لمراجعتها من الأدمن." : "Submit a new service for admin review and approval."}</div>
+                        {/* ─ بطاقة الحساب المعتمد ─ */}
+                        <div style={{ borderRadius: 20, border: "1px solid rgba(34,197,94,0.38)", background: dark ? "linear-gradient(135deg,rgba(22,163,74,0.22),rgba(34,197,94,0.10))" : "linear-gradient(135deg,#ecfdf5,#dcfce7)", padding: "16px", marginBottom: 12 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                            <div style={{ width: 46, height: 46, borderRadius: 16, background: dark ? "rgba(255,255,255,0.07)" : "#ffffff", border: "1px solid rgba(34,197,94,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>🧰</div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+                                <div style={{ fontSize: 14, fontWeight: 900, color: "#16a34a" }}>{lang === "ar" ? "بورتال مزود الخدمة" : "Service Provider Portal"}</div>
+                                <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 8px #22c55e88", flexShrink: 0 }} />
+                              </div>
+                              <div style={{ fontSize: 11, color: "#16a34a", fontWeight: 700, marginTop: 2 }}>✅ {lang === "ar" ? "حسابك نشط ومعتمد" : "Your account is active & approved"}</div>
+                            </div>
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 16px", fontSize: 11.5, lineHeight: 1.85 }}>
+                            {approvedReq?.providerName && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "الاسم: " : "Name: "}</span><span style={{ color: t.subText }}>{approvedReq.providerName}</span></div>}
+                            {approvedReq?.officeName && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "الخدمة: " : "Service: "}</span><span style={{ color: t.subText }}>{approvedReq.officeName}</span></div>}
+                            {approvedReq?.email && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "الإيميل: " : "Email: "}</span><span style={{ color: t.subText }}>{approvedReq.email}</span></div>}
+                            {approvedReq?.phone && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "الهاتف: " : "Phone: "}</span><span style={{ color: t.subText }}>{approvedReq.phone}</span></div>}
+                            {approvedReq?.country && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "الدولة: " : "Country: "}</span><span style={{ color: t.subText }}>{approvedReq.country}</span></div>}
+                            {approvedReq?.city && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "المدينة: " : "City: "}</span><span style={{ color: t.subText }}>{approvedReq.city}</span></div>}
+                          </div>
+                          {approvedReq?.services?.length > 0 && (
+                            <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(34,197,94,0.2)" }}>
+                              <div style={{ fontSize: 11, fontWeight: 800, color: t.text, marginBottom: 6 }}>{lang === "ar" ? "الخدمات المعتمدة:" : "Approved Services:"}</div>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                                {approvedReq.services.map((s, i) => (
+                                  <span key={i} style={{ fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: dark ? "rgba(34,197,94,0.18)" : "#bbf7d0", color: "#16a34a", border: "1px solid rgba(34,197,94,0.3)" }}>{s}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {approvedReq?.portfolioLink && (
+                            <a href={approvedReq.portfolioLink} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, fontSize: 11, fontWeight: 800, color: "#16a34a", textDecoration: "none" }}>
+                              🔗 {lang === "ar" ? "عرض البورتفوليو" : "View Portfolio"}
+                            </a>
+                          )}
+                          {(approvedReq?.adminDecisionNote || approvedReq?.decisionNote) && (
+                            <div style={{ marginTop: 10, fontSize: 11, color: t.subText, lineHeight: 1.75, borderTop: "1px solid rgba(34,197,94,0.2)", paddingTop: 8 }}>
+                              💬 {String(approvedReq.adminDecisionNote || approvedReq.decisionNote)}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* ─ طلباتي الأخرى ─ */}
+                        {otherReqs.length > 0 && (
+                          <div style={{ borderRadius: 18, border: `1px solid ${t.border}`, background: t.cardBg, padding: "12px 14px", marginBottom: 12 }}>
+                            <div style={{ fontSize: 12, fontWeight: 900, color: t.text, marginBottom: 10 }}>📋 {lang === "ar" ? "طلباتي الأخرى" : "My Other Requests"}</div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                              {otherReqs.map((req) => {
+                                const st = statusLabel(req.status);
+                                return (
+                                  <div key={req.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 12, background: st.bg, border: `1px solid ${st.color}30` }}>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ fontSize: 12, fontWeight: 800, color: t.text, marginBottom: 2 }}>{req.officeName || req.providerName}</div>
+                                      {req.services?.length > 0 && <div style={{ fontSize: 10, color: t.subText }}>{req.services.slice(0, 3).join(" · ")}{req.services.length > 3 ? "..." : ""}</div>}
+                                    </div>
+                                    <span style={{ fontSize: 10, fontWeight: 800, color: st.color, whiteSpace: "nowrap", flexShrink: 0 }}>{st.label}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ─ زر خدمة جديدة ─ */}
+                        <button
+                          type="button"
+                          onClick={() => setProviderPortalAddNew(true)}
+                          style={{
+                            width: "100%", textAlign: lang === "ar" ? "right" : "left",
+                            background: dark ? "linear-gradient(135deg,rgba(202,138,4,0.22),rgba(245,158,11,0.10))" : "linear-gradient(135deg,#fffbeb,#fef3c7)",
+                            border: "1px solid rgba(202,138,4,0.32)", borderRadius: 20, padding: "14px 16px",
+                            cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
+                            fontFamily: "'Cairo',sans-serif", boxShadow: dark ? "0 0 18px rgba(202,138,4,0.16)" : "0 8px 20px rgba(202,138,4,0.12)",
+                            maxWidth: "100%", boxSizing: "border-box",
+                          }}
+                        >
+                          <div style={{ width: 42, height: 42, borderRadius: 14, background: dark ? "rgba(255,255,255,0.06)" : "#ffffff", border: "1px solid rgba(202,138,4,0.26)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>➕</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fde68a" : "#a16207", marginBottom: 2 }}>{lang === "ar" ? "قدّم خدمة جديدة" : "Submit a New Service"}</div>
+                            <div style={{ fontSize: 11, color: t.subText, lineHeight: 1.6 }}>{lang === "ar" ? "أضف خدمة جديدة لمراجعتها واعتمادها من الأدمن." : "Submit a new service for admin review and approval."}</div>
+                          </div>
+                          <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                        </button>
                       </div>
-                      <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
-                    </button>
-                  </div>
+                    );
+                  })()
                 ) : (
-                  <ServiceProviderPortalFlow
-                    lang={lang}
-                    dark={dark}
-                    selectedCountry={selectedCountry}
-                    selectedNationality={selectedNationality}
-                    countryCities={country?.cities || []}
-                    serviceOptions={providerServiceOptions}
-                    currentUser={authPreviewUser}
-                    approvalSnapshot={providerPortalAddNew ? null : providerApprovalSnapshot}
-                    portalMode={providerPortalMode}
-                    onSubmitted={(requestItem) => {
-                      setProviderApprovalSnapshot(requestItem);
-                      setProviderPortalAddNew(false);
-                    }}
-                  />
+                  <div>
+                    {providerPortalAddNew && (
+                      <button
+                        onClick={() => setProviderPortalAddNew(false)}
+                        style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, background: "none", border: "none", cursor: "pointer", color: t.subText, fontSize: 12, fontWeight: 700, fontFamily: "'Cairo',sans-serif", padding: 0 }}
+                      >
+                        <span style={{ fontSize: 16 }}>{lang === "ar" ? "›" : "‹"}</span>
+                        {lang === "ar" ? "رجوع للبورتال" : "Back to Portal"}
+                      </button>
+                    )}
+                    <ServiceProviderPortalFlow
+                      lang={lang}
+                      dark={dark}
+                      selectedCountry={selectedCountry}
+                      selectedNationality={selectedNationality}
+                      countryCities={country?.cities || []}
+                      serviceOptions={providerServiceOptions}
+                      currentUser={authPreviewUser}
+                      approvalSnapshot={providerPortalAddNew ? null : providerApprovalSnapshot}
+                      portalMode={providerPortalMode}
+                      onSubmitted={() => {
+                        setProviderPortalAddNew(false);
+                      }}
+                    />
+                  </div>
                 )}
               </div>
             )}
@@ -13223,6 +13360,27 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
         >
           {lang === "ar" ? "›" : "‹"}
         </button>
+      )}
+
+      {nationalityConfirmToast && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9997, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, pointerEvents: "none" }}>
+          <div style={{
+            width: "100%", maxWidth: 340, borderRadius: 24, padding: "20px 22px",
+            background: dark ? "linear-gradient(135deg,rgba(20,83,45,0.97),rgba(21,128,61,0.97))" : "linear-gradient(135deg,#ecfdf5,#dcfce7)",
+            border: dark ? "1px solid rgba(34,197,94,0.45)" : "1px solid rgba(22,163,74,0.3)",
+            boxShadow: dark ? "0 0 28px rgba(34,197,94,0.28), 0 18px 42px rgba(0,0,0,0.3)" : "0 0 22px rgba(34,197,94,0.2), 0 18px 42px rgba(0,0,0,0.14)",
+            textAlign: "center", fontFamily: "'Cairo',sans-serif",
+            animation: "fadeSlideUp 0.22s ease-out both",
+          }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+            <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#86efac" : "#15803d", marginBottom: 4 }}>
+              {lang === "ar" ? "تم تأكيد الجنسية" : "Nationality Confirmed"}
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: dark ? "#bbf7d0" : "#166534" }}>
+              {nationalityConfirmToast}
+            </div>
+          </div>
+        </div>
       )}
 
       {providerPortalGuestNotice && (
