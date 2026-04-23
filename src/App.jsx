@@ -9941,7 +9941,12 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       </div>
                     </div>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 10 }}>
+                  <div style={{ marginBottom: 14, borderRadius: 18, padding: "12px 14px", background: dark ? "linear-gradient(135deg, rgba(30,64,175,0.22), rgba(59,130,246,0.10))" : "linear-gradient(135deg, #eff6ff, #dbeafe)", border: `1px solid ${dark ? "rgba(99,179,237,0.22)" : "rgba(59,130,246,0.22)"}`, boxShadow: dark ? "0 0 20px rgba(59,130,246,0.12)" : "0 0 18px rgba(59,130,246,0.10), 0 10px 20px rgba(59,130,246,0.07)", position: "relative", overflow: "hidden" }}>
+                    <div style={{ position: "absolute", top: -24, left: lang === "ar" ? "auto" : -22, right: lang === "ar" ? -22 : "auto", width: 88, height: 88, borderRadius: "50%", background: "radial-gradient(circle, rgba(96,165,250,0.22), rgba(96,165,250,0))" }} />
+                    <div style={{ fontSize: 11, fontWeight: 900, color: dark ? "#93c5fd" : "#1d4ed8", marginBottom: 10, fontFamily: "'Cairo',sans-serif", position: "relative" }}>
+                      {lang === "ar" ? "🌍 اختر الدولة التي تقيم بها" : "🌍 Choose the country you live in"}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 10, position: "relative" }}>
                     {topCountries.map((country) => (
                       <button
                         key={country.name}
@@ -10003,6 +10008,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                         </span>
                       </button>
                     ))}
+                    </div>
                   </div>
                   {!hasSelectedNationality && (
                     <div style={{ marginTop: 10, fontSize: 11, fontWeight: 700, color: dark ? "#cbd5e1" : "#64748b", textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
@@ -13440,9 +13446,35 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
         }}
       >
         {[
-          { key: "home",     icon: "🏠", label: tx.navHome     },
-          { key: "cv",       icon: "📄", label: tx.navCV       },
-          { key: "settings", icon: "⚙️", label: tx.navSettings },
+          {
+            key: "home", label: tx.navHome,
+            icon: (active) => (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? t.gold : (dark ? "rgba(255,255,255,0.45)" : "rgba(30,64,175,0.4)")} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5z"/>
+                <path d="M9 21V12h6v9"/>
+              </svg>
+            ),
+          },
+          {
+            key: "cv", label: tx.navCV,
+            icon: (active) => (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? t.gold : (dark ? "rgba(255,255,255,0.45)" : "rgba(30,64,175,0.4)")} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="2" width="16" height="20" rx="2"/>
+                <line x1="8" y1="8" x2="16" y2="8"/>
+                <line x1="8" y1="12" x2="16" y2="12"/>
+                <line x1="8" y1="16" x2="12" y2="16"/>
+              </svg>
+            ),
+          },
+          {
+            key: "settings", label: tx.navSettings,
+            icon: (active) => (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? t.gold : (dark ? "rgba(255,255,255,0.45)" : "rgba(30,64,175,0.4)")} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            ),
+          },
         ].map(tab => {
           const active = mainTab === tab.key;
           return (
@@ -13510,17 +13542,14 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               )}
               {/* Icon with glow when active */}
               <span style={{
-                fontSize: 22,
                 lineHeight: 1,
-                opacity: active ? 1 : 0.45,
-                filter: active
-                  ? `drop-shadow(0 0 8px ${t.gold}80)`
-                  : "none",
-                transition: "filter 0.25s ease, opacity 0.25s ease",
+                filter: active ? `drop-shadow(0 0 6px ${t.gold}90)` : "none",
+                transition: "filter 0.25s ease",
                 position: "relative",
                 zIndex: 1,
+                display: "flex",
               }}>
-                {tab.icon}
+                {tab.icon(active)}
               </span>
               <span style={{
                 fontSize: 10,
