@@ -127,8 +127,8 @@ const T = {
     footerEgypt: "تطبيق مستقل — البيانات من وزارة العمل المصرية — غير تابع لأي جهة حكومية",
     footerOther: (countryName) => `تطبيق مستقل — لا يتبع الجهة الحكومية لـ ${countryName}`,
     // Bottom Nav
-    navHome: "الرئيسية",
-    navCV: "السيرة الذاتية",
+    navHome: "مكاتب السفريات",
+    navCV: "التوظيف",
     navSettings: "الإعدادات",
     // CV Page
     cvTitle: "إنشاء سيرة ذاتية",
@@ -221,8 +221,8 @@ const T = {
     footerEgypt: "Independent app — Data from Egyptian Ministry of Labor — Not affiliated with any government entity",
     footerOther: (countryName) => `Independent app — Not affiliated with the government of ${countryName}`,
     // Bottom Nav
-    navHome: "Home",
-    navCV: "Create CV",
+    navHome: "Travel Offices",
+    navCV: "Employment",
     navSettings: "Settings",
     // CV Page
     cvTitle: "Create CV",
@@ -12850,33 +12850,31 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               </div>
             </div>
 
-            {/* ── زر شرح الاستخدام ── */}
-            <button
-              onClick={() => setUsageGuideOpen(true)}
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                borderRadius: 16,
-                border: "1px solid rgba(212,175,55,0.38)",
-                background: dark ? "rgba(212,175,55,0.08)" : "rgba(212,175,55,0.10)",
-                color: dark ? "#f5d77b" : "#7c5100",
-                fontSize: 13,
-                fontWeight: 900,
-                fontFamily: "'Cairo',sans-serif",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                marginBottom: 10,
-              }}
-            >
-              <span style={{ fontSize: 16 }}>📖</span>
-              {lang === "ar" ? "شرح الاستخدام" : "How to use"}
-            </button>
-
-            {!!authPreviewUser && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+            {!!authPreviewUser ? (
+              /* ── مسجّل: الثلاثة في صف واحد ── */
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
+                <button
+                  onClick={() => setUsageGuideOpen(true)}
+                  style={{
+                    padding: "12px 6px",
+                    borderRadius: 16,
+                    border: "1px solid rgba(212,175,55,0.38)",
+                    background: dark ? "rgba(212,175,55,0.08)" : "rgba(212,175,55,0.10)",
+                    color: dark ? "#f5d77b" : "#7c5100",
+                    fontSize: 12,
+                    fontWeight: 900,
+                    fontFamily: "'Cairo',sans-serif",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 4,
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>📖</span>
+                  {lang === "ar" ? "شرح الاستخدام" : "How to use"}
+                </button>
                 <button
                   onClick={() => {
                     setAccountProfileError("");
@@ -12885,38 +12883,73 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     setAccountPanelOpen(true);
                   }}
                   style={{
-                    width: "100%",
-                    padding: "12px 14px",
+                    padding: "12px 6px",
                     borderRadius: 16,
                     border: `1px solid ${t.border}`,
                     background: t.cardBg,
                     color: t.text,
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: 800,
                     fontFamily: "'Cairo',sans-serif",
                     cursor: "pointer",
-                    boxShadow: "none",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 4,
                   }}
                 >
+                  <span style={{ fontSize: 16 }}>👤</span>
                   {lang === "ar" ? "الحساب" : "Account"}
                 </button>
                 <button
                   onClick={() => setSignOutConfirmOpen(true)}
                   style={{
-                    width: "100%",
-                    padding: "12px 14px",
+                    padding: "12px 6px",
                     borderRadius: 16,
                     border: "1px solid rgba(248,113,113,0.52)",
                     background: dark ? "linear-gradient(135deg, rgba(127,29,29,0.30), rgba(185,28,28,0.24))" : "linear-gradient(135deg, rgba(254,226,226,0.96), rgba(254,202,202,0.96))",
                     color: dark ? "#fecaca" : "#991b1b",
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: 800,
                     fontFamily: "'Cairo',sans-serif",
                     cursor: "pointer",
                     boxShadow: "0 0 12px rgba(239,68,68,0.20)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 4,
                   }}
                 >
+                  <span style={{ fontSize: 16 }}>🚪</span>
                   {lang === "ar" ? "تسجيل الخروج" : "Sign Out"}
+                </button>
+              </div>
+            ) : (
+              /* ── غير مسجّل: زر شرح فقط ── */
+              <div style={{ marginBottom: 12 }}>
+                <button
+                  onClick={() => setUsageGuideOpen(true)}
+                  style={{
+                    width: "100%",
+                    padding: "12px 14px",
+                    borderRadius: 16,
+                    border: "1px solid rgba(212,175,55,0.38)",
+                    background: dark ? "rgba(212,175,55,0.08)" : "rgba(212,175,55,0.10)",
+                    color: dark ? "#f5d77b" : "#7c5100",
+                    fontSize: 13,
+                    fontWeight: 900,
+                    fontFamily: "'Cairo',sans-serif",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>📖</span>
+                  {lang === "ar" ? "شرح الاستخدام" : "How to use"}
                 </button>
               </div>
             )}
