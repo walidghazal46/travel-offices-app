@@ -557,6 +557,21 @@ export async function fetchServiceProviderRequestsFromFirebase() {
   }));
 }
 
+export function subscribeServiceProviderRequestsFromFirebase(callback) {
+  const q = query(collection(firestoreDb, "service_providers"), orderBy("createdAt", "desc"));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const requests = snapshot.docs.map((entryDoc) => ({
+        id: entryDoc.id,
+        ...entryDoc.data(),
+      }));
+      callback(requests);
+    },
+    () => callback([])
+  );
+}
+
 export async function fetchServiceProviderRequestsByUserFromFirebase(userUid) {
   const cleanUid = String(userUid || "").trim();
   if (!cleanUid) return [];

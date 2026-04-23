@@ -20,6 +20,7 @@ import {
   fetchReviewedServiceOrdersFromFirebase,
   fetchServiceProviderRequestsByUserFromFirebase,
   fetchServiceProviderRequestsFromFirebase,
+  subscribeServiceProviderRequestsFromFirebase,
   subscribeServiceProviderRequestsByUser,
   fetchUserProfileFromFirebase,
   fetchUserProfilesFromFirebase,
@@ -926,6 +927,7 @@ export default function App() {
   const [accountPhoneOtp, setAccountPhoneOtp] = useState(["", "", "", "", "", ""]);
   const [accountDeleteConfirm, setAccountDeleteConfirm] = useState(false);
   const [usageGuideOpen, setUsageGuideOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
   const [adminSecurityOpen, setAdminSecurityOpen] = useState(false);
   const [adminSecurityCode, setAdminSecurityCode] = useState("");
@@ -1020,6 +1022,7 @@ export default function App() {
   const [cvMode, setCvMode] = useState(null);
   const [selectedCvPackage, setSelectedCvPackage] = useState(null);
   const [cvBuilderScreen, setCvBuilderScreen] = useState("menu");
+  const [cvBuilderOrderDetailsBackScreen, setCvBuilderOrderDetailsBackScreen] = useState("previousOrders");
   const [selectedCvBuilderOrder, setSelectedCvBuilderOrder] = useState(null);
   const [cvBuilderOrders, setCvBuilderOrders] = useState(() => {
     try {
@@ -1225,6 +1228,12 @@ export default function App() {
     } catch {
       return ADMIN_SECURITY_DEFAULT_PASSCODE;
     }
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
 
   useEffect(() => {
@@ -2117,36 +2126,66 @@ export default function App() {
     setAdminProviderRequestsError("");
     try {
       const requests = await fetchServiceProviderRequestsFromFirebase();
-      const normalized = (requests || [])
-        .map((entry) => {
-          const createdAtMs = getProviderRequestTimestamp(entry);
-          return {
-            ...entry,
-            createdAtMs,
-            createdAtLabel: formatReviewDateValue(entry?.createdAt || entry?.updatedAt, lang),
-            serialLabel: String(entry?.serial || entry?.id || "").trim(),
-            statusValue: String(entry?.status || "pending").trim().toLowerCase(),
-            providerNameValue: String(entry?.providerName || entry?.officeName || entry?.name || "").trim(),
-            countryValue: String(entry?.country || "").trim(),
-            nationalityValue: String(entry?.nationality || "").trim(),
-            emailValue: String(entry?.email || entry?.userEmail || "").trim(),
-            servicesValue: Array.isArray(entry?.services) ? entry.services : [],
-          };
-        })
-        .sort((a, b) => b.createdAtMs - a.createdAtMs);
-
-      setAdminProviderRequests(normalized);
+      setAdminProviderRequests(
+        (requests || [])
+          .map((entry) => {
+            const createdAtMs = getProviderRequestTimestamp(entry);
+            return {
+              ...entry,
+              createdAtMs,
+              createdAtLabel: formatReviewDateValue(entry?.createdAt || entry?.updatedAt, lang),
+              serialLabel: String(entry?.serial || entry?.id || "").trim(),
+              statusValue: String(entry?.status || "pending").trim().toLowerCase(),
+              providerNameValue: String(entry?.providerName || entry?.officeName || entry?.name || "").trim(),
+              countryValue: String(entry?.country || "").trim(),
+              nationalityValue: String(entry?.nationality || "").trim(),
+              emailValue: String(entry?.email || entry?.userEmail || "").trim(),
+              servicesValue: Array.isArray(entry?.services) ? entry.services : [],
+            };
+          })
+          .sort((a, b) => b.createdAtMs - a.createdAtMs)
+      );
     } catch (error) {
       console.error("Failed to load provider requests", error);
       setAdminProviderRequestsError(
         lang === "ar"
-          ? "تعذر تحميل طلبات مزودي الخدمات الآن."
+          ? "تعذر تحميل طلبات مقدمي الخدمات الآن."
           : "Unable to load service provider requests right now."
       );
     } finally {
       setAdminProviderRequestsLoading(false);
     }
   }, [getProviderRequestTimestamp, lang]);
+
+  useEffect(() => {
+    if (!isAdminUser) return undefined;
+
+    const unsubscribe = subscribeServiceProviderRequestsFromFirebase((requests) => {
+      setAdminProviderRequests(
+        (requests || [])
+          .map((entry) => {
+            const createdAtMs = getProviderRequestTimestamp(entry);
+            return {
+              ...entry,
+              createdAtMs,
+              createdAtLabel: formatReviewDateValue(entry?.createdAt || entry?.updatedAt, lang),
+              serialLabel: String(entry?.serial || entry?.id || "").trim(),
+              statusValue: String(entry?.status || "pending").trim().toLowerCase(),
+              providerNameValue: String(entry?.providerName || entry?.officeName || entry?.name || "").trim(),
+              countryValue: String(entry?.country || "").trim(),
+              nationalityValue: String(entry?.nationality || "").trim(),
+              emailValue: String(entry?.email || entry?.userEmail || "").trim(),
+              servicesValue: Array.isArray(entry?.services) ? entry.services : [],
+            };
+          })
+          .sort((a, b) => b.createdAtMs - a.createdAtMs)
+      );
+      setAdminProviderRequestsLoading(false);
+      setAdminProviderRequestsError("");
+    });
+
+    return () => unsubscribe();
+  }, [getProviderRequestTimestamp, isAdminUser, lang]);
 
   const handleAdminProviderDecision = useCallback(async (requestItem, nextStatus) => {
     const requestId = String(requestItem?.id || "").trim();
@@ -2360,13 +2399,15 @@ export default function App() {
   const syncAdminOrderLocally = useCallback((orderId, updater) => {
     const cleanOrderId = String(orderId || "").trim();
     if (!cleanOrderId) return;
-    setAdminOrders((prev) => prev.map((entry) => {
+    const applyUpdate = (entry) => {
       const entryId = String(entry?.firebaseId || entry?.id || "").trim();
       if (entryId !== cleanOrderId) return entry;
       return typeof updater === "function"
         ? updater(entry)
         : { ...entry, ...(updater || {}) };
-    }));
+    };
+    setAdminOrders((prev) => prev.map(applyUpdate));
+    setCvAdminAllOrders((prev) => prev.map(applyUpdate));
   }, []);
 
   const handleAdminOrderSetStage = useCallback(async (orderItem, targetIndex) => {
@@ -2528,7 +2569,9 @@ export default function App() {
     setAdminOrdersError("");
     try {
       await deleteOrderInFirebase(orderId);
-      setAdminOrders((prev) => prev.filter((entry) => String(entry?.firebaseId || entry?.id || "").trim() !== orderId));
+      const filterOut = (prev) => prev.filter((entry) => String(entry?.firebaseId || entry?.id || "").trim() !== orderId);
+      setAdminOrders(filterOut);
+      setCvAdminAllOrders(filterOut);
       setAdminExpandedOrderId((prev) => (prev === orderId ? "" : prev));
       setAdminSelectedOrderId((prev) => (prev === orderId ? "" : prev));
     } catch (error) {
@@ -3585,6 +3628,7 @@ export default function App() {
 
   const openCvBuilderPreviousOrders = () => {
     setSelectedCvBuilderOrder(null);
+    setCvBuilderOrderDetailsBackScreen("previousOrders");
     setCvBuilderReviewError("");
     setCvBuilderReviewEditMode(false);
     setCvBuilderOrderSyncError("");
@@ -5376,7 +5420,7 @@ export default function App() {
         }
         if (cvBuilderScreen === "orderDetails") {
           setSelectedCvBuilderOrder(null);
-          setCvBuilderScreen("previousOrders");
+          setCvBuilderScreen(cvBuilderOrderDetailsBackScreen === "adminOrders" ? "adminOrders" : "previousOrders");
           return;
         }
         if (cvBuilderScreen === "adminOrders") {
@@ -5516,6 +5560,7 @@ export default function App() {
     closeAdminActionConfirm,
     closeAdminPanel,
     closeSelectedOfficeView,
+    cvBuilderOrderDetailsBackScreen,
   ]);
 
   // back button handler
@@ -6923,8 +6968,8 @@ export default function App() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 18 }}>
           <div style={{ color: "rgba(255,255,255,0.76)", fontSize: 12, fontWeight: 700, fontFamily: "'Cairo',sans-serif" }}>
             {lang === "ar"
-              ? `المستخدمون: ${adminUsers.length} | الطلبات: ${adminOrders.length} | مزودو الخدمات: ${adminProviderRequests.length}`
-              : `Users: ${adminUsers.length} | Orders: ${adminOrders.length} | Providers: ${adminProviderRequests.length}`}
+              ? `المستخدمون: ${adminUsers.length} | الطلبات: ${adminOrders.length} | مقدمو الخدمات: ${providerRequestsVisible.length}`
+              : `Users: ${adminUsers.length} | Orders: ${adminOrders.length} | Providers: ${providerRequestsVisible.length}`}
           </div>
           <button
             onClick={() => {
@@ -7502,7 +7547,7 @@ export default function App() {
 
         <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(34,197,94,0.32)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px", display: (adminPanelSection === "providers" || adminPanelSection === "providerDetails") ? "block" : "none" }}>
           <div style={{ marginBottom: 8, color: "#bbf7d0", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-            <span>{lang === "ar" ? "طلبات مزودي الخدمات" : "Service Provider Requests"}</span>
+            <span>{lang === "ar" ? "طلبات مقدمي الخدمات" : "Service Provider Requests"}</span>
             <span style={{ color: "#bbf7d0", fontSize: 10, fontWeight: 800 }}>
               {filteredAdminProviderRequestsForView.length} / {providerRequestsVisible.length}
             </span>
@@ -8303,8 +8348,72 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
     </div>
   );
 
+  /* ══ DESKTOP SIDEBAR ══ */
+  const DesktopSidebar = () => (
+    <aside style={{
+      position: "fixed", top: 0, right: 0, width: 240, height: "100vh", zIndex: 150,
+      display: "flex", flexDirection: "column", direction: "rtl",
+      background: dark ? "linear-gradient(180deg,rgba(4,10,22,0.97),rgba(2,6,18,0.98))" : "linear-gradient(180deg,rgba(255,255,255,0.97),rgba(248,250,255,0.98))",
+      borderLeft: `1px solid ${dark ? "rgba(212,175,55,0.18)" : "rgba(26,86,219,0.12)"}`,
+      boxShadow: dark ? "-6px 0 32px rgba(0,0,0,0.4)" : "-6px 0 32px rgba(15,27,58,0.08)",
+      backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+    }}>
+      {/* Logo */}
+      <div style={{ padding: "24px 20px 18px", borderBottom: `1px solid ${dark ? "rgba(212,175,55,0.12)" : "rgba(26,86,219,0.08)"}`, display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ width: 44, height: 44, borderRadius: 14, background: "linear-gradient(145deg,#0a2060,#0f3080)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0, boxShadow: "0 4px 18px rgba(212,175,55,0.4)" }}>🏢</div>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#f5d77b" : "#0a2060", fontFamily: "'Cairo',sans-serif", lineHeight: 1.3 }}>{lang === "ar" ? "مكاتب السفريات" : "Travel Offices"}</div>
+          <div style={{ fontSize: 10, color: dark ? "rgba(212,175,55,0.6)" : "rgba(10,32,96,0.5)", fontFamily: "'Cairo',sans-serif" }}>{lang === "ar" ? "الموثوقة" : "Trusted"}</div>
+        </div>
+      </div>
+      {/* Nav */}
+      <nav style={{ padding: "16px 10px", flex: 1 }}>
+        {[
+          { key: "home",     icon: "🏠", label: tx.navHome,     action: () => goToCountryLanding() },
+          { key: "cv",       icon: "📄", label: tx.navCV,       action: () => { setMainTab("cv"); setCvMode(null); setSelectedCvPackage(null); setCvBuilderScreen("menu"); setSelectedCvBuilderOrder(null); setCvStep(0); setCvUnlocked(false); } },
+          { key: "settings", icon: "⚙️", label: tx.navSettings, action: () => setMainTab("settings") },
+        ].map(tab => {
+          const active = mainTab === tab.key;
+          return (
+            <button key={tab.key} onClick={tab.action} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", borderRadius: 13, marginBottom: 5, border: active ? `1px solid ${dark ? "rgba(212,175,55,0.38)" : "rgba(26,86,219,0.22)"}` : "1px solid transparent", background: active ? (dark ? "rgba(212,175,55,0.10)" : "rgba(26,86,219,0.07)") : "transparent", color: active ? (dark ? "#f5d77b" : "#1a56db") : (dark ? "rgba(226,232,240,0.6)" : "rgba(15,27,58,0.5)"), cursor: "pointer", textAlign: "right", fontFamily: "'Cairo',sans-serif", transition: "all 0.18s" }}>
+              <span style={{ fontSize: 18 }}>{tab.icon}</span>
+              <span style={{ fontSize: 13, fontWeight: active ? 900 : 700 }}>{tab.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+      {/* Controls */}
+      <div style={{ padding: "14px 10px", borderTop: `1px solid ${dark ? "rgba(212,175,55,0.12)" : "rgba(26,86,219,0.08)"}` }}>
+        <button onClick={() => setDark(d => !d)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", borderRadius: 11, border: `1px solid ${dark ? "rgba(255,255,255,0.09)" : "rgba(15,27,58,0.09)"}`, background: "transparent", color: dark ? "rgba(226,232,240,0.75)" : "rgba(15,27,58,0.65)", cursor: "pointer", fontFamily: "'Cairo',sans-serif", fontSize: 12, fontWeight: 700, marginBottom: 7 }}>
+          <span style={{ fontSize: 15 }}>{dark ? "☀️" : "🌙"}</span>
+          <span>{dark ? (lang === "ar" ? "الوضع النهاري" : "Light Mode") : (lang === "ar" ? "الوضع الليلي" : "Dark Mode")}</span>
+        </button>
+        <button onClick={() => setLang(l => l === "ar" ? "en" : "ar")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", borderRadius: 11, border: `1px solid ${dark ? "rgba(255,255,255,0.09)" : "rgba(15,27,58,0.09)"}`, background: "transparent", color: dark ? "rgba(226,232,240,0.75)" : "rgba(15,27,58,0.65)", cursor: "pointer", fontFamily: "'Cairo',sans-serif", fontSize: 12, fontWeight: 700, marginBottom: 10 }}>
+          <span style={{ fontSize: 15 }}>🌐</span>
+          <span>{lang === "ar" ? "English" : "عربي"}</span>
+        </button>
+        {authPreviewUser ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 12px", borderRadius: 11, background: dark ? "rgba(212,175,55,0.07)" : "rgba(26,86,219,0.05)", border: `1px solid ${dark ? "rgba(212,175,55,0.18)" : "rgba(26,86,219,0.11)"}` }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#1a56db,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 13, fontWeight: 900, flexShrink: 0 }}>
+              {(authPreviewUser.displayName || authPreviewUser.email || "U").charAt(0).toUpperCase()}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: dark ? "#e2e8f0" : "#0f1b3a", fontFamily: "'Cairo',sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{authPreviewUser.displayName || (lang === "ar" ? "مستخدم" : "User")}</div>
+              <div style={{ fontSize: 10, color: dark ? "rgba(212,175,55,0.65)" : "rgba(26,86,219,0.55)", fontFamily: "sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{authPreviewUser.email || authPreviewUser.phoneNumber || ""}</div>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => { setAuthPreviewMode("login"); setAuthPreviewOpen(true); setAuthPreviewError(""); setAuthPreviewSuccess(""); }} style={{ width: "100%", padding: "10px 14px", borderRadius: 11, border: "1px solid rgba(212,175,55,0.38)", background: dark ? "rgba(212,175,55,0.09)" : "rgba(212,175,55,0.07)", color: dark ? "#f5d77b" : "#7c5100", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: "pointer" }}>
+            {lang === "ar" ? "🔐 تسجيل الدخول" : "🔐 Sign In"}
+          </button>
+        )}
+      </div>
+    </aside>
+  );
+
   return (
-    <div dir={dir} style={{ ...styles.root, background: t.bgGradient || t.bg, color: t.text }}>
+    <div dir={dir} className="app-root" style={{ ...styles.root, background: t.bgGradient || t.bg, color: t.text }}>
+      {isDesktop && <DesktopSidebar />}
       {/* ── Cinematic Background — Floating Light Orbs ─────────────────── */}
       <div className="cinematic-bg">
         {/* Primary orbs */}
@@ -11494,12 +11603,12 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
             { key:"glassdoor", name:"Glassdoor", short:"G", color:"#0CAA41", url:"https://www.glassdoor.com/" },
             { key:"monster", name:"Monster", short:"M", color:"#6C3CF0", url:"https://www.monstergulf.com/" },
             { key:"tanqeeb", name:"Tanqeeb", short:"T", color:"#E65100", url:"https://tanqeeb.com/" },
-            { key:"mihnati", name:"Mihnati", short:"Mi", color:"#C62828", url:"https://www.mihnati.com/" },
-            { key:"forsana", name:"Forsana", short:"FR", color:"#16A34A", url:"https://www.forsana.com/" },
+            { key:"forsana", name:"Forsana", short:"FR", color:"#16A34A", url:"https://forasna.com/" },
             { key:"olxjobs", name:"OLX Jobs", short:"OL", color:"#FF6600", url:"https://jobs.olx.com/" },
+            { key:"dubizzle", name:"Dubizzle", short:"DZ", color:"#E20C20", url:"https://www.dubizzle.sa/jobs-services/" },
           ];
           const cvJobSitesCard = (
-            <div style={{ ...cardStyle, padding:"10px 12px", border:`1px solid ${t.border}`, background:dark ? "rgba(255,255,255,0.03)" : "#fbfcff", width:"min(100%, 520px)", marginInline:"auto" }}>
+            <div style={{ ...cardStyle, padding:"10px 12px", border:`1px solid ${t.border}`, background:dark ? "rgba(255,255,255,0.03)" : "#fbfcff" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, marginBottom:6, flexWrap:"wrap" }}>
                 <div style={{ fontSize:13, fontWeight:800, color:t.gold, fontFamily:"'Cairo',sans-serif" }}>
                   {lang==="ar" ? "مواقع توظيف تهمك" : "Useful Job Sites"}
@@ -11775,13 +11884,16 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       {cvAdminBuilderOrdersFiltered.length ? (
                         <div style={{ display:"grid", gap:8, maxHeight:470, overflowY:"auto", paddingRight:4 }}>
                           {cvAdminBuilderOrdersFiltered.map((order, idx) => {
-                            const orderStage = Number(order?.statusIndex);
+                            const orderStage = Number(order?.statusIndex ?? 0);
                             const stageText = orderStage >= 4
                               ? (lang==="ar" ? "مكتمل" : "Done")
                               : (lang==="ar" ? "قيد التنفيذ" : "Active");
                             const stageColor = orderStage >= 4 ? "#16a34a" : "#f59e0b";
+                            const orderId = String(order.firebaseId||order.id||"");
+                            const isBusy = adminOrderActionBusyId === orderId;
+                            const adminBtnBase = { border:"none", borderRadius:8, fontSize:10, fontWeight:900, fontFamily:"'Cairo',sans-serif", cursor:isBusy?"not-allowed":"pointer", padding:"5px 8px", opacity:isBusy?0.5:1 };
                             return (
-                            <div key={order.id||order.firebaseId||idx} style={{ minHeight:86, background:t.inputBg, border:`1px solid ${t.border}`, borderRadius:12, padding:"10px 12px", display:"grid", gap:4 }}>
+                            <div key={order.id||order.firebaseId||idx} style={{ background:t.inputBg, border:`1px solid ${t.border}`, borderRadius:12, padding:"10px 12px", display:"grid", gap:4 }}>
                               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                                 <div style={{ fontSize:12, fontWeight:900, color:t.text, fontFamily:"'Cairo',sans-serif" }}>
                                   {String(order.name||order.fullName||"—")}
@@ -11806,6 +11918,24 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                                   {lang==="ar" ? "الإيميل" : "Email"}: {order.email}
                                 </div>
                               )}
+                              {/* ── Admin Mini-Bar ── */}
+                              <div style={{ display:"flex", gap:5, flexWrap:"wrap", marginTop:4, borderTop:`1px solid ${t.border}`, paddingTop:6 }}>
+                                <button disabled={isBusy} onClick={()=>handleAdminOrderSetStage(order, Math.min(STATUS_STEP_KEYS.length-1, orderStage+1))} style={{ ...adminBtnBase, background:"linear-gradient(135deg,#22c55e,#166534)", color:"#fff" }}>
+                                  ▶ {lang==="ar"?"مرحلة":"Stage+"}
+                                </button>
+                                <button disabled={isBusy} onClick={()=>handleAdminOrderSetStage(order, 0)} style={{ ...adminBtnBase, background:"linear-gradient(135deg,#f59e0b,#b45309)", color:"#fff" }}>
+                                  ↺ {lang==="ar"?"إعادة":"Reset"}
+                                </button>
+                                <button disabled={isBusy} onClick={()=>handleAdminOrderEditDetails(order)} style={{ ...adminBtnBase, background:"linear-gradient(135deg,#0ea5e9,#0369a1)", color:"#fff" }}>
+                                  ✏️ {lang==="ar"?"تعديل":"Edit"}
+                                </button>
+                                <button disabled={isBusy} onClick={()=>handleAdminOrderClearReview(order)} style={{ ...adminBtnBase, background:"linear-gradient(135deg,#7c3aed,#4c1d95)", color:"#fff" }}>
+                                  ⭐ {lang==="ar"?"حذف تقييم":"Del Review"}
+                                </button>
+                                <button disabled={isBusy} onClick={()=>handleAdminDeleteOrder(order)} style={{ ...adminBtnBase, background:"linear-gradient(135deg,#ef4444,#7f1d1d)", color:"#fff" }}>
+                                  🗑️ {lang==="ar"?"حذف":"Delete"}
+                                </button>
+                              </div>
                             </div>
                           );})}
                         </div>
@@ -13068,11 +13198,12 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
         <button
           onClick={handleAppBackNavigation}
           title={lang === "ar" ? "رجوع" : "Back"}
+          className="floating-back-btn"
           style={{
             position: "fixed",
             bottom: 88,
-            left: lang === "ar" ? 20 : "auto",
-            right: lang === "ar" ? "auto" : 20,
+            left: 20,
+            right: "auto",
             width: 44,
             height: 44,
             borderRadius: "50%",
@@ -13254,7 +13385,14 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Cairo', sans-serif !important; -webkit-tap-highlight-color: transparent; }
 
-        /* ── Core Animations ── */
+        /* ── Desktop Layout ── */
+        @media (min-width: 1024px) {
+          .app-root { padding-right: 240px !important; }
+          .premium-nav { display: none !important; }
+          .wa-btn-desktop { bottom: 24px !important; }
+        }
+
+        /* ── Core Animations ── 
         @keyframes fadeSlideUp {
           from { opacity: 0; transform: translateY(18px) scale(0.97); }
           to   { opacity: 1; transform: translateY(0)    scale(1);    }
