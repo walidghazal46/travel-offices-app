@@ -58,6 +58,14 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ─── Ads ────────────────────────────────────────────────────────────────
+    // Public read so the main banner can be shown to every app user.
+    // Admin-only write from Firebase Console or trusted admin tools.
+    match /Ads/{docId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     // ─── service_providers ──────────────────────────────────────────────────
     // Public read for listings. Authenticated users can submit a request.
     // Users can read/update their own. Admins have full access.

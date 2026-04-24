@@ -20,6 +20,7 @@ import {
   fetchReviewedServiceOrdersFromFirebase,
   fetchServiceProviderRequestsByUserFromFirebase,
   fetchServiceProviderRequestsFromFirebase,
+  deleteServiceProviderRequestInFirebase,
   subscribeServiceProviderRequestsFromFirebase,
   subscribeServiceProviderRequestsByUser,
   fetchUserProfileFromFirebase,
@@ -52,10 +53,11 @@ import {
   upsertAuthUserProfileInFirebase,
   saveOrderToFirebase,
   submitServiceProviderRequestToFirebase,
+  subscribeJobsBannerAdFromFirebase,
+  subscribeMainBannerAdFromFirebase,
   uploadReceiptToFirebase,
   verifyCurrentUserPhoneUpdateCode,
   verifyPhoneVerificationCode,
-  fetchAdConfig,
 } from "./firebase";
 import { officesData } from "./data/offices";
 import { officeIdAliases, egyptGovernorates, cityIcons, cityNamesEn, countryNamesEn } from "./data/egyptData";
@@ -79,6 +81,29 @@ const OTHER_NATIONALITY_VALUE = "__other_nationality__";
 const LINKEDIN = "https://www.linkedin.com/in/walid-ghazal-pmi-pmp%C2%AE-85208678/";
 const YOUTUBE = "http://www.youtube.com/@WalidGhazal";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.travel.offices";
+
+function getLocalDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function isMainBannerAdActive(adConfig) {
+  if (!adConfig?.active || !adConfig?.imageUrl) return false;
+
+  const todayKey = getLocalDateKey();
+  const startDate = String(adConfig.startDate || "").trim();
+  const endDate = String(adConfig.endDate || "").trim();
+  const validDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+
+  if (startDate && !validDatePattern.test(startDate)) return false;
+  if (endDate && !validDatePattern.test(endDate)) return false;
+  if (startDate && todayKey < startDate) return false;
+  if (endDate && todayKey > endDate) return false;
+
+  return true;
+}
 
 const T = {
   ar: {
@@ -845,7 +870,22 @@ export default function App() {
   const [view, setView] = useState("landing");
   const [dark, setDark] = useState(false);
   const [lang, setLang] = useState("ar");
-  const [adRemote, setAdRemote] = useState({ enabled: false, imageUrl: "", linkUrl: "" });
+  const [mainBannerAd, setMainBannerAd] = useState({
+    active: false,
+    imageUrl: "",
+    linkUrl: "",
+    title: "",
+    startDate: "",
+    endDate: "",
+  });
+  const [jobsBannerAd, setJobsBannerAd] = useState({
+    active: false,
+    imageUrl: "",
+    linkUrl: "",
+    title: "",
+    startDate: "",
+    endDate: "",
+  });
   const [selectedCountry, setSelectedCountry] = useState("مصر");
   const [selectedNationality, setSelectedNationality] = useState(() => {
     try {
@@ -974,7 +1014,9 @@ export default function App() {
   const [providerAllRequests, setProviderAllRequests] = useState([]);
   const [providerPortalMode, setProviderPortalMode] = useState("service");
   const [providerPortalAddNew, setProviderPortalAddNew] = useState(false);
+  const [providerPortalScreen, setProviderPortalScreen] = useState("menu");
   const [providerPortalGuestNotice, setProviderPortalGuestNotice] = useState("");
+  const [providerPortalEditingRequestId, setProviderPortalEditingRequestId] = useState("");
   const [officeOverrides, setOfficeOverrides] = useState(() => {
     try {
       const raw = localStorage.getItem("officeOverridesV1") || "{}";
@@ -1228,6 +1270,23 @@ export default function App() {
     const ts = new Date(raw).getTime();
     return Number.isFinite(ts) ? ts : 0;
   }, []);
+
+  const shapeServiceProviderRequest = useCallback((entry) => {
+    const createdAtMs = getProviderRequestTimestamp(entry);
+    return {
+      ...entry,
+      createdAtMs,
+      createdAtLabel: formatReviewDateValue(entry?.createdAt || entry?.updatedAt, lang),
+      serialLabel: String(entry?.serial || entry?.id || "").trim(),
+      statusValue: String(entry?.status || "pending").trim().toLowerCase(),
+      providerNameValue: String(entry?.providerName || entry?.officeName || entry?.name || "").trim(),
+      countryValue: String(entry?.country || "").trim(),
+      nationalityValue: String(entry?.nationality || "").trim(),
+      emailValue: String(entry?.email || entry?.userEmail || "").trim(),
+      servicesValue: Array.isArray(entry?.services) ? entry.services : [],
+      requestTypeValue: String(entry?.requestType || "").trim().toLowerCase() || "service",
+    };
+  }, [getProviderRequestTimestamp, lang]);
 
   const adminSecurityExpectedCode = useMemo(() => {
     try {
@@ -2142,21 +2201,7 @@ export default function App() {
       const requests = await fetchServiceProviderRequestsFromFirebase();
       setAdminProviderRequests(
         (requests || [])
-          .map((entry) => {
-            const createdAtMs = getProviderRequestTimestamp(entry);
-            return {
-              ...entry,
-              createdAtMs,
-              createdAtLabel: formatReviewDateValue(entry?.createdAt || entry?.updatedAt, lang),
-              serialLabel: String(entry?.serial || entry?.id || "").trim(),
-              statusValue: String(entry?.status || "pending").trim().toLowerCase(),
-              providerNameValue: String(entry?.providerName || entry?.officeName || entry?.name || "").trim(),
-              countryValue: String(entry?.country || "").trim(),
-              nationalityValue: String(entry?.nationality || "").trim(),
-              emailValue: String(entry?.email || entry?.userEmail || "").trim(),
-              servicesValue: Array.isArray(entry?.services) ? entry.services : [],
-            };
-          })
+          .map(shapeServiceProviderRequest)
           .sort((a, b) => b.createdAtMs - a.createdAtMs)
       );
     } catch (error) {
@@ -2169,7 +2214,7 @@ export default function App() {
     } finally {
       setAdminProviderRequestsLoading(false);
     }
-  }, [getProviderRequestTimestamp, lang]);
+  }, [lang, shapeServiceProviderRequest]);
 
   useEffect(() => {
     if (!isAdminUser) return undefined;
@@ -2177,21 +2222,7 @@ export default function App() {
     const unsubscribe = subscribeServiceProviderRequestsFromFirebase((requests) => {
       setAdminProviderRequests(
         (requests || [])
-          .map((entry) => {
-            const createdAtMs = getProviderRequestTimestamp(entry);
-            return {
-              ...entry,
-              createdAtMs,
-              createdAtLabel: formatReviewDateValue(entry?.createdAt || entry?.updatedAt, lang),
-              serialLabel: String(entry?.serial || entry?.id || "").trim(),
-              statusValue: String(entry?.status || "pending").trim().toLowerCase(),
-              providerNameValue: String(entry?.providerName || entry?.officeName || entry?.name || "").trim(),
-              countryValue: String(entry?.country || "").trim(),
-              nationalityValue: String(entry?.nationality || "").trim(),
-              emailValue: String(entry?.email || entry?.userEmail || "").trim(),
-              servicesValue: Array.isArray(entry?.services) ? entry.services : [],
-            };
-          })
+          .map(shapeServiceProviderRequest)
           .sort((a, b) => b.createdAtMs - a.createdAtMs)
       );
       setAdminProviderRequestsLoading(false);
@@ -2199,7 +2230,7 @@ export default function App() {
     });
 
     return () => unsubscribe();
-  }, [getProviderRequestTimestamp, isAdminUser, lang]);
+  }, [isAdminUser, shapeServiceProviderRequest]);
 
   const handleAdminProviderDecision = useCallback(async (requestItem, nextStatus) => {
     const requestId = String(requestItem?.id || "").trim();
@@ -2366,16 +2397,18 @@ export default function App() {
     setAdminProviderActionBusyId(requestId);
     setAdminProviderRequestsError("");
     try {
-      const updates = {
-        status: "deleted",
-        deletedAt: new Date().toISOString(),
-      };
-      await updateServiceProviderRequestInFirebase(requestId, updates);
+      await deleteServiceProviderRequestInFirebase(requestId);
 
       setAdminProviderRequests((prev) => prev.filter((entry) => String(entry?.id || "") !== requestId));
+      setProviderAllRequests((prev) => prev.filter((entry) => String(entry?.id || "") !== requestId));
+      setProviderApprovalSnapshot((prev) => (String(prev?.id || "") === requestId ? null : prev));
       if (adminSelectedProviderRequestId === requestId) {
         setAdminSelectedProviderRequestId("");
         setAdminPanelSection("providers");
+      }
+      if (providerPortalEditingRequestId === requestId) {
+        setProviderPortalEditingRequestId("");
+        setProviderPortalScreen("account");
       }
     } catch (error) {
       console.error("Failed to delete provider request", error);
@@ -2387,7 +2420,15 @@ export default function App() {
     } finally {
       setAdminProviderActionBusyId("");
     }
-  }, [adminSelectedProviderRequestId, lang]);
+  }, [adminSelectedProviderRequestId, lang, providerPortalEditingRequestId]);
+
+  const openAdminProviderEdit = useCallback((requestItem) => {
+    const requestId = String(requestItem?.id || "").trim();
+    if (!requestId) return;
+    setProviderPortalEditingRequestId(requestId);
+    setProviderPortalScreen("form");
+    setProviderPortalMode(String(requestItem?.requestTypeValue || requestItem?.requestType || "service").trim().toLowerCase() === "office" ? "office" : "service");
+  }, []);
 
   useEffect(() => {
     const uid = String(authPreviewUser?.uid || "").trim();
@@ -2401,16 +2442,18 @@ export default function App() {
         const reqCountry = String(entry?.country || "").trim();
         return !selectedCountry || !reqCountry || reqCountry === selectedCountry;
       });
-      const sorted = scoped.sort((a, b) => getProviderRequestTimestamp(b) - getProviderRequestTimestamp(a));
+      const sorted = scoped
+        .map(shapeServiceProviderRequest)
+        .sort((a, b) => b.createdAtMs - a.createdAtMs);
       setProviderAllRequests(sorted);
-      const approved = sorted.find((r) => String(r?.status || "").trim().toLowerCase() === "approved") || null;
+      const approved = sorted.find((r) => String(r?.statusValue || r?.status || "").trim().toLowerCase() === "approved") || null;
       setProviderApprovalSnapshot(approved || sorted[0] || null);
     });
 
     return () => {
       unsubscribe();
     };
-  }, [authPreviewUser?.uid, getProviderRequestTimestamp, selectedCountry]);
+  }, [authPreviewUser?.uid, selectedCountry, shapeServiceProviderRequest]);
 
   const syncAdminOrderLocally = useCallback((orderId, updater) => {
     const cleanOrderId = String(orderId || "").trim();
@@ -4602,10 +4645,24 @@ export default function App() {
   }, [isNativePlatform, landingAdConfig.enabled, landingAdConfig.web.client, view]);
 
   useEffect(() => {
-    fetchAdConfig().then((cfg) => {
-      if (cfg.enabled && cfg.imageUrl) setAdRemote(cfg);
-    }).catch(() => {});
+    const unsubscribe = subscribeMainBannerAdFromFirebase((nextAd) => {
+      setMainBannerAd(nextAd);
+    });
+
+    return () => unsubscribe?.();
   }, []);
+
+  const showMainBannerAd = isMainBannerAdActive(mainBannerAd);
+
+  useEffect(() => {
+    const unsubscribe = subscribeJobsBannerAdFromFirebase((nextAd) => {
+      setJobsBannerAd(nextAd);
+    });
+
+    return () => unsubscribe?.();
+  }, []);
+
+  const showJobsBannerAd = isMainBannerAdActive(jobsBannerAd);
 
   const cvOfferDeadline = useMemo(() => {
     const d = new Date();
@@ -5050,6 +5107,13 @@ export default function App() {
     [adminSelectedProviderRequestId, providerRequestsVisible]
   );
 
+  const providerPortalEditingRequest = useMemo(
+    () => providerRequestsVisible.find((entry) => String(entry?.id || "") === providerPortalEditingRequestId)
+      || providerAllRequests.find((entry) => String(entry?.id || "") === providerPortalEditingRequestId)
+      || null,
+    [providerAllRequests, providerPortalEditingRequestId, providerRequestsVisible]
+  );
+
   const adminCriticalCount = useMemo(() => {
     const nowMs = Date.now();
     const criticalIds = new Set();
@@ -5187,6 +5251,7 @@ export default function App() {
     }
     setProviderPortalMode("service");
     setProviderPortalAddNew(false);
+    setProviderPortalScreen("menu");
     setView("providerPortal");
   }, [isGuestUser, lang]);
 
@@ -9858,11 +9923,8 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     <div style={{ position: "absolute", top: -26, left: lang === "ar" ? "auto" : -24, right: lang === "ar" ? -24 : "auto", width: 90, height: 90, borderRadius: "50%", background: "radial-gradient(circle, rgba(56,189,248,0.26), rgba(56,189,248,0))" }} />
                     <div style={{ display: "flex", flexDirection: isCompactPhone ? "column" : "row", alignItems: isCompactPhone ? "stretch" : "center", gap: 7, position: "relative" }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#67e8f9" : "#0f766e", marginBottom: 2, fontFamily: "'Cairo',sans-serif" }}>
-                          {lang === "ar" ? "اختر جنسيتك" : "Choose Your Nationality"}
-                        </div>
                         <div style={{ fontSize: 10, lineHeight: 1.45, color: dark ? "#d5f5ff" : "#155e75", fontFamily: "'Cairo',sans-serif" }}>
-                          {lang === "ar" ? "اختيار الجنسية يجعل قسم تواصل مع سفارتك يعرض سفارتك المناسبة مباشرة داخل كل دولة." : "Choosing your nationality makes the Contact Your Embassy section show the right embassy directly inside each country."}
+                          {lang === "ar" ? "يرجى كتابة جنسيتك ثم اختيار الدولة التي تقيم بها." : "Please enter your nationality, then choose the country where you currently live."}
                         </div>
                       </div>
                       <div style={{ minWidth: isCompactPhone ? "100%" : 220, display: "flex", gap: 6 }}>
@@ -10073,10 +10135,10 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     style={{
                       marginTop: 12,
                       borderRadius: 16,
-                      minHeight: adRemote.enabled && adRemote.imageUrl ? 0 : 190,
-                      padding: adRemote.enabled && adRemote.imageUrl ? 0 : "12px 12px",
+                      minHeight: showMainBannerAd ? 0 : 190,
+                      padding: showMainBannerAd ? 0 : "12px 12px",
                       border: `1px dashed ${dark ? "rgba(148,163,184,0.42)" : "rgba(100,116,139,0.34)"}`,
-                      background: adRemote.enabled && adRemote.imageUrl ? "transparent" : (dark
+                      background: showMainBannerAd ? "transparent" : (dark
                         ? "linear-gradient(135deg, rgba(30,41,59,0.42), rgba(15,23,42,0.30))"
                         : "linear-gradient(135deg, #f8fafc, #f1f5f9)"),
                       position: "relative",
@@ -10087,7 +10149,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       overflow: "hidden",
                     }}
                   >
-                    {!(adRemote.enabled && adRemote.imageUrl) && (
+                    {!showMainBannerAd && (
                     <div
                       style={{
                         position: "absolute",
@@ -10109,51 +10171,29 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       {lang === "ar" ? "مساحة إعلانية" : "Ad Space"}
                     </div>
                     )}
-                    {adRemote.enabled && adRemote.imageUrl ? (
-                      adRemote.linkUrl ? (
+                    {showMainBannerAd ? (
+                      mainBannerAd.linkUrl ? (
                         <a
-                          href={adRemote.linkUrl}
+                          href={mainBannerAd.linkUrl}
                           target="_blank"
                           rel="noreferrer noopener"
                           style={{ display: "block", width: "100%", lineHeight: 0 }}
+                          aria-label={mainBannerAd.title || "main banner advertisement"}
+                          title={mainBannerAd.title || ""}
                         >
                           <img
-                            src={adRemote.imageUrl}
-                            alt="ad"
+                            src={mainBannerAd.imageUrl}
+                            alt={mainBannerAd.title || "ad"}
                             style={{ width: "100%", height: "auto", display: "block", borderRadius: 14 }}
                           />
                         </a>
                       ) : (
                         <img
-                          src={adRemote.imageUrl}
-                          alt="ad"
+                          src={mainBannerAd.imageUrl}
+                          alt={mainBannerAd.title || "ad"}
+                          title={mainBannerAd.title || ""}
                           style={{ width: "100%", height: "auto", display: "block", borderRadius: 14 }}
                         />
-                      )
-                    ) : landingAdConfig.enabled ? (
-                      !isNativePlatform ? (
-                        <div style={{ width: "100%" }}>
-                          <div style={{ fontSize: 10, fontWeight: 800, marginBottom: 8, color: dark ? "#cbd5e1" : "#64748b", fontFamily: "'Cairo',sans-serif" }}>
-                            {lang === "ar" ? "إعلان ممول" : "Sponsored"}
-                          </div>
-                          <ins
-                            className="adsbygoogle"
-                            style={{ display: "block", width: "100%", minHeight: 50 }}
-                            data-ad-client={landingAdConfig.web.client}
-                            data-ad-slot={landingAdConfig.web.slot}
-                            data-ad-format="auto"
-                            data-full-width-responsive="true"
-                          />
-                        </div>
-                      ) : (
-                        <div style={{ fontFamily: "'Cairo',sans-serif" }}>
-                          <div style={{ fontSize: 10, fontWeight: 900, color: dark ? "#f8fafc" : "#0f172a" }}>
-                            {lang === "ar" ? "موضع إعلان التطبيق (AdMob)" : "App Ad Slot (AdMob)"}
-                          </div>
-                          <div style={{ fontSize: 9, marginTop: 4, color: dark ? "#94a3b8" : "#64748b" }}>
-                            {landingAdConfig.mobile.androidUnitId}
-                          </div>
-                        </div>
                       )
                     ) : (
                       <div style={{ fontFamily: "'Cairo',sans-serif", maxWidth: 320, width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
@@ -10192,7 +10232,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                         </a>
                       </div>
                     )}
-                    {!adRemote.enabled && (
+                    {!showMainBannerAd && (
                     <div
                       style={{
                         position: "absolute",
@@ -10952,162 +10992,362 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               <div>
                 <div style={styles.hero}>
                   <div style={{ ...styles.heroTag, background: `${t.gold}18`, border: `1px solid ${t.gold}40`, color: t.gold, display: "block", textAlign: "center" }}>
-                    {providerPortalMode === "office"
-                      ? (lang === "ar"
-                        ? `بوابة إضافة المكاتب - ${selectedCountry}`
-                        : `Office Submission Portal - ${countryNamesEn[selectedCountry] || selectedCountry}`)
-                      : (lang === "ar"
-                        ? `بوابة إضافة الخدمات - ${selectedCountry}`
-                        : `Service Submission Portal - ${countryNamesEn[selectedCountry] || selectedCountry}`)}
+                    {lang === "ar" ? `بوابة مزودي الخدمة - ${selectedCountry}` : `Service Provider Portal - ${countryNamesEn[selectedCountry] || selectedCountry}`}
                   </div>
                   <h1 style={{ ...styles.heroTitle, color: t.text, textAlign: "center", margin: "6px 0 10px" }}>
-                    {providerPortalMode === "office"
-                      ? (lang === "ar" ? "ضيف مكتبك" : "Add Your Office")
-                      : (lang === "ar" ? "ضيف خدمتك" : "Add Your Service")}
+                    {providerPortalScreen === "account" ? (lang === "ar" ? "حساب مزود الخدمة" : "Provider Account") : (lang === "ar" ? "ضيف خدمتك" : "Add Your Service")}
                   </h1>
-                  <p style={{ ...styles.heroSub, color: t.subText, textAlign: "center" }}>
-                    {providerPortalMode === "office"
-                      ? (lang === "ar"
-                        ? "قدّم بيانات مكتبك وسيتم مراجعة الطلب ثم اعتماد/رفض الحالة من الأدمن."
-                        : "Submit your office details, then admin will approve/reject your request status.")
-                      : (lang === "ar"
-                        ? "قدّم بيانات خدمتك وسيتم مراجعة الطلب ثم اعتماد/رفض الحالة من الأدمن."
-                        : "Submit your service details, then admin will approve/reject your request status.")}
-                  </p>
                 </div>
 
-                {providerPortalMode === "office" && selectedCountry === "مصر" ? (
-                  <div style={{ ...styles.sectionCard, background: t.cardBg, border: `1px solid ${t.border}`, color: t.text, textAlign: "center", fontSize: 12, fontWeight: 800, lineHeight: 1.8 }}>
-                    {lang === "ar"
-                      ? "خدمة إضافة مكتب متاحة لكل الدول ماعدا مصر."
-                      : "Add Office is available for all countries except Egypt."}
-                  </div>
-                ) : providerAllRequests.some((r) => String(r?.status || "").trim().toLowerCase() === "approved") && !providerPortalAddNew ? (
-                  (() => {
-                    const approvedReq = providerAllRequests.find((r) => String(r?.status || "").trim().toLowerCase() === "approved");
-                    const otherReqs = providerAllRequests.filter((r) => r.id !== approvedReq?.id);
-                    const statusLabel = (s) => {
-                      const st = String(s || "").trim().toLowerCase();
-                      if (st === "approved") return { label: lang === "ar" ? "✅ معتمد" : "✅ Approved", color: "#16a34a", bg: dark ? "rgba(22,163,74,0.18)" : "#dcfce7" };
-                      if (st === "rejected") return { label: lang === "ar" ? "❌ مرفوض" : "❌ Rejected", color: "#dc2626", bg: dark ? "rgba(220,38,38,0.18)" : "#fee2e2" };
-                      return { label: lang === "ar" ? "⏳ قيد المراجعة" : "⏳ Pending", color: t.gold, bg: dark ? `${t.gold}20` : "#fef9c3" };
-                    };
-                    return (
-                      <div style={{ padding: "0 0 16px", fontFamily: "'Cairo',sans-serif" }}>
+                {/* ── زر رجوع ── */}
+                {providerPortalScreen !== "menu" && (
+                  <button
+                    onClick={() => { setProviderPortalScreen("menu"); setProviderPortalAddNew(false); }}
+                    style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14, background: "none", border: "none", cursor: "pointer", color: t.subText, fontSize: 12, fontWeight: 700, fontFamily: "'Cairo',sans-serif", padding: 0 }}
+                  >
+                    <span style={{ fontSize: 16 }}>{lang === "ar" ? "›" : "‹"}</span>
+                    {lang === "ar" ? "رجوع" : "Back"}
+                  </button>
+                )}
 
-                        {/* ─ بطاقة الحساب المعتمد ─ */}
+                {/* ══ MENU ══ */}
+                {providerPortalScreen === "menu" && (
+                  <div style={{ display: "grid", gap: 12, fontFamily: "'Cairo',sans-serif" }}>
+
+                    {/* مربع ضيف خدمتك */}
+                    <button
+                      onClick={() => {
+                        setProviderPortalEditingRequestId("");
+                        setProviderPortalMode("service");
+                        setProviderPortalScreen("form");
+                      }}
+                      className="section-card"
+                      style={{
+                        width: "100%", maxWidth: "100%", boxSizing: "border-box",
+                        textAlign: lang === "ar" ? "right" : "left",
+                        background: dark ? "linear-gradient(135deg,rgba(202,138,4,0.22),rgba(245,158,11,0.10))" : "linear-gradient(135deg,#fffbeb,#fef3c7)",
+                        border: "1px solid rgba(202,138,4,0.32)", borderRadius: 22, padding: "14px 16px",
+                        cursor: "pointer", display: "flex", alignItems: "center", gap: 12, minHeight: 82, overflow: "hidden",
+                        boxShadow: dark ? "0 0 18px rgba(202,138,4,0.16)" : "0 8px 20px rgba(202,138,4,0.10)",
+                      }}
+                    >
+                      <div style={{ width: 44, height: 44, borderRadius: 14, background: dark ? "rgba(255,255,255,0.06)" : "#ffffff", border: "1px solid rgba(202,138,4,0.26)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>🧰</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#fde68a" : "#a16207", marginBottom: 3 }}>{lang === "ar" ? "ضيف خدمتك" : "Add Your Service"}</div>
+                        <div style={{ fontSize: 11, color: t.subText, lineHeight: 1.65 }}>{lang === "ar" ? "قدّم بيانات خدمتك لمراجعتها واعتمادها من الأدمن." : "Submit your service details for admin review and approval."}</div>
+                      </div>
+                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                    </button>
+
+                    {/* مربع حساب مزود الخدمة */}
+                    {(() => {
+                      const hasRequests = providerAllRequests.length > 0;
+                      const canOpenAccount = hasRequests || isAdminUser;
+                      const approvedReq = providerAllRequests.find((r) => String(r?.statusValue || r?.status || "").trim().toLowerCase() === "approved");
+                      const latestReq = providerAllRequests[0];
+                      const st = String(latestReq?.statusValue || latestReq?.status || "pending").trim().toLowerCase();
+                      const statusBadge = st === "approved"
+                        ? { label: lang === "ar" ? "✅ معتمد" : "✅ Approved", color: "#16a34a" }
+                        : st === "rejected"
+                          ? { label: lang === "ar" ? "❌ مرفوض" : "❌ Rejected", color: "#dc2626" }
+                          : { label: lang === "ar" ? "⏳ قيد المراجعة" : "⏳ Pending", color: t.gold };
+                      return (
+                        <button
+                          onClick={() => canOpenAccount && setProviderPortalScreen("account")}
+                          className="section-card"
+                          style={{
+                            width: "100%", maxWidth: "100%", boxSizing: "border-box",
+                            textAlign: lang === "ar" ? "right" : "left",
+                            background: approvedReq
+                              ? (dark ? "linear-gradient(135deg,rgba(22,163,74,0.22),rgba(34,197,94,0.10))" : "linear-gradient(135deg,#ecfdf5,#dcfce7)")
+                              : (dark ? "linear-gradient(135deg,rgba(30,64,175,0.18),rgba(59,130,246,0.08))" : "linear-gradient(135deg,#eff6ff,#dbeafe)"),
+                            border: approvedReq ? "1px solid rgba(34,197,94,0.35)" : `1px solid ${dark ? "rgba(99,179,237,0.2)" : "rgba(59,130,246,0.22)"}`,
+                            borderRadius: 22, padding: "14px 16px",
+                            cursor: canOpenAccount ? "pointer" : "default",
+                            display: "flex", alignItems: "center", gap: 12, minHeight: 82, overflow: "hidden",
+                            boxShadow: approvedReq ? (dark ? "0 0 18px rgba(34,197,94,0.14)" : "0 8px 20px rgba(34,197,94,0.10)") : (dark ? "0 0 18px rgba(59,130,246,0.10)" : "0 8px 20px rgba(59,130,246,0.08)"),
+                            opacity: canOpenAccount ? 1 : 0.6,
+                          }}
+                        >
+                          <div style={{ width: 44, height: 44, borderRadius: 14, background: dark ? "rgba(255,255,255,0.06)" : "#ffffff", border: approvedReq ? "1px solid rgba(34,197,94,0.28)" : `1px solid ${dark ? "rgba(99,179,237,0.22)" : "rgba(59,130,246,0.2)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>👤</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3, flexWrap: "wrap" }}>
+                              <div style={{ fontSize: 14, fontWeight: 900, color: approvedReq ? "#16a34a" : (dark ? "#93c5fd" : "#1d4ed8") }}>{lang === "ar" ? "حساب مزود الخدمة" : "Provider Account"}</div>
+                              {(hasRequests || isAdminUser) && <span style={{ fontSize: 9, fontWeight: 800, color: isAdminUser && !hasRequests ? "#22c55e" : statusBadge.color, background: `${isAdminUser && !hasRequests ? "#22c55e" : statusBadge.color}18`, border: `1px solid ${isAdminUser && !hasRequests ? "#22c55e" : statusBadge.color}30`, borderRadius: 999, padding: "2px 7px" }}>{isAdminUser && !hasRequests ? (lang === "ar" ? "🛠️ وضع إدارة" : "🛠️ Admin Mode") : statusBadge.label}</span>}
+                            </div>
+                            <div style={{ fontSize: 11, color: t.subText, lineHeight: 1.65 }}>
+                              {isAdminUser
+                                ? (lang === "ar" ? `إدارة مباشرة ومتزامنة لـ ${providerRequestsVisible.length} طلب من Firebase.` : `Manage ${providerRequestsVisible.length} live Firebase requests directly.`)
+                                : hasRequests
+                                ? (latestReq?.officeName || latestReq?.providerName || (lang === "ar" ? "عرض تفاصيل حسابك وطلباتك" : "View your account and request details"))
+                                : (lang === "ar" ? "لا يوجد طلبات بعد. قدّم خدمتك أولاً." : "No requests yet. Submit your service first.")}
+                            </div>
+                          </div>
+                          {canOpenAccount && <div style={{ width: 24, height: 24, borderRadius: "50%", background: approvedReq ? "rgba(34,197,94,0.16)" : `${dark ? "rgba(99,179,237,0.18)" : "rgba(59,130,246,0.12)"}`, color: approvedReq ? "#16a34a" : (dark ? "#93c5fd" : "#1d4ed8"), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>}
+                        </button>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* ══ FORM ══ */}
+                {providerPortalScreen === "form" && (
+                  <ServiceProviderPortalFlow
+                    lang={lang} dark={dark}
+                    selectedCountry={selectedCountry}
+                    selectedNationality={selectedNationality}
+                    countryCities={country?.cities || []}
+                    serviceOptions={providerServiceOptions}
+                    currentUser={authPreviewUser}
+                    approvalSnapshot={null}
+                    portalMode={providerPortalMode}
+                    initialRequest={providerPortalEditingRequest}
+                    submitMode={providerPortalEditingRequest ? "edit" : "create"}
+                    onSubmitted={(savedRequest) => {
+                      const nextRequestId = String(savedRequest?.id || providerPortalEditingRequestId || "").trim();
+                      if (nextRequestId) {
+                        setAdminSelectedProviderRequestId(nextRequestId);
+                      }
+                      setProviderPortalEditingRequestId("");
+                      setProviderPortalScreen("account");
+                    }}
+                  />
+                )}
+
+                {/* ══ ACCOUNT ══ */}
+                {providerPortalScreen === "account" && (() => {
+                  const approvedReq = providerAllRequests.find((r) => String(r?.statusValue || r?.status || "").trim().toLowerCase() === "approved");
+                  const allReqs = providerAllRequests;
+                  const adminReqs = providerRequestsVisible;
+                  const detailReq = selectedAdminProviderRequest || adminReqs[0] || null;
+                  const statusLabel = (s) => {
+                    const st = String(s || "").trim().toLowerCase();
+                    if (st === "approved") return { label: lang === "ar" ? "✅ معتمد" : "✅ Approved", color: "#16a34a", bg: dark ? "rgba(22,163,74,0.16)" : "#dcfce7" };
+                    if (st === "rejected") return { label: lang === "ar" ? "❌ مرفوض" : "❌ Rejected", color: "#dc2626", bg: dark ? "rgba(220,38,38,0.16)" : "#fee2e2" };
+                    if (st === "blocked") return { label: lang === "ar" ? "🚫 محظور" : "🚫 Blocked", color: "#f97316", bg: dark ? "rgba(249,115,22,0.18)" : "#ffedd5" };
+                    return { label: lang === "ar" ? "⏳ قيد المراجعة" : "⏳ Pending", color: t.gold, bg: dark ? `${t.gold}18` : "#fef9c3" };
+                  };
+                  return (
+                    <div style={{ fontFamily: "'Cairo',sans-serif" }}>
+                      {isAdminUser && (
+                        <div style={{ borderRadius: 20, border: "1px solid rgba(34,197,94,0.34)", background: dark ? "linear-gradient(135deg,rgba(21,128,61,0.18),rgba(15,23,42,0.12))" : "linear-gradient(135deg,#f0fdf4,#ecfeff)", padding: "14px 16px", marginBottom: 12 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 900, color: "#16a34a" }}>
+                                {lang === "ar" ? "إدارة مباشرة لطلبات مزودي الخدمة" : "Direct Service Provider Management"}
+                              </div>
+                              <div style={{ fontSize: 11, color: t.subText, lineHeight: 1.7, marginTop: 3 }}>
+                                {lang === "ar"
+                                  ? `مزامنة لحظية من Firebase: ${adminReqs.length} طلب ظاهر هنا هو نفسه الموجود داخل لوحة الأدمن.`
+                                  : `${adminReqs.length} live Firebase requests shown here match the Admin Panel exactly.`}
+                              </div>
+                            </div>
+                            <div style={{ fontSize: 10, fontWeight: 900, color: "#16a34a", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.24)", borderRadius: 999, padding: "4px 10px" }}>
+                              {lang === "ar" ? "مزامنة مباشرة" : "Live Sync"}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {isAdminUser && (
+                        <div style={{ borderRadius: 18, border: `1px solid ${t.border}`, background: t.cardBg, padding: "12px 14px", marginBottom: 12 }}>
+                          <div style={{ fontSize: 12, fontWeight: 900, color: t.text, marginBottom: 10 }}>
+                            {lang === "ar" ? "كل طلبات مزودي الخدمة" : "All Service Provider Requests"}
+                          </div>
+                          <div style={{ display: "grid", gap: 8 }}>
+                            {adminReqs.map((req, index) => {
+                              const st = statusLabel(req.statusValue || req.status);
+                              const isSelected = String(detailReq?.id || "") === String(req?.id || "");
+                              return (
+                                <button
+                                  key={req.id || `provider-live-${index + 1}`}
+                                  onClick={() => setAdminSelectedProviderRequestId(String(req?.id || ""))}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 10,
+                                    padding: "10px 12px",
+                                    borderRadius: 12,
+                                    background: st.bg,
+                                    border: isSelected ? `2px solid ${st.color}` : `1px solid ${st.color}28`,
+                                    cursor: "pointer",
+                                    textAlign: lang === "ar" ? "right" : "left",
+                                  }}
+                                >
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 12, fontWeight: 800, color: t.text, marginBottom: 2 }}>
+                                      {req.providerNameValue || req.officeName || (lang === "ar" ? `طلب ${index + 1}` : `Request ${index + 1}`)}
+                                    </div>
+                                    <div style={{ fontSize: 10, color: t.subText, lineHeight: 1.6 }}>
+                                      {(req.servicesValue || []).slice(0, 3).join(" · ") || (lang === "ar" ? "بدون خدمات محددة" : "No services")}
+                                    </div>
+                                    <div style={{ fontSize: 9, color: t.subText, marginTop: 2 }}>
+                                      {req.serialLabel || req.id} • {req.createdAtLabel || "—"}
+                                    </div>
+                                  </div>
+                                  <span style={{ fontSize: 10, fontWeight: 800, color: st.color, whiteSpace: "nowrap", flexShrink: 0 }}>{st.label}</span>
+                                </button>
+                              );
+                            })}
+                            {!adminReqs.length && (
+                              <div style={{ fontSize: 11, color: t.subText, textAlign: "center", padding: "8px 0" }}>
+                                {lang === "ar" ? "لا توجد طلبات مزودي خدمة حتى الآن." : "No service provider requests yet."}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {isAdminUser && detailReq && (
+                        <div style={{ borderRadius: 18, border: `1px solid ${t.border}`, background: t.cardBg, padding: "12px 14px", marginBottom: 12 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                            <div style={{ fontSize: 12, fontWeight: 900, color: t.text }}>
+                              {lang === "ar" ? "تفاصيل الطلب وإدارته" : "Request Details & Controls"}
+                            </div>
+                            <div style={{ fontSize: 10, fontWeight: 800, color: t.subText }}>
+                              {detailReq.serialLabel || detailReq.id}
+                            </div>
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
+                            {[
+                              [lang === "ar" ? "الاسم" : "Name", detailReq.providerNameValue || detailReq.providerName || "—"],
+                              [lang === "ar" ? "الخدمة" : "Service", detailReq.officeName || "—"],
+                              [lang === "ar" ? "الإيميل" : "Email", detailReq.emailValue || "—"],
+                              [lang === "ar" ? "الهاتف" : "Phone", detailReq.phone || "—"],
+                              [lang === "ar" ? "واتساب" : "WhatsApp", detailReq.whatsapp || "—"],
+                              [lang === "ar" ? "الدولة" : "Country", detailReq.countryValue || "—"],
+                              [lang === "ar" ? "المدينة" : "City", detailReq.city || "—"],
+                              [lang === "ar" ? "الجنسية" : "Nationality", detailReq.nationalityValue || "—"],
+                              [lang === "ar" ? "السجل التجاري" : "Commercial Register", detailReq.commercialRegister || "—"],
+                              [lang === "ar" ? "البطاقة الضريبية" : "Tax Card", detailReq.taxCard || "—"],
+                              [lang === "ar" ? "البورتفوليو" : "Portfolio", detailReq.portfolioLink || "—"],
+                              [lang === "ar" ? "التاريخ" : "Created At", detailReq.createdAtLabel || "—"],
+                            ].map(([label, value]) => (
+                              <div key={`${label}-${value}`} style={{ borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "6px 7px" }}>
+                                <div style={{ color: "rgba(255,255,255,0.58)", fontSize: 9, fontWeight: 700, marginBottom: 2 }}>{label}</div>
+                                <div style={{ color: "#f8fafc", fontSize: 10, fontWeight: 800, wordBreak: "break-word", lineHeight: 1.35 }}>{value}</div>
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{ marginBottom: 10, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "7px" }}>
+                            <div style={{ color: "rgba(255,255,255,0.58)", fontSize: 9, fontWeight: 700, marginBottom: 2 }}>{lang === "ar" ? "الخدمات" : "Services"}</div>
+                            <div style={{ color: "#f8fafc", fontSize: 10, fontWeight: 800, lineHeight: 1.45 }}>
+                              {(detailReq.servicesValue || []).join(" • ") || "—"}
+                            </div>
+                          </div>
+                          <div style={{ marginBottom: 10, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "7px" }}>
+                            <div style={{ color: "rgba(255,255,255,0.58)", fontSize: 9, fontWeight: 700, marginBottom: 2 }}>{lang === "ar" ? "الوصف" : "Description"}</div>
+                            <div style={{ color: "#f8fafc", fontSize: 10, fontWeight: 800, lineHeight: 1.45, wordBreak: "break-word" }}>
+                              {detailReq.notes || "—"}
+                            </div>
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                            <button onClick={() => openAdminProviderEdit(detailReq)} disabled={adminProviderActionBusyId === String(detailReq?.id || "")} style={{ padding: "8px 9px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#0ea5e9,#0369a1)", color: "#fff", fontSize: 10, fontWeight: 900, cursor: "pointer" }}>
+                              {lang === "ar" ? "✏️ تعديل الطلب" : "✏️ Edit Request"}
+                            </button>
+                            {String(detailReq?.statusValue || detailReq?.status || "pending").trim().toLowerCase() === "pending" ? (
+                              <>
+                                <button onClick={() => handleAdminProviderDecision(detailReq, "approved")} disabled={adminProviderActionBusyId === String(detailReq?.id || "")} style={{ padding: "8px 9px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#22c55e,#166534)", color: "#fff", fontSize: 10, fontWeight: 900, cursor: "pointer" }}>
+                                  {lang === "ar" ? "✅ اعتماد" : "✅ Approve"}
+                                </button>
+                                <button onClick={() => handleAdminProviderDecision(detailReq, "rejected")} disabled={adminProviderActionBusyId === String(detailReq?.id || "")} style={{ padding: "8px 9px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#ef4444,#7f1d1d)", color: "#fff", fontSize: 10, fontWeight: 900, cursor: "pointer" }}>
+                                  {lang === "ar" ? "❌ رفض" : "❌ Reject"}
+                                </button>
+                              </>
+                            ) : (
+                              <button onClick={() => handleAdminProviderBlock(detailReq)} disabled={adminProviderActionBusyId === String(detailReq?.id || "") || String(detailReq?.statusValue || detailReq?.status || "").trim().toLowerCase() !== "approved"} style={{ padding: "8px 9px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#f97316,#b45309)", color: "#fff", fontSize: 10, fontWeight: 900, cursor: "pointer", opacity: String(detailReq?.statusValue || detailReq?.status || "").trim().toLowerCase() === "approved" ? 1 : 0.55 }}>
+                                {lang === "ar" ? "🚫 حظر" : "🚫 Block"}
+                              </button>
+                            )}
+                            <button onClick={() => handleAdminProviderDelete(detailReq)} disabled={adminProviderActionBusyId === String(detailReq?.id || "")} style={{ padding: "8px 9px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#ef4444,#7f1d1d)", color: "#fff", fontSize: 10, fontWeight: 900, cursor: "pointer" }}>
+                              {lang === "ar" ? "🗑️ حذف نهائي" : "🗑️ Delete Permanently"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* بطاقة الحساب */}
+                      {!isAdminUser && approvedReq ? (
                         <div style={{ borderRadius: 20, border: "1px solid rgba(34,197,94,0.38)", background: dark ? "linear-gradient(135deg,rgba(22,163,74,0.22),rgba(34,197,94,0.10))" : "linear-gradient(135deg,#ecfdf5,#dcfce7)", padding: "16px", marginBottom: 12 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                             <div style={{ width: 46, height: 46, borderRadius: 16, background: dark ? "rgba(255,255,255,0.07)" : "#ffffff", border: "1px solid rgba(34,197,94,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>🧰</div>
                             <div style={{ flex: 1 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-                                <div style={{ fontSize: 14, fontWeight: 900, color: "#16a34a" }}>{lang === "ar" ? "بورتال مزود الخدمة" : "Service Provider Portal"}</div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                                <div style={{ fontSize: 14, fontWeight: 900, color: "#16a34a" }}>{lang === "ar" ? "حسابك المعتمد" : "Approved Account"}</div>
                                 <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 8px #22c55e88", flexShrink: 0 }} />
                               </div>
-                              <div style={{ fontSize: 11, color: "#16a34a", fontWeight: 700, marginTop: 2 }}>✅ {lang === "ar" ? "حسابك نشط ومعتمد" : "Your account is active & approved"}</div>
+                              <div style={{ fontSize: 11, color: "#16a34a", fontWeight: 700, marginTop: 2 }}>✅ {lang === "ar" ? "حسابك نشط ومعتمد" : "Active & approved"}</div>
                             </div>
                           </div>
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 16px", fontSize: 11.5, lineHeight: 1.85 }}>
-                            {approvedReq?.providerName && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "الاسم: " : "Name: "}</span><span style={{ color: t.subText }}>{approvedReq.providerName}</span></div>}
-                            {approvedReq?.officeName && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "الخدمة: " : "Service: "}</span><span style={{ color: t.subText }}>{approvedReq.officeName}</span></div>}
-                            {approvedReq?.email && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "الإيميل: " : "Email: "}</span><span style={{ color: t.subText }}>{approvedReq.email}</span></div>}
-                            {approvedReq?.phone && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "الهاتف: " : "Phone: "}</span><span style={{ color: t.subText }}>{approvedReq.phone}</span></div>}
-                            {approvedReq?.country && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "الدولة: " : "Country: "}</span><span style={{ color: t.subText }}>{approvedReq.country}</span></div>}
-                            {approvedReq?.city && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "المدينة: " : "City: "}</span><span style={{ color: t.subText }}>{approvedReq.city}</span></div>}
+                            {approvedReq.providerName && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "الاسم: " : "Name: "}</span><span style={{ color: t.subText }}>{approvedReq.providerName}</span></div>}
+                            {approvedReq.officeName && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "الخدمة: " : "Service: "}</span><span style={{ color: t.subText }}>{approvedReq.officeName}</span></div>}
+                            {approvedReq.email && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "الإيميل: " : "Email: "}</span><span style={{ color: t.subText }}>{approvedReq.email}</span></div>}
+                            {approvedReq.phone && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "الهاتف: " : "Phone: "}</span><span style={{ color: t.subText }}>{approvedReq.phone}</span></div>}
+                            {approvedReq.country && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "الدولة: " : "Country: "}</span><span style={{ color: t.subText }}>{approvedReq.country}</span></div>}
+                            {approvedReq.city && <div><span style={{ fontWeight: 800, color: t.text }}>{lang === "ar" ? "المدينة: " : "City: "}</span><span style={{ color: t.subText }}>{approvedReq.city}</span></div>}
                           </div>
-                          {approvedReq?.services?.length > 0 && (
+                          {approvedReq.services?.length > 0 && (
                             <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(34,197,94,0.2)" }}>
                               <div style={{ fontSize: 11, fontWeight: 800, color: t.text, marginBottom: 6 }}>{lang === "ar" ? "الخدمات المعتمدة:" : "Approved Services:"}</div>
                               <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                                {approvedReq.services.map((s, i) => (
-                                  <span key={i} style={{ fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: dark ? "rgba(34,197,94,0.18)" : "#bbf7d0", color: "#16a34a", border: "1px solid rgba(34,197,94,0.3)" }}>{s}</span>
-                                ))}
+                                {approvedReq.services.map((s, i) => <span key={i} style={{ fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: dark ? "rgba(34,197,94,0.18)" : "#bbf7d0", color: "#16a34a", border: "1px solid rgba(34,197,94,0.3)" }}>{s}</span>)}
                               </div>
                             </div>
                           )}
-                          {approvedReq?.portfolioLink && (
-                            <a href={approvedReq.portfolioLink} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, fontSize: 11, fontWeight: 800, color: "#16a34a", textDecoration: "none" }}>
-                              🔗 {lang === "ar" ? "عرض البورتفوليو" : "View Portfolio"}
-                            </a>
-                          )}
-                          {(approvedReq?.adminDecisionNote || approvedReq?.decisionNote) && (
-                            <div style={{ marginTop: 10, fontSize: 11, color: t.subText, lineHeight: 1.75, borderTop: "1px solid rgba(34,197,94,0.2)", paddingTop: 8 }}>
-                              💬 {String(approvedReq.adminDecisionNote || approvedReq.decisionNote)}
-                            </div>
-                          )}
+                          {approvedReq.portfolioLink && <a href={approvedReq.portfolioLink} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, fontSize: 11, fontWeight: 800, color: "#16a34a", textDecoration: "none" }}>🔗 {lang === "ar" ? "عرض البورتفوليو" : "View Portfolio"}</a>}
+                          {(approvedReq.adminDecisionNote || approvedReq.decisionNote) && <div style={{ marginTop: 10, fontSize: 11, color: t.subText, lineHeight: 1.75, borderTop: "1px solid rgba(34,197,94,0.2)", paddingTop: 8 }}>💬 {String(approvedReq.adminDecisionNote || approvedReq.decisionNote)}</div>}
                         </div>
+                      ) : null}
 
-                        {/* ─ طلباتي الأخرى ─ */}
-                        {otherReqs.length > 0 && (
-                          <div style={{ borderRadius: 18, border: `1px solid ${t.border}`, background: t.cardBg, padding: "12px 14px", marginBottom: 12 }}>
-                            <div style={{ fontSize: 12, fontWeight: 900, color: t.text, marginBottom: 10 }}>📋 {lang === "ar" ? "طلباتي الأخرى" : "My Other Requests"}</div>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                              {otherReqs.map((req) => {
-                                const st = statusLabel(req.status);
-                                return (
-                                  <div key={req.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 12, background: st.bg, border: `1px solid ${st.color}30` }}>
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                      <div style={{ fontSize: 12, fontWeight: 800, color: t.text, marginBottom: 2 }}>{req.officeName || req.providerName}</div>
-                                      {req.services?.length > 0 && <div style={{ fontSize: 10, color: t.subText }}>{req.services.slice(0, 3).join(" · ")}{req.services.length > 3 ? "..." : ""}</div>}
-                                    </div>
-                                    <span style={{ fontSize: 10, fontWeight: 800, color: st.color, whiteSpace: "nowrap", flexShrink: 0 }}>{st.label}</span>
+                      {/* كل الطلبات */}
+                      {!isAdminUser && allReqs.length > 0 && (
+                        <div style={{ borderRadius: 18, border: `1px solid ${t.border}`, background: t.cardBg, padding: "12px 14px", marginBottom: 12 }}>
+                          <div style={{ fontSize: 12, fontWeight: 900, color: t.text, marginBottom: 10 }}>📋 {lang === "ar" ? "جميع طلباتي" : "All My Requests"}</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {allReqs.map((req) => {
+                              const st = statusLabel(req.statusValue || req.status);
+                              return (
+                                <div key={req.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, background: st.bg, border: `1px solid ${st.color}28` }}>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 12, fontWeight: 800, color: t.text, marginBottom: 2 }}>{req.officeName || req.providerName}</div>
+                                    {req.services?.length > 0 && <div style={{ fontSize: 10, color: t.subText }}>{req.services.slice(0, 3).join(" · ")}{req.services.length > 3 ? "..." : ""}</div>}
+                                    {req.serial && <div style={{ fontSize: 9, color: t.subText, marginTop: 1 }}>{req.serial}</div>}
                                   </div>
-                                );
-                              })}
-                            </div>
+                                  <span style={{ fontSize: 10, fontWeight: 800, color: st.color, whiteSpace: "nowrap", flexShrink: 0 }}>{st.label}</span>
+                                </div>
+                              );
+                            })}
                           </div>
-                        )}
+                        </div>
+                      )}
 
-                        {/* ─ زر خدمة جديدة ─ */}
-                        <button
-                          type="button"
-                          onClick={() => setProviderPortalAddNew(true)}
-                          style={{
-                            width: "100%", textAlign: lang === "ar" ? "right" : "left",
-                            background: dark ? "linear-gradient(135deg,rgba(202,138,4,0.22),rgba(245,158,11,0.10))" : "linear-gradient(135deg,#fffbeb,#fef3c7)",
-                            border: "1px solid rgba(202,138,4,0.32)", borderRadius: 20, padding: "14px 16px",
-                            cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
-                            fontFamily: "'Cairo',sans-serif", boxShadow: dark ? "0 0 18px rgba(202,138,4,0.16)" : "0 8px 20px rgba(202,138,4,0.12)",
-                            maxWidth: "100%", boxSizing: "border-box",
-                          }}
-                        >
-                          <div style={{ width: 42, height: 42, borderRadius: 14, background: dark ? "rgba(255,255,255,0.06)" : "#ffffff", border: "1px solid rgba(202,138,4,0.26)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>➕</div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fde68a" : "#a16207", marginBottom: 2 }}>{lang === "ar" ? "قدّم خدمة جديدة" : "Submit a New Service"}</div>
-                            <div style={{ fontSize: 11, color: t.subText, lineHeight: 1.6 }}>{lang === "ar" ? "أضف خدمة جديدة لمراجعتها واعتمادها من الأدمن." : "Submit a new service for admin review and approval."}</div>
-                          </div>
-                          <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
-                        </button>
-                      </div>
-                    );
-                  })()
-                ) : (
-                  <div>
-                    {providerPortalAddNew && (
+                      {/* زر خدمة جديدة */}
                       <button
-                        onClick={() => setProviderPortalAddNew(false)}
-                        style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, background: "none", border: "none", cursor: "pointer", color: t.subText, fontSize: 12, fontWeight: 700, fontFamily: "'Cairo',sans-serif", padding: 0 }}
+                        onClick={() => {
+                          setProviderPortalEditingRequestId("");
+                          setProviderPortalMode("service");
+                          setProviderPortalScreen("form");
+                        }}
+                        style={{
+                          width: "100%", textAlign: lang === "ar" ? "right" : "left",
+                          background: dark ? "linear-gradient(135deg,rgba(202,138,4,0.22),rgba(245,158,11,0.10))" : "linear-gradient(135deg,#fffbeb,#fef3c7)",
+                          border: "1px solid rgba(202,138,4,0.32)", borderRadius: 20, padding: "13px 16px",
+                          cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
+                          fontFamily: "'Cairo',sans-serif", boxShadow: dark ? "0 0 16px rgba(202,138,4,0.14)" : "0 6px 16px rgba(202,138,4,0.10)",
+                          maxWidth: "100%", boxSizing: "border-box",
+                        }}
                       >
-                        <span style={{ fontSize: 16 }}>{lang === "ar" ? "›" : "‹"}</span>
-                        {lang === "ar" ? "رجوع للبورتال" : "Back to Portal"}
+                        <div style={{ width: 40, height: 40, borderRadius: 13, background: dark ? "rgba(255,255,255,0.06)" : "#ffffff", border: "1px solid rgba(202,138,4,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>➕</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fde68a" : "#a16207", marginBottom: 2 }}>{lang === "ar" ? "قدّم خدمة جديدة" : "Submit a New Service"}</div>
+                          <div style={{ fontSize: 11, color: t.subText, lineHeight: 1.6 }}>{lang === "ar" ? "أضف خدمة جديدة لمراجعتها من الأدمن." : "Submit a new service for admin review."}</div>
+                        </div>
+                        <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>{lang === "ar" ? "‹" : "›"}</div>
                       </button>
-                    )}
-                    <ServiceProviderPortalFlow
-                      lang={lang}
-                      dark={dark}
-                      selectedCountry={selectedCountry}
-                      selectedNationality={selectedNationality}
-                      countryCities={country?.cities || []}
-                      serviceOptions={providerServiceOptions}
-                      currentUser={authPreviewUser}
-                      approvalSnapshot={providerPortalAddNew ? null : providerApprovalSnapshot}
-                      portalMode={providerPortalMode}
-                      onSubmitted={() => {
-                        setProviderPortalAddNew(false);
-                      }}
-                    />
-                  </div>
-                )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -11786,6 +12026,75 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               )}
             </div>
           );
+          const cvJobSitesAdCard = (
+            <div style={{ ...cardStyle, padding:showJobsBannerAd ? "0" : "12px", border:`1px solid ${t.border}`, background:showJobsBannerAd ? "transparent" : (dark ? "rgba(255,255,255,0.03)" : "#fbfcff"), overflow:"hidden" }}>
+              {showJobsBannerAd ? (
+                jobsBannerAd.linkUrl ? (
+                  <a
+                    href={jobsBannerAd.linkUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    aria-label={jobsBannerAd.title || "job section advertisement"}
+                    title={jobsBannerAd.title || ""}
+                    style={{ display:"block", width:"100%", lineHeight:0 }}
+                  >
+                    <img
+                      src={jobsBannerAd.imageUrl}
+                      alt={jobsBannerAd.title || "ad"}
+                      style={{ width:"100%", height:"auto", display:"block" }}
+                    />
+                  </a>
+                ) : (
+                  <img
+                    src={jobsBannerAd.imageUrl}
+                    alt={jobsBannerAd.title || "ad"}
+                    title={jobsBannerAd.title || ""}
+                    style={{ width:"100%", height:"auto", display:"block" }}
+                  />
+                )
+              ) : (
+                <div style={{ display:"grid", gap:8, textAlign:"center", fontFamily:"'Cairo',sans-serif" }}>
+                  <div style={{ fontSize:11, fontWeight:800, color:t.gold }}>
+                    {lang==="ar" ? "مساحة إعلانية داخل قسم التوظيف" : "Ad Space Inside Job Section"}
+                  </div>
+                  <div style={{ fontSize:11, fontWeight:900, color:t.text }}>
+                    {lang==="ar" ? "هل تريد الإعلان في هذا القسم؟" : "Want to advertise in this section?"}
+                  </div>
+                  <a
+                    href={`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
+                      lang === "ar"
+                        ? "مرحبًا، أرغب في حجز إعلان داخل قسم التوظيف في التطبيق."
+                        : "Hello, I want to book an ad inside the job section in the app."
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="ads-contact-link"
+                    style={{
+                      display:"inline-flex",
+                      alignItems:"center",
+                      justifyContent:"center",
+                      gap:8,
+                      minHeight:38,
+                      padding:"8px 14px",
+                      borderRadius:12,
+                      textDecoration:"none",
+                      fontSize:11,
+                      fontWeight:900,
+                      color:"#0f172a",
+                      background:"transparent",
+                      margin:"0 auto",
+                    }}
+                  >
+                    <span style={{ fontSize:16, lineHeight:1 }}>📱</span>
+                    <span>{lang==="ar" ? "تواصل للإعلان عبر واتساب" : "Contact via WhatsApp for Ads"}</span>
+                  </a>
+                  <div style={{ fontSize:9, color:t.subText, lineHeight:1.6 }}>
+                    {lang==="ar" ? "مقاس مقترح: 1280×330 بكسل ليظهر بشكل متناسق." : "Suggested size: 1280x330 px for a balanced fit."}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
           const cvBuilderFormInProgress = cvMode === "builder" && cvBuilderScreen === "form";
           const cvServicesFormInProgress =
             cvMode === "services" && !["list", "previousOrders"].includes(String(cvPaidScreen || ""));
@@ -11949,7 +12258,10 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               )}
 
               {!cvMode ? (
-                <div style={{ marginTop: -11 }}>{cvJobSitesCard}</div>
+                <div style={{ display:"grid", gap:10, marginTop: -11 }}>
+                  {cvJobSitesCard}
+                  {cvJobSitesAdCard}
+                </div>
               ) : cvMode === "builder" ? (
                 cvBuilderScreen === "menu" ? (
                   <div style={{ display:"grid", gap:14, marginTop:16 }}>

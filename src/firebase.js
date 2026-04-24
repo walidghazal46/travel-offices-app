@@ -79,6 +79,54 @@ export async function fetchAdConfig() {
     return { enabled: false, imageUrl: "", linkUrl: "" };
   }
 }
+
+function emptyBannerAd() {
+  return {
+    active: false,
+    imageUrl: "",
+    linkUrl: "",
+    title: "",
+    startDate: "",
+    endDate: "",
+  };
+}
+
+function normalizeBannerAd(documentSnapshot) {
+  if (!documentSnapshot?.exists()) return emptyBannerAd();
+
+  const payload = documentSnapshot.data() || {};
+  return {
+    active: payload.active === true,
+    imageUrl: String(payload.image_url || "").trim(),
+    linkUrl: String(payload.link || "").trim(),
+    title: String(payload.title || "").trim(),
+    startDate: String(payload.start_date || "").trim(),
+    endDate: String(payload.end_date || "").trim(),
+  };
+}
+
+export function subscribeMainBannerAdFromFirebase(callback) {
+  return onSnapshot(
+    doc(firestoreDb, "Ads", "main_banner"),
+    (snapshot) => callback(normalizeBannerAd(snapshot)),
+    (error) => {
+      console.warn("Main banner ad subscription failed", error);
+      callback(emptyBannerAd());
+    }
+  );
+}
+
+export function subscribeJobsBannerAdFromFirebase(callback) {
+  return onSnapshot(
+    doc(firestoreDb, "Ads", "second banner"),
+    (snapshot) => callback(normalizeBannerAd(snapshot)),
+    (error) => {
+      console.warn("Jobs banner ad subscription failed", error);
+      callback(emptyBannerAd());
+    }
+  );
+}
+
 export const CREATE_ORDER_FUNCTION_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/createOrder";
 export const UPLOAD_ORDER_RECEIPT_FUNCTION_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/uploadOrderReceipt";
 export const EXCHANGE_CUSTOM_TOKEN_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/exchangeIdTokenForCustomToken";
@@ -615,6 +663,17 @@ export async function updateServiceProviderRequestInFirebase(requestId, updates 
 
   await withRetry(async () =>
     updateDoc(doc(firestoreDb, "service_providers", cleanRequestId), payload)
+  );
+}
+
+export async function deleteServiceProviderRequestInFirebase(requestId) {
+  const cleanRequestId = String(requestId || "").trim();
+  if (!cleanRequestId) {
+    throw new Error("service-provider-request-id-required");
+  }
+
+  await withRetry(async () =>
+    deleteDoc(doc(firestoreDb, "service_providers", cleanRequestId))
   );
 }
 

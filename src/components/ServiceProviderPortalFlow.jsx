@@ -19,20 +19,31 @@ export default function ServiceProviderPortalFlow({
   approvalSnapshot = null,
   onSubmitted = null,
   portalMode = "office",
+  initialRequest = null,
+  submitMode = "create",
 }) {
   const isAr = lang === "ar";
   const dir = isAr ? "rtl" : "ltr";
+  const isEditMode = submitMode === "edit" && !!initialRequest;
   const isOfficePortal = portalMode === "office";
   const portalTitle = isOfficePortal
-    ? (isAr ? "ضيف مكتبك" : "Add Your Office")
-    : (isAr ? "ضيف خدمتك" : "Add Your Service");
+    ? (isEditMode ? (isAr ? "تعديل بيانات المكتب" : "Edit Office Details") : (isAr ? "ضيف مكتبك" : "Add Your Office"))
+    : (isEditMode ? (isAr ? "تعديل بيانات الخدمة" : "Edit Service Details") : (isAr ? "ضيف خدمتك" : "Add Your Service"));
   const portalDescription = isOfficePortal
-    ? (isAr
+    ? (isEditMode
+      ? (isAr
+        ? "عدّل بيانات الطلب مباشرة، وسيتم حفظ التغييرات على نفس السجل في Firebase."
+        : "Edit the existing request directly and save changes to the same Firebase record.")
+      : (isAr
       ? "قدّم بيانات مكتبك كاملة وسيتم مراجعة الطلب واعتماده أو رفضه من الأدمن."
-      : "Submit full office details. Your request will be reviewed and approved/rejected by admin.")
-    : (isAr
+      : "Submit full office details. Your request will be reviewed and approved/rejected by admin."))
+    : (isEditMode
+      ? (isAr
+        ? "عدّل بيانات الطلب مباشرة، وسيتم حفظ التغييرات على نفس السجل في Firebase."
+        : "Edit the existing request directly and save changes to the same Firebase record.")
+      : (isAr
       ? "قدّم بيانات خدمتك كاملة وسيتم مراجعة الطلب واعتماده أو رفضه من الأدمن."
-      : "Submit full service details. Your request will be reviewed and approved/rejected by admin.");
+      : "Submit full service details. Your request will be reviewed and approved/rejected by admin."));
   const t = dark
     ? { bg:"#0a1628", cardBg:"rgba(255,255,255,0.04)", inputBg:"rgba(255,255,255,0.07)", border:"rgba(255,255,255,0.1)", text:"#ffffff", subText:"rgba(255,255,255,0.55)", gold:"#d4af37", goldBg:"rgba(212,175,55,0.12)" }
     : { bg:"#f0f4ff", cardBg:"#ffffff", inputBg:"#f5f7ff", border:"rgba(0,0,0,0.09)", text:"#1a2340", subText:"#556080", gold:"#c8960c", goldBg:"rgba(212,175,55,0.1)" };
@@ -42,19 +53,19 @@ export default function ServiceProviderPortalFlow({
   const labelStyle = { fontSize:11, fontWeight:700, color:t.subText, fontFamily:"'Cairo',sans-serif", marginBottom:4, display:"block" };
 
   const [form, setForm] = useState({
-    providerName: "",
-    officeName: "",
-    email: String(currentUser?.email || "").trim(),
-    phone: String(currentUser?.phoneNumber || "").trim(),
-    whatsapp: String(currentUser?.phoneNumber || "").trim(),
-    country: selectedCountry || "",
-    nationality: selectedNationality || "",
-    city: "",
-    services: [],
-    commercialRegister: "",
-    taxCard: "",
-    portfolioLink: "",
-    notes: "",
+    providerName: String(initialRequest?.providerName || "").trim(),
+    officeName: String(initialRequest?.officeName || "").trim(),
+    email: String(initialRequest?.email || currentUser?.email || "").trim(),
+    phone: String(initialRequest?.phone || currentUser?.phoneNumber || "").trim(),
+    whatsapp: String(initialRequest?.whatsapp || currentUser?.phoneNumber || "").trim(),
+    country: String(initialRequest?.country || selectedCountry || "").trim(),
+    nationality: String(initialRequest?.nationality || selectedNationality || "").trim(),
+    city: String(initialRequest?.city || "").trim(),
+    services: Array.isArray(initialRequest?.services) ? initialRequest.services : [],
+    commercialRegister: String(initialRequest?.commercialRegister || "").trim(),
+    taxCard: String(initialRequest?.taxCard || "").trim(),
+    portfolioLink: String(initialRequest?.portfolioLink || initialRequest?.portalLink || "").trim(),
+    notes: String(initialRequest?.notes || "").trim(),
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -64,14 +75,21 @@ export default function ServiceProviderPortalFlow({
   useEffect(() => {
     setForm((prev) => ({
       ...prev,
-      email: prev.email || String(currentUser?.email || "").trim(),
-      phone: prev.phone || String(currentUser?.phoneNumber || "").trim(),
-      whatsapp: prev.whatsapp || String(currentUser?.phoneNumber || "").trim(),
-      country: selectedCountry || prev.country || "",
-      nationality: selectedNationality || prev.nationality || "",
-      city: prev.city || String(countryCities?.[0] || ""),
+      providerName: String(initialRequest?.providerName || prev.providerName || "").trim(),
+      officeName: String(initialRequest?.officeName || prev.officeName || "").trim(),
+      email: String(initialRequest?.email || prev.email || currentUser?.email || "").trim(),
+      phone: String(initialRequest?.phone || prev.phone || currentUser?.phoneNumber || "").trim(),
+      whatsapp: String(initialRequest?.whatsapp || prev.whatsapp || currentUser?.phoneNumber || "").trim(),
+      country: String(initialRequest?.country || selectedCountry || prev.country || "").trim(),
+      nationality: String(initialRequest?.nationality || selectedNationality || prev.nationality || "").trim(),
+      city: String(initialRequest?.city || prev.city || countryCities?.[0] || "").trim(),
+      services: Array.isArray(initialRequest?.services) ? initialRequest.services : prev.services,
+      commercialRegister: String(initialRequest?.commercialRegister || prev.commercialRegister || "").trim(),
+      taxCard: String(initialRequest?.taxCard || prev.taxCard || "").trim(),
+      portfolioLink: String(initialRequest?.portfolioLink || initialRequest?.portalLink || prev.portfolioLink || "").trim(),
+      notes: String(initialRequest?.notes || prev.notes || "").trim(),
     }));
-  }, [countryCities, currentUser?.email, currentUser?.phoneNumber, selectedCountry, selectedNationality]);
+  }, [countryCities, currentUser?.email, currentUser?.phoneNumber, initialRequest, selectedCountry, selectedNationality]);
 
   const selectedServices = form.services || [];
   const canSubmit =
@@ -103,6 +121,8 @@ export default function ServiceProviderPortalFlow({
   };
 
   const handleSubmit = async () => {
+    setSubmitError("");
+    setSubmitSuccess(null);
     if (!canSubmit || submitting) {
       if (!String(form.providerName || "").trim()) {
         setSubmitError(isAr ? "اسم مقدم الطلب إلزامي." : "Applicant name is required.");
@@ -132,7 +152,7 @@ export default function ServiceProviderPortalFlow({
     setSubmitError("");
     setSubmitSuccess(null);
     setEmailFailureFallback(null);
-    const serial = generateServiceProviderSerial();
+    const serial = String(initialRequest?.serial || "").trim() || generateServiceProviderSerial();
     const payload = {
       serial,
       requestType: isOfficePortal ? "office" : "service",
@@ -150,20 +170,24 @@ export default function ServiceProviderPortalFlow({
       portfolioLink: String(form.portfolioLink || "").trim(),
       notes: String(form.notes || "").trim(),
       portalLink: String(form.portfolioLink || "").trim(),
-      status: "pending",
-      userUid: String(currentUser?.uid || "").trim(),
-      userEmail: String(currentUser?.email || "").trim(),
+      status: String(initialRequest?.status || "pending").trim() || "pending",
+      userUid: String(initialRequest?.userUid || currentUser?.uid || "").trim(),
+      userEmail: String(initialRequest?.userEmail || currentUser?.email || "").trim(),
     };
 
     try {
-      const requestId = await submitServiceProviderRequestToFirebase(payload);
+      const requestId = String(initialRequest?.id || "").trim()
+        ? (await updateServiceProviderRequestInFirebase(String(initialRequest?.id || "").trim(), payload), String(initialRequest?.id || "").trim())
+        : await submitServiceProviderRequestToFirebase(payload);
       const savedRequest = { ...payload, id: requestId };
       setSubmitSuccess(savedRequest);
       onSubmitted?.(savedRequest);
-      setForm((prev) => ({ ...prev, services: [], notes: "" }));
+      if (!isEditMode) {
+        setForm((prev) => ({ ...prev, services: [], notes: "" }));
+      }
 
       const emailResult = await sendServiceProviderEmails({
-        type: "submission",
+        type: isEditMode ? "decision" : "submission",
         request: { ...savedRequest, requestId },
       });
 
@@ -419,8 +443,8 @@ export default function ServiceProviderPortalFlow({
         }}
       >
         {submitting
-          ? (isAr ? "جارٍ الإرسال..." : "Submitting...")
-          : (isAr ? "إرسال طلب الإضافة" : "Submit Provider Request")}
+          ? (isAr ? "جارٍ الحفظ..." : "Saving...")
+          : (isEditMode ? (isAr ? "حفظ التعديلات" : "Save Changes") : (isAr ? "إرسال طلب الإضافة" : "Submit Provider Request"))}
       </button>
 
       <div style={{ marginTop:10, borderRadius:12, border:`1px solid ${t.border}`, background:t.inputBg, padding:"10px 12px", fontSize:10.5, color:t.subText, lineHeight:1.8 }}>
