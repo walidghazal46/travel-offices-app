@@ -745,9 +745,29 @@ async function enforceUserNotBlocked(user) {
   return user;
 }
 
+async function enforceUserNotBlockedWithSoftTimeout(user, timeoutMs = 4000) {
+  let timeoutHandle = null;
+
+  try {
+    return await Promise.race([
+      enforceUserNotBlocked(user),
+      new Promise((resolve) => {
+        timeoutHandle = setTimeout(() => {
+          console.warn("Blocked-account check timed out; allowing auth flow to continue.");
+          resolve(user);
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+  }
+}
+
 export async function signInWithEmailPassword(email, password) {
   const result = await signInWithEmailAndPassword(firebaseAuth, email, password);
-  return enforceUserNotBlocked(result.user);
+  return enforceUserNotBlockedWithSoftTimeout(result.user);
 }
 
 export async function signUpWithEmailPassword({ email, password, fullName = "" }) {
@@ -790,7 +810,7 @@ export async function signInWithGooglePopup() {
           nativeAccessToken || null
         );
         const authResult = await signInWithCredential(firebaseAuth, googleCredential);
-        return authResult.user;
+        return enforceUserNotBlockedWithSoftTimeout(authResult.user);
       } catch (error) {
         lastNativeError = error;
       }
@@ -808,7 +828,7 @@ export async function signInWithGooglePopup() {
 
   try {
     const result = await signInWithPopup(firebaseAuth, cachedGoogleProvider);
-    return result.user;
+    return enforceUserNotBlockedWithSoftTimeout(result.user);
   } catch (error) {
     const code = String(error?.code || "").toLowerCase();
     if (
@@ -835,7 +855,7 @@ export async function consumeGoogleRedirectResult() {
     return null;
   }
 
-  return enforceUserNotBlocked(result.user);
+  return enforceUserNotBlockedWithSoftTimeout(result.user);
 }
 
 export async function signOutCurrentUser() {

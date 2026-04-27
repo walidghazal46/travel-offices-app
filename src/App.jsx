@@ -82,6 +82,10 @@ const LINKEDIN = "https://www.linkedin.com/in/walid-ghazal-pmi-pmp%C2%AE-8520867
 const YOUTUBE = "http://www.youtube.com/@WalidGhazal";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.travel.offices";
 
+const getOfficeEnglishText = (text) => {
+  return text?.replace(/[^\x00-\x7F]/g, "").trim() || "";
+};
+
 function getLocalDateKey(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
