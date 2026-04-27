@@ -2,6 +2,7 @@ import React, { startTransition, useCallback, useDeferredValue, useEffect, useMe
 import { fetchStudyAbroadOffices } from "../../services/studyAbroadOffices";
 import {
   createOrderViaFirebaseFunction,
+  fetchUserOrdersFromFirebase,
   fetchUserProfileFromFirebase,
   upsertAuthUserProfileInFirebase,
 } from "../../firebase";
@@ -230,7 +231,41 @@ export default function StudyAbroadDirectory({
         if (cancelled) return;
 
         const accessMeta = profile?.studyAccess || {};
-        const hasFull = accessMeta?.fullAccess === true;
+        let hasFull = accessMeta?.fullAccess === true;
+        const pendingOrderId = String(accessMeta?.pendingOrderId || "").trim();
+
+        // Fallback: if profile still shows pending, verify the order status directly.
+        // This handles cases where the admin approved but the profile update failed or is stale.
+        if (!hasFull && pendingOrderId) {
+          try {
+            const userOrders = await fetchUserOrdersFromFirebase(authUid);
+            const matchingOrder = userOrders.find(
+              (o) => String(o?.firebaseId || o?.id || "").trim() === pendingOrderId
+                || String(o?.serial || o?.orderNumber || "").trim() === String(accessMeta?.pendingOrderSerial || "").trim()
+            );
+            const isApproved = matchingOrder?.studyAccessApproved === true
+              || String(matchingOrder?.status || "").toLowerCase() === "approved"
+              || String(matchingOrder?.orderStatus || "").toLowerCase() === "approved";
+            if (isApproved) {
+              hasFull = true;
+              // Silently fix the profile in the background
+              upsertAuthUserProfileInFirebase({
+                uid: authUid,
+                studyAccess: {
+                  fullAccess: true,
+                  approvedAt: matchingOrder?.studyAccessApprovedAt || new Date().toISOString(),
+                  approvedOrderId: pendingOrderId,
+                  approvedOrderSerial: String(accessMeta?.pendingOrderSerial || "").trim(),
+                  pendingOrderId: null,
+                  pendingOrderSerial: null,
+                },
+              }).catch(() => {});
+            }
+          } catch {
+            // ignore - fallback failed, keep hasFull as false
+          }
+        }
+
         const hasPending = !hasFull && Boolean(accessMeta?.pendingOrderId || accessMeta?.pendingOrderSerial);
 
         setFullAccessEnabled(hasFull);

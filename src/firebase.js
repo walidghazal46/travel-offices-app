@@ -1203,6 +1203,7 @@ export async function upsertAuthUserProfileInFirebase(profile = {}) {
     status: String(profile?.status || existingData?.status || "active").trim(),
     deletionRequestedAt: profile?.deletionRequestedAt || existingData?.deletionRequestedAt || null,
     deletionGraceUntil: profile?.deletionGraceUntil || existingData?.deletionGraceUntil || null,
+    ...(profile?.studyAccess !== undefined ? { studyAccess: profile.studyAccess } : {}),
     createdAt: existingData?.createdAt || serverTimestamp(),
     updatedAt: serverTimestamp(),
     lastLoginAt: serverTimestamp(),
