@@ -12350,16 +12350,16 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
             { key:"dubizzle", name:"Dubizzle", short:"DZ", color:"#E20C20", url:"https://www.dubizzle.sa/jobs-services/" },
           ];
           const cvJobSitesCard = (
-            <div style={{ ...cardStyle, padding:"10px 12px", border:`1px solid ${t.border}`, background:dark ? "rgba(255,255,255,0.03)" : "#fbfcff" }}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, marginBottom:6, flexWrap:"wrap" }}>
-                <div style={{ fontSize:13, fontWeight:800, color:t.gold, fontFamily:"'Cairo',sans-serif" }}>
+              <div style={{ ...cardStyle, padding:"14px 12px", border:`1px solid ${t.border}`, background:dark ? "rgba(255,255,255,0.03)" : "#fbfcff" }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, marginBottom:8, flexWrap:"wrap" }}>
+                  <div style={{ fontSize:17, fontWeight:800, color:t.gold, fontFamily:"'Cairo',sans-serif" }}>
                   {lang==="ar" ? "مواقع توظيف تهمك" : "Useful Job Sites"}
                 </div>
-                <div style={{ fontSize:10, color:t.subText, fontFamily:"'Cairo',sans-serif" }}>
+                  <div style={{ fontSize:13, color:t.subText, fontFamily:"'Cairo',sans-serif" }}>
                   {lang==="ar" ? "روابط سريعة تساعدك تبدأ التقديم" : "Quick links to start applying"}
                 </div>
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(0, 1fr))", gap:7 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(0, 1fr))", gap:10 }}>
                 {cvJobSites.map(site => (
                   <a
                     key={site.key}
@@ -12367,19 +12367,19 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     target="_blank"
                     rel="noreferrer"
                     className="job-site-link"
-                    style={{ textDecoration:"none", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3, padding:"4px 4px", minHeight:28, borderRadius:12, border:"none", background:"transparent" }}
+                    style={{ textDecoration:"none", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, padding:"6px 4px", minHeight:39, borderRadius:12, border:"none", background:"transparent" }}
                   >
-                    <div className="job-site-icon" style={{ width:31, height:31, borderRadius:8, background:site.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11.7, fontWeight:900, fontFamily:"sans-serif" }}>
+                    <div className="job-site-icon" style={{ width:42, height:42, borderRadius:8, background:site.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:15.8, fontWeight:900, fontFamily:"sans-serif" }}>
                       {site.short}
                     </div>
-                    <div style={{ fontSize:11, color:t.text, textAlign:"center", lineHeight:1.2, fontFamily:"'Cairo',sans-serif" }}>
+                    <div style={{ fontSize:14.3, color:t.text, textAlign:"center", lineHeight:1.2, fontFamily:"'Cairo',sans-serif" }}>
                       {site.name}
                     </div>
                   </a>
                 ))}
               </div>
               {!cvMode && (
-                <div style={{ fontSize:10, color:t.subText, textAlign:"center", lineHeight:1.6, marginTop:8, fontFamily:"'Cairo',sans-serif" }}>
+                <div style={{ fontSize:13, color:t.subText, textAlign:"center", lineHeight:1.6, marginTop:11, fontFamily:"'Cairo',sans-serif" }}>
                   {lang==="ar" ? "اختر نوع الخدمة من البطاقات بالأعلى، أو تصفح هذه المواقع لحين تحديد المسار المناسب." : "Choose a package above, or browse these job sites while deciding your path."}
                 </div>
               )}
@@ -13792,6 +13792,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               dark={dark}
               isAdminUser={isAdminUser}
               authUser={authPreviewUser}
+              isGuestUser={isGuestUser}
               onRequestAuth={promptStudyReviewsAuth}
               onRequestAccessAuth={promptStudyAccessAuth}
               resetSignal={studyTabResetToken}

@@ -62,6 +62,8 @@ const COPY = {
     pageOf: "صفحة",
     guestAccessTitle: "الدخول لمكاتب الدراسة يحتاج حساب",
     guestAccessMessage: "يجب تسجيل الدخول أو إنشاء حساب جديد لمشاهدة مكاتب الدراسة.",
+    guestPreviewTitle: "معاينة قبل التسجيل",
+    guestPreviewMessage: "يمكنك مشاهدة عينة سريعة من المكاتب قبل إنشاء حساب.",
     login: "تسجيل الدخول",
     signup: "إنشاء حساب جديد",
     lockedOfficeNotice: "باقي المكاتب مقفلة. فعّل الوصول الكامل لمشاهدة كل المكاتب.",
@@ -115,6 +117,8 @@ const COPY = {
     pageOf: "Page",
     guestAccessTitle: "Study offices require an account",
     guestAccessMessage: "You must sign in or create a new account to view study offices.",
+    guestPreviewTitle: "Preview before sign in",
+    guestPreviewMessage: "You can view a quick sample of offices before creating an account.",
     login: "Sign In",
     signup: "Create Account",
     lockedOfficeNotice: "The remaining offices are locked. Activate full access to view all offices.",
@@ -142,6 +146,7 @@ export default function StudyAbroadDirectory({
   dark = false,
   isAdminUser = false,
   authUser = null,
+  isGuestUser = false,
   onRequestAuth,
   onRequestAccessAuth,
   resetSignal = 0,
@@ -322,6 +327,11 @@ export default function StudyAbroadDirectory({
     const startIndex = (currentPage - 1) * OFFICES_PER_PAGE;
     return visibleOfficesByAccess.slice(startIndex, startIndex + OFFICES_PER_PAGE);
   }, [currentPage, visibleOfficesByAccess]);
+
+  const guestPreviewOffices = useMemo(
+    () => filteredOffices.slice(0, FREE_OFFICES_PREVIEW_LIMIT),
+    [filteredOffices]
+  );
 
   const resetFilters = () => {
     startTransition(() => {
@@ -606,6 +616,24 @@ export default function StudyAbroadDirectory({
 
       {!isAuthenticated ? (
         <section className={styles.lockedAccessSection}>
+          {!loading && !error && guestPreviewOffices.length > 0 ? (
+            <article className={styles.guestPreviewCard}>
+              <h3 className={styles.guestPreviewTitle}>{copy.guestPreviewTitle}</h3>
+              <p className={styles.guestPreviewMessage}>{copy.guestPreviewMessage}</p>
+              <div className={styles.guestPreviewList}>
+                {guestPreviewOffices.map((office) => (
+                  <div key={office.id} className={styles.guestPreviewItem}>
+                    <div className={styles.guestPreviewName}>{office.name}</div>
+                    <div className={styles.guestPreviewMeta}>
+                      {office.governorate}
+                      {office.area ? ` - ${office.area}` : ""}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ) : null}
+
           <div className={styles.lockedAccessCard}>
             <h3 className={styles.lockedAccessTitle}>{copy.guestAccessTitle}</h3>
             <p className={styles.lockedAccessMessage}>{copy.guestAccessMessage}</p>
@@ -618,6 +646,21 @@ export default function StudyAbroadDirectory({
               </button>
             </div>
           </div>
+          {isGuestUser ? (
+            <article className={styles.lockedGuestAdCard}>
+              <span className={styles.lockedGuestAdBadge}>{copy.adLabel}</span>
+              <h3 className={styles.lockedGuestAdTitle}>{copy.adTitle}</h3>
+              <p className={styles.lockedGuestAdText}>{copy.adText}</p>
+              <a
+                className={styles.lockedGuestAdAction}
+                href="https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D8%B5%D9%81%D8%AD%D8%A9%20%D9%85%D9%83%D8%A7%D8%AA%D8%A8%20%D8%A7%D9%84%D8%AF%D8%B1%D8%A7%D8%B3%D8%A9"
+                target="_blank"
+                rel="noreferrer"
+              >
+                {copy.adCta}
+              </a>
+            </article>
+          ) : null}
         </section>
       ) : null}
 

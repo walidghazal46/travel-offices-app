@@ -61,12 +61,117 @@
   margin: 56px 16px 10px;
 }
 
+.guestPreviewCard {
+  margin-bottom: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(30, 58, 138, 0.2);
+  background: linear-gradient(180deg, rgba(219, 234, 254, 0.45), rgba(239, 246, 255, 0.42));
+  padding: 12px;
+}
+
+.guestPreviewTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 900;
+  color: #1e3a8a;
+}
+
+.guestPreviewMessage {
+  margin: 5px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #334155;
+}
+
+.guestPreviewList {
+  margin-top: 9px;
+  display: grid;
+  gap: 7px;
+}
+
+.guestPreviewItem {
+  border-radius: 10px;
+  border: 1px solid rgba(30, 58, 138, 0.16);
+  background: rgba(255, 255, 255, 0.72);
+  padding: 8px 9px;
+}
+
+.guestPreviewName {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f2460;
+}
+
+.guestPreviewMeta {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #475569;
+}
+
 .lockedAccessCard {
   border-radius: 14px;
   border: 1px solid rgba(239, 68, 68, 0.65);
   background: linear-gradient(180deg, rgba(127, 29, 29, 0.16), rgba(69, 10, 10, 0.1));
   box-shadow: 0 0 18px rgba(239, 68, 68, 0.25);
   padding: 14px;
+}
+
+.lockedGuestAdCard {
+  margin-top: 14px;
+  border-radius: 14px;
+  border: 1px dashed rgba(30, 58, 138, 0.28);
+  background:
+    radial-gradient(circle at top left, rgba(219, 234, 254, 0.72), transparent 52%),
+    linear-gradient(165deg, #f8fbff 0%, #eef4ff 100%);
+  box-shadow: 0 6px 18px rgba(15, 35, 84, 0.08);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lockedGuestAdBadge {
+  align-self: flex-start;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #1e3a8a;
+  background: rgba(30, 58, 138, 0.1);
+}
+
+.lockedGuestAdTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  color: #0f2460;
+  line-height: 1.25;
+}
+
+.lockedGuestAdText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #334155;
+}
+
+.lockedGuestAdAction {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 9px 13px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  color: #fff;
+  background: #1e3a8a;
+  border: 1px solid #1e3a8a;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.lockedGuestAdAction:hover {
+  background: #173071;
+  transform: translateY(-1px);
 }
 
 .lockedAccessTitle {
