@@ -83,6 +83,11 @@ const LINKEDIN = "https://www.linkedin.com/in/walid-ghazal-pmi-pmp%C2%AE-8520867
 const YOUTUBE = "http://www.youtube.com/@WalidGhazal";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.travel.offices";
 
+const sanitizeNationalityValue = (value) => {
+  const trimmed = String(value || "").trim();
+  return trimmed === OTHER_NATIONALITY_VALUE ? "" : trimmed;
+};
+
 const getOfficeEnglishText = (text) => {
   return text?.replace(/[^\x00-\x7F]/g, "").trim() || "";
 };
@@ -896,20 +901,26 @@ export default function App() {
   const [selectedCountry, setSelectedCountry] = useState("مصر");
   const [selectedNationality, setSelectedNationality] = useState(() => {
     try {
-      return localStorage.getItem("preferredNationality") || "";
+      return sanitizeNationalityValue(localStorage.getItem("preferredNationality"));
     } catch {
       return "";
     }
   });
   const [nationalityInputText, setNationalityInputText] = useState(() => {
     try {
-      return localStorage.getItem("preferredNationality") || "";
+      return sanitizeNationalityValue(localStorage.getItem("preferredNationality"));
     } catch {
       return "";
     }
   });
   const [nationalityConfirmToast, setNationalityConfirmToast] = useState("");
-  const [nationalityEditMode, setNationalityEditMode] = useState(!localStorage.getItem("preferredNationality"));
+  const [nationalityEditMode, setNationalityEditMode] = useState(() => {
+    try {
+      return !sanitizeNationalityValue(localStorage.getItem("preferredNationality"));
+    } catch {
+      return true;
+    }
+  });
   const [selectedGov, setSelectedGov] = useState(null);
   const [search, setSearch] = useState("");
   const [selectedServiceFilter, setSelectedServiceFilter] = useState(null);
@@ -1371,9 +1382,10 @@ export default function App() {
         const profileCoins = Number(profileSnapshot?.requestCredits?.coins) || 0;
         setAccountCoins(profileCoins);
         setAdminSessionRole(profileRole);
-        if (profileSnapshot.nationality) {
-          setSelectedNationality(profileSnapshot.nationality);
-          setNationalityInputText(profileSnapshot.nationality);
+        const profileNationality = sanitizeNationalityValue(profileSnapshot.nationality);
+        if (profileNationality) {
+          setSelectedNationality(profileNationality);
+          setNationalityInputText(profileNationality);
         }
 
         if (DISABLED_ADMIN_EMAILS.includes(normalizedEmail) && profileRole !== "user") {
@@ -4972,18 +4984,24 @@ export default function App() {
   }, [selectedGov, selectedCountry]);
 
   useEffect(() => {
+    const normalizedNationality = sanitizeNationalityValue(selectedNationality);
+    if (selectedNationality !== normalizedNationality) {
+      setSelectedNationality(normalizedNationality);
+      return;
+    }
+
     try {
-      if (selectedNationality) {
-        localStorage.setItem("preferredNationality", selectedNationality);
+      if (normalizedNationality) {
+        localStorage.setItem("preferredNationality", normalizedNationality);
       } else {
         localStorage.removeItem("preferredNationality");
       }
     } catch {}
-    if (selectedNationality && authPreviewUser?.uid) {
-      upsertAuthUserProfileInFirebase({ uid: authPreviewUser.uid, nationality: selectedNationality }).catch(() => {});
+
+    if (normalizedNationality && authPreviewUser?.uid) {
+      upsertAuthUserProfileInFirebase({ uid: authPreviewUser.uid, nationality: normalizedNationality }).catch(() => {});
     }
   }, [selectedNationality, authPreviewUser?.uid]);
-
   useEffect(() => {
     setShowOtherEmbassies(false);
     if (nationalityEmbassyCountry) {
