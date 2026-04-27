@@ -536,6 +536,10 @@ export default function StudyAbroadDirectory({
                 <span>{copy.finalPrice}</span>
                 <strong className={styles.accessFinalPrice}>${STUDY_ACCESS_DISCOUNTED_PRICE_USD}</strong>
               </div>
+              <div className={styles.accessPaymentAccount}>
+                <span>حساب انستا باي / محفظة كاش</span>
+                <strong className={styles.accessPaymentPhone}>01064463650</strong>
+              </div>
             </div>
 
             <div className={styles.accessFormGrid}>
