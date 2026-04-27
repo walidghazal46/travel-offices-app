@@ -33,14 +33,57 @@ service cloud.firestore {
     match /office_reviews/{reviewId} {
       allow read: if true;
       allow create: if isAuthenticated() &&
-        request.resource.data.userUid == request.auth.uid &&
+        (
+          (request.resource.data.userUid is string && request.resource.data.userUid == request.auth.uid) ||
+          (request.resource.data.reviewerUid is string && request.resource.data.reviewerUid == request.auth.uid)
+        ) &&
         request.resource.data.rating is number &&
         request.resource.data.rating >= 1 &&
         request.resource.data.rating <= 5;
       allow update: if isAuthenticated() &&
-        resource.data.userUid == request.auth.uid;
+        (
+          (resource.data.userUid is string && resource.data.userUid == request.auth.uid) ||
+          (resource.data.reviewerUid is string && resource.data.reviewerUid == request.auth.uid)
+        );
       allow delete: if isAuthenticated() &&
-        (resource.data.userUid == request.auth.uid || isAdmin());
+        (
+          (resource.data.userUid is string && resource.data.userUid == request.auth.uid) ||
+          (resource.data.reviewerUid is string && resource.data.reviewerUid == request.auth.uid) ||
+          isAdmin()
+        );
+    }
+
+    // ─── study_abroad_reviews ──────────────────────────────────────────────
+    // Anyone can read. Authenticated users can create with their own uid.
+    // Users can update/delete their own reviews only after 48 hours.
+    // Admin can update/delete at any time.
+    match /study_abroad_reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated() &&
+        request.resource.data.userUid == request.auth.uid &&
+        request.resource.data.officeId is string &&
+        request.resource.data.officeId.size() > 0 &&
+        request.resource.data.rating is number &&
+        request.resource.data.rating >= 1 &&
+        request.resource.data.rating <= 5 &&
+        request.resource.data.reviewText is string &&
+        request.resource.data.reviewText.size() > 0;
+      allow update: if isAuthenticated() && (
+          isAdmin() ||
+          (
+            resource.data.userUid == request.auth.uid &&
+            resource.data.createdAt is timestamp &&
+            request.time >= resource.data.createdAt + duration.value(48, 'h')
+          )
+        );
+      allow delete: if isAuthenticated() && (
+          isAdmin() ||
+          (
+            resource.data.userUid == request.auth.uid &&
+            resource.data.createdAt is timestamp &&
+            request.time >= resource.data.createdAt + duration.value(48, 'h')
+          )
+        );
     }
 
     // ─── office_customizations ──────────────────────────────────────────────
@@ -83,14 +126,24 @@ service cloud.firestore {
     match /service_reviews/{reviewId} {
       allow read: if true;
       allow create: if isAuthenticated() &&
-        request.resource.data.userUid == request.auth.uid &&
+        (
+          (request.resource.data.userUid is string && request.resource.data.userUid == request.auth.uid) ||
+          (request.resource.data.reviewerUid is string && request.resource.data.reviewerUid == request.auth.uid)
+        ) &&
         request.resource.data.rating is number &&
         request.resource.data.rating >= 1 &&
         request.resource.data.rating <= 5;
       allow update: if isAuthenticated() &&
-        resource.data.userUid == request.auth.uid;
+        (
+          (resource.data.userUid is string && resource.data.userUid == request.auth.uid) ||
+          (resource.data.reviewerUid is string && resource.data.reviewerUid == request.auth.uid)
+        );
       allow delete: if isAuthenticated() &&
-        (resource.data.userUid == request.auth.uid || isAdmin());
+        (
+          (resource.data.userUid is string && resource.data.userUid == request.auth.uid) ||
+          (resource.data.reviewerUid is string && resource.data.reviewerUid == request.auth.uid) ||
+          isAdmin()
+        );
     }
 
     // ─── users ───────────────────────────────────────────────────────────────

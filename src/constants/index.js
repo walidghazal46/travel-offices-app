@@ -30,6 +30,7 @@ export const VIEWS = {
 // Main tabs
 export const TABS = {
   HOME: 'home',
+  STUDY: 'study',
   CV: 'cv',
   SETTINGS: 'settings',
 };

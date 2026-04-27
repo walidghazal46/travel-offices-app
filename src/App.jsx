@@ -65,14 +65,15 @@ import { saudiOfficesData, saudiCityIcons } from "./data/saudiOfficesData";
 import { NATIONALITY_DIAL_CODES } from "./constants/index";
 import { countriesData, egyptEmergency } from "./data/countriesData";
 import { embassyHostCity, nationalityEmbassyFallbacks, egyptHostedEmbassies, hostedEmbassyOverrides, buildFallbackEmbassyRecord, embassyDirectory } from "./data/embassyData";
+import CvExportPreview from "./components/cv/CvExportPreview";
+import { buildCvPdfDocument, buildCvWordDocument } from "./components/cv/cvExportDocument";
 import ServiceProviderPortalFlow from "./components/ServiceProviderPortalFlow";
+import StudyAbroadDirectory from "./components/studyAbroad/StudyAbroadDirectory";
 const PaidServicesFlow = React.lazy(() => import("./components/order/PaidServicesFlow"));
 import logo from './assets/splash.png';
 const PRIMARY_ADMIN_EMAIL = "walidghazal46@gmail.com";
 const ADMIN_EMAILS = [PRIMARY_ADMIN_EMAIL];
 const DISABLED_ADMIN_EMAILS = ["walidghazal51@yahoo.com"];
-const ADMIN_SECURITY_PASSCODE_KEY = "adminSecurityPasscodeV1";
-const ADMIN_SECURITY_DEFAULT_PASSCODE = "793131";
 
 
 
@@ -158,6 +159,7 @@ const T = {
     footerOther: (countryName) => `تطبيق مستقل — لا يتبع الجهة الحكومية لـ ${countryName}`,
     // Bottom Nav
     navHome: "مكاتب السفريات",
+    navStudy: "مكاتب الدراسة",
     navCV: "التوظيف",
     navSettings: "الإعدادات",
     // CV Page
@@ -252,6 +254,7 @@ const T = {
     footerOther: (countryName) => `Independent app — Not affiliated with the government of ${countryName}`,
     // Bottom Nav
     navHome: "Travel Offices",
+    navStudy: "Study Offices",
     navCV: "Employment",
     navSettings: "Settings",
     // CV Page
@@ -924,6 +927,7 @@ export default function App() {
   const [showOtherDropdown, setShowOtherDropdown] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [selectedOffice, setSelectedOffice] = useState(null);
+  const [showGuestAuthAlert, setShowGuestAuthAlert] = useState(false);
   const [officeRatings, setOfficeRatings] = useState({});
   const [userRating, setUserRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -946,6 +950,7 @@ export default function App() {
   const [officeReviewEditingText, setOfficeReviewEditingText] = useState("");
   const [officeReviewActionBusyId, setOfficeReviewActionBusyId] = useState("");
   const [mainTab, setMainTab] = useState("home");
+  const [studyTabResetToken, setStudyTabResetToken] = useState(0);
   const [officePage, setOfficePage] = useState(1);
   const [authPreviewOpen, setAuthPreviewOpen] = useState(false);
   const [authPreviewMode, setAuthPreviewMode] = useState("login");
@@ -1001,6 +1006,7 @@ export default function App() {
   const [adminOrdersLoading, setAdminOrdersLoading] = useState(false);
   const [adminOrdersError, setAdminOrdersError] = useState("");
   const [adminOrdersQuery, setAdminOrdersQuery] = useState("");
+  const [adminStudyOrdersQuery, setAdminStudyOrdersQuery] = useState("");
   const [adminOrderActionBusyId, setAdminOrderActionBusyId] = useState("");
   const [adminOrdersFilter, setAdminOrdersFilter] = useState("30d");
   const [adminOpsFilter, setAdminOpsFilter] = useState("all");
@@ -1095,6 +1101,7 @@ export default function App() {
   const [cvBuilderReviewSaved, setCvBuilderReviewSaved] = useState(false);
   const [cvBuilderReviewSavedAt, setCvBuilderReviewSavedAt] = useState("");
   const [cvBuilderReviewEditMode, setCvBuilderReviewEditMode] = useState(false);
+  const [cvPreviewOpen, setCvPreviewOpen] = useState(false);
   const [cvBuilderLimitNotice, setCvBuilderLimitNotice] = useState("");
   const [cvStepValidationError, setCvStepValidationError] = useState("");
   const [cvBuilderOrderSyncBusy, setCvBuilderOrderSyncBusy] = useState(false);
@@ -1291,17 +1298,6 @@ export default function App() {
       requestTypeValue: String(entry?.requestType || "").trim().toLowerCase() || "service",
     };
   }, [getProviderRequestTimestamp, lang]);
-
-  const adminSecurityExpectedCode = useMemo(() => {
-    try {
-      const stored = String(localStorage.getItem(ADMIN_SECURITY_PASSCODE_KEY) || "")
-        .replace(/\D/g, "")
-        .slice(0, 6);
-      return stored.length === 6 ? stored : ADMIN_SECURITY_DEFAULT_PASSCODE;
-    } catch {
-      return ADMIN_SECURITY_DEFAULT_PASSCODE;
-    }
-  }, []);
 
   useEffect(() => {
     const onResize = () => setIsDesktop(window.innerWidth >= 1024);
@@ -1656,6 +1652,7 @@ export default function App() {
     clearAuthPreviewFeedback();
     setShowExitConfirm(false);
     setGuestMode(true);
+    setMainTab("home");
     setAuthPreviewOpen(false);
     setAuthPreviewMode("login");
     setAuthPreviewBusy(false);
@@ -2049,61 +2046,14 @@ export default function App() {
   }, []);
 
   const openAdminSecurityModal = useCallback(() => {
-    setAdminSecurityOpen(true);
+    if (!isAdminUser) return;
+    setAdminSecurityOpen(false);
     setAdminSecurityCode("");
     setAdminSecurityError("");
     setAdminSecurityAttempts(0);
     setAdminSecurityBusy(false);
-  }, []);
-
-  const handleAdminSecuritySubmit = useCallback(async () => {
-    if (adminSecurityBusy) return;
-
-    const normalizedCode = String(adminSecurityCode || "").replace(/\D/g, "").slice(0, 6);
-    if (normalizedCode.length !== 6) {
-      setAdminSecurityError(lang === "ar" ? "اكتب كود الأدمن المكوّن من 6 أرقام." : "Enter the 6-digit admin code.");
-      return;
-    }
-
-    setAdminSecurityBusy(true);
-    if (normalizedCode === adminSecurityExpectedCode) {
-      setAdminSecurityOpen(false);
-      setAdminSecurityCode("");
-      setAdminSecurityError("");
-      setAdminSecurityAttempts(0);
-      setAdminSecurityBusy(false);
-      setAdminPanelOpen(true);
-      return;
-    }
-
-    const nextAttempts = adminSecurityAttempts + 1;
-    if (nextAttempts >= 2) {
-      setAdminSecurityError(
-        lang === "ar"
-          ? "فشل التحقق مرتين. سيتم تسجيل الخروج تلقائيًا الآن."
-          : "Verification failed twice. You will be signed out automatically now."
-      );
-      setAdminSecurityAttempts(nextAttempts);
-      await handleAuthSignOut();
-      return;
-    }
-
-    setAdminSecurityAttempts(nextAttempts);
-    setAdminSecurityCode("");
-    setAdminSecurityBusy(false);
-    setAdminSecurityError(
-      lang === "ar"
-        ? "كود الأدمن غير صحيح. متبقي محاولة واحدة قبل تسجيل الخروج."
-        : "Incorrect admin code. One attempt left before auto sign-out."
-    );
-  }, [
-    adminSecurityAttempts,
-    adminSecurityBusy,
-    adminSecurityCode,
-    adminSecurityExpectedCode,
-    handleAuthSignOut,
-    lang,
-  ]);
+    setAdminPanelOpen(true);
+  }, [isAdminUser]);
 
   const closeAdminPanel = useCallback(() => {
     setAdminPanelOpen(false);
@@ -2118,6 +2068,7 @@ export default function App() {
     setAdminActionConfirm(null);
     setAdminOrdersError("");
     setAdminOrdersQuery("");
+    setAdminStudyOrdersQuery("");
     setAdminOrderActionBusyId("");
     setAdminExpandedOrderId("");
     setAdminProviderRequestsError("");
@@ -2156,6 +2107,10 @@ export default function App() {
           const createdAtMs = orderItem?.createdAt?.toDate
             ? orderItem.createdAt.toDate().getTime()
             : new Date(orderItem?.createdAt || orderItem?.date || 0).getTime();
+          const serviceKeyNormalized = String(orderItem?.serviceKey || "").trim().toLowerCase();
+          const serviceCategoryNormalized = String(orderItem?.serviceCategory || "").trim().toLowerCase();
+          const isStudyAccessOrder = serviceKeyNormalized === "study-offices-access"
+            || serviceCategoryNormalized === "study-access";
           const rawPhone = String(orderItem?.phone || orderItem?.mobile || orderItem?.whatsapp || orderItem?.phoneNumber || "").trim();
           const digitsOnly = rawPhone.replace(/\D+/g, "");
           const whatsappNumber = digitsOnly.startsWith("00") ? digitsOnly.slice(2) : digitsOnly;
@@ -2166,10 +2121,15 @@ export default function App() {
             serialLabel: String(orderItem?.serial || orderItem?.firebaseId || orderItem?.id || "").trim(),
             customerName: String(orderItem?.name || orderItem?.fullName || "").trim(),
             serviceName: String(orderItem?.service || orderItem?.serviceLabel || orderItem?.serviceKey || "").trim(),
+            serviceKeyNormalized,
+            serviceCategoryNormalized,
+            isStudyAccessOrder,
             countryName: String(orderItem?.country || "").trim(),
             nationalityName: String(orderItem?.nationality || orderItem?.clientNationality || "").trim(),
             customerPhone: rawPhone,
             whatsappNumber,
+            userUid: String(orderItem?.userUid || orderItem?.uid || "").trim(),
+            statusValue: String(orderItem?.status || orderItem?.orderStatus || "pending").trim().toLowerCase(),
             reviewedFlag: !!orderItem?.reviewed,
             ratingValue: Number(orderItem?.rating) || 0,
             reviewTextValue: String(orderItem?.reviewText || "").trim(),
@@ -2613,6 +2573,73 @@ export default function App() {
       setAdminOrderActionBusyId("");
     }
   }, [lang, syncAdminOrderLocally]);
+
+  const handleAdminApproveStudyAccessOrder = useCallback(async (orderItem) => {
+    const orderId = String(orderItem?.firebaseId || orderItem?.id || "").trim();
+    if (!orderId) {
+      setAdminOrdersError(lang === "ar" ? "تعذر اعتماد الطلب الآن." : "Unable to approve this request right now.");
+      return;
+    }
+
+    const currentStatus = String(orderItem?.statusValue || orderItem?.status || orderItem?.orderStatus || "pending").trim().toLowerCase();
+    if (currentStatus === "approved") {
+      setAdminOrdersError(lang === "ar" ? "هذا الطلب معتمد بالفعل." : "This request is already approved.");
+      return;
+    }
+
+    const userUid = String(orderItem?.userUid || "").trim();
+    if (!userUid) {
+      setAdminOrdersError(lang === "ar" ? "لا يوجد معرف مستخدم مرتبط بهذا الطلب." : "No user id is linked to this request.");
+      return;
+    }
+
+    const approvedAt = new Date().toISOString();
+    setAdminOrderActionBusyId(orderId);
+    setAdminOrdersError("");
+
+    try {
+      await updateOrderInFirebase(orderId, {
+        status: "approved",
+        orderStatus: "approved",
+        studyAccessApproved: true,
+        studyAccessApprovedAt: approvedAt,
+        studyAccessApprovedBy: String(authPreviewUser?.email || "admin").trim(),
+      });
+
+      await upsertAuthUserProfileInFirebase({
+        uid: userUid,
+        email: String(orderItem?.email || "").trim(),
+        phoneNumber: String(orderItem?.phone || orderItem?.customerPhone || "").trim(),
+        displayName: String(orderItem?.name || orderItem?.customerName || "").trim(),
+        country: String(orderItem?.country || orderItem?.countryName || "").trim(),
+        nationality: String(orderItem?.nationality || orderItem?.nationalityName || "").trim(),
+        providerId: String(orderItem?.phone || orderItem?.customerPhone || "").trim()
+          ? "phone"
+          : (String(orderItem?.email || "").trim() ? "email" : "unknown"),
+        studyAccess: {
+          fullAccess: true,
+          approvedAt,
+          approvedOrderId: orderId,
+          approvedOrderSerial: String(orderItem?.serialLabel || orderItem?.serial || "").trim(),
+          pendingOrderId: null,
+          pendingOrderSerial: null,
+        },
+      });
+
+      syncAdminOrderLocally(orderId, {
+        status: "approved",
+        orderStatus: "approved",
+        statusValue: "approved",
+        studyAccessApproved: true,
+        studyAccessApprovedAt: approvedAt,
+      });
+    } catch (error) {
+      console.error("Failed to approve study access order", error);
+      setAdminOrdersError(lang === "ar" ? "تعذر اعتماد الطلب الآن." : "Unable to approve this request right now.");
+    } finally {
+      setAdminOrderActionBusyId("");
+    }
+  }, [authPreviewUser?.email, lang, syncAdminOrderLocally]);
 
   const handleAdminDeleteOrder = useCallback(async (orderItem) => {
     const orderId = String(orderItem?.firebaseId || orderItem?.id || "").trim();
@@ -3635,6 +3662,58 @@ export default function App() {
     setAuthPreviewError("");
     setAuthPreviewSuccess("");
   }, [lang]);
+
+  const openStudyTabRoot = useCallback(() => {
+    setMainTab("study");
+    setStudyTabResetToken((prev) => prev + 1);
+
+    if (typeof window !== "undefined") {
+      const scrollTargets = [
+        document.scrollingElement,
+        document.documentElement,
+        document.body,
+      ].filter(Boolean);
+
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      } catch {
+        window.scrollTo(0, 0);
+      }
+
+      scrollTargets.forEach((target) => {
+        try {
+          target.scrollTop = 0;
+          target.scrollLeft = 0;
+        } catch {
+        }
+      });
+
+      window.requestAnimationFrame(() => {
+        try {
+          window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        } catch {
+          window.scrollTo(0, 0);
+        }
+      });
+    }
+  }, []);
+
+  const promptStudyReviewsAuth = useCallback((mode = "login") => {
+    setShowExitConfirm(false);
+    setMainTab("home");
+    setAuthPreviewMode(mode === "signup" ? "signup" : "login");
+    setAuthPreviewOpen(true);
+    setAuthPreviewError("");
+    setAuthPreviewSuccess("");
+  }, []);
+
+  const promptStudyAccessAuth = useCallback((mode = "login") => {
+    setShowExitConfirm(false);
+    setAuthPreviewMode(mode === "signup" ? "signup" : "login");
+    setAuthPreviewOpen(true);
+    setAuthPreviewError("");
+    setAuthPreviewSuccess("");
+  }, []);
 
   const openCvBuilderNewRequest = () => {
     // Admin bypasses all order limits
@@ -5079,6 +5158,28 @@ export default function App() {
     });
   }, [adminOrdersQuery, filteredAdminOrdersByOps]);
 
+  const adminStudyAccessOrders = useMemo(
+    () => adminOrders.filter((entry) => entry.isStudyAccessOrder),
+    [adminOrders]
+  );
+
+  const filteredAdminStudyAccessOrders = useMemo(() => {
+    const q = String(adminStudyOrdersQuery || "").trim().toLowerCase();
+    if (!q) return adminStudyAccessOrders;
+
+    return adminStudyAccessOrders.filter((entry) => {
+      const haystack = [
+        entry?.serialLabel,
+        entry?.customerName,
+        entry?.customerPhone,
+        entry?.whatsapp,
+        entry?.email,
+        entry?.userUid,
+      ].map((value) => String(value || "").toLowerCase()).join(" ");
+      return haystack.includes(q);
+    });
+  }, [adminStudyOrdersQuery, adminStudyAccessOrders]);
+
   const providerRequestsVisible = useMemo(
     () => adminProviderRequests.filter((entry) => String(entry?.statusValue || entry?.status || "").trim().toLowerCase() !== "deleted"),
     [adminProviderRequests]
@@ -5391,6 +5492,30 @@ export default function App() {
     setView("egyptMenu");
   };
 
+  const scrollAppToTop = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    const scrollTargets = [
+      document.scrollingElement,
+      document.documentElement,
+      document.body,
+    ].filter(Boolean);
+
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+
+    scrollTargets.forEach((target) => {
+      try {
+        target.scrollTop = 0;
+        target.scrollLeft = 0;
+      } catch {
+      }
+    });
+  }, []);
+
   const goToCountryLanding = () => {
     if (!closeSelectedOfficeView()) return;
     setMainTab("home");
@@ -5542,6 +5667,11 @@ export default function App() {
     }
 
     if (mainTab === "settings") {
+      goToCountryLanding();
+      return;
+    }
+
+    if (mainTab === "study") {
       goToCountryLanding();
       return;
     }
@@ -6434,15 +6564,110 @@ export default function App() {
     </div>
   ) : null;
 
-  const USAGE_STEPS = [
-    { emoji: "🌍", titleAr: "اختر دولتك", titleEn: "Choose your country", descAr: "من الشاشة الرئيسية اختر السعودية أو مصر للبدء في تصفح المكاتب.", descEn: "From the home screen, choose Saudi Arabia or Egypt to start browsing offices." },
-    { emoji: "🏢", titleAr: "تصفح المكاتب", titleEn: "Browse offices", descAr: "اختر المحافظة أو المنطقة ثم تصفح قائمة المكاتب الموثوقة ومعلوماتها.", descEn: "Select a governorate or region, then browse the verified offices and their details." },
-    { emoji: "📞", titleAr: "تواصل مع المكتب", titleEn: "Contact the office", descAr: "تستطيع معرفة رقم الترخيص الموثوق وموقع المكتب بدقة، وعمل تقييم للمكتب إذا كان لك تجربة سابقة.", descEn: "You can view the verified license number and the exact office location, and rate the office if you've had a previous experience." },
-    { emoji: "🛎️", titleAr: "اطلب خدمة", titleEn: "Request a service", descAr: "اضغط 'اطلب خدمة' لتقديم طلب رقمي مثل الكفالة أو الوثائق أو السيرة الذاتية.", descEn: "Tap 'Request service' to submit a digital request such as sponsorship transfer, documents, or CV." },
-    { emoji: "📋", titleAr: "تابع طلبك", titleEn: "Track your request", descAr: "ادخل على الحساب لمتابعة حالة طلبك مرحلة بمرحلة حتى اكتماله.", descEn: "Sign in to your account to track your request step by step until completion." },
-    { emoji: "📄", titleAr: "ابنِ سيرتك الذاتية", titleEn: "Build your CV", descAr: "استخدم أداة بناء السيرة الذاتية المدمجة وصدّر ملف PDF باحترافية.", descEn: "Use the built-in CV builder and export a professional PDF file." },
-    { emoji: "💬", titleAr: "تواصل مع الدعم", titleEn: "Contact support", descAr: "في الإعدادات ستجد رابط واتساب للتواصل مع فريق الدعم مباشرة.", descEn: "In Settings you will find a WhatsApp link to contact the support team directly." },
-    { emoji: "🌙", titleAr: "اضبط المظهر واللغة", titleEn: "Adjust theme & language", descAr: "يمكنك التبديل بين الوضع الليلي والنهاري والعربية والإنجليزية من الشريط العلوي.", descEn: "You can switch between dark/light mode and Arabic/English from the top bar." },
+  const USAGE_GUIDE_SECTIONS = [
+    {
+      icon: "✈️",
+      titleAr: "مكاتب السفريات",
+      titleEn: "Travel Offices",
+      introAr: "قسم مكاتب السفريات يساعدك على الوصول لمكاتب موثوقة حسب الدولة والمحافظة.",
+      introEn: "The travel offices section helps you find trusted offices by country and governorate.",
+      pointsAr: [
+        "ابدأ من الدولة ثم اختر المحافظة لعرض المكاتب المتاحة.",
+        "افتح بطاقة المكتب لمراجعة الترخيص، العنوان، وسائل التواصل، والموقع على الخريطة.",
+        "يمكنك الاتصال المباشر أو فتح واتساب أو الانتقال للموقع الرسمي إن كان متاحًا.",
+        "بعد التجربة، قيّم المكتب ليظهر تقييمك للمستخدمين الآخرين.",
+      ],
+      pointsEn: [
+        "Start with a country, then choose a governorate to view available offices.",
+        "Open an office card to review license, address, contact methods, and map location.",
+        "You can call directly, open WhatsApp, or visit the official website when available.",
+        "After your experience, submit a rating to help other users.",
+      ],
+    },
+    {
+      icon: "🎓",
+      titleAr: "مكاتب الدراسة بالخارج",
+      titleEn: "Study Abroad Offices",
+      introAr: "ستجد دليلًا مخصصًا لمكاتب الدراسة بالخارج مع فلاتر دقيقة وسهلة.",
+      introEn: "You will find a dedicated study-abroad directory with practical filters.",
+      pointsAr: [
+        "استخدم البحث بالاسم أو المدينة أو الدولة المستهدفة.",
+        "طبّق الفلاتر حسب المحافظة، الدولة، والتقييم للوصول الأسرع.",
+        "عند فتح تفاصيل المكتب ستجد كل البيانات الأساسية في صفحة واحدة.",
+        "يمكنك إضافة تقييمك ومراجعتك ليتم حفظها في حسابك.",
+      ],
+      pointsEn: [
+        "Use search by office name, city, or destination country.",
+        "Apply filters by governorate, destination, and rating for faster results.",
+        "When opening office details, all key information appears on one page.",
+        "You can add your rating and review, saved under your account.",
+      ],
+    },
+    {
+      icon: "💼",
+      titleAr: "التوظيف والخدمات",
+      titleEn: "Jobs & Services",
+      introAr: "يشمل هذا القسم الطلبات المدفوعة وخدمات تجهيز السيرة الذاتية والتصدير.",
+      introEn: "This section includes paid requests, CV preparation, and export tools.",
+      pointsAr: [
+        "اختر الخدمة المناسبة ثم املأ البيانات المطلوبة بدقة قبل الإرسال.",
+        "في السيرة الذاتية يمكنك البناء خطوة بخطوة ثم تصدير PDF أو Word.",
+        "يمكن إرسال بيانات CV لفريق الخدمة لاستلام نسخة احترافية جاهزة.",
+        "تابع حالة طلباتك من الحساب وتحقق من التحديثات أولًا بأول.",
+      ],
+      pointsEn: [
+        "Choose the right service, then fill required data accurately before submission.",
+        "In CV flow, build step by step and export to PDF or Word.",
+        "You can send CV data to the team to receive a ready professional version.",
+        "Track request status updates from your account dashboard.",
+      ],
+    },
+    {
+      icon: "⚙️",
+      titleAr: "الإعدادات والحساب",
+      titleEn: "Settings & Account",
+      introAr: "من الإعدادات تقدر تتحكم في اللغة والمظهر والوصول للدعم والخصوصية.",
+      introEn: "From Settings, you can control language, theme, support, and privacy.",
+      pointsAr: [
+        "بدّل اللغة بين العربية والإنجليزية في أي وقت.",
+        "اختر الوضع النهاري أو الليلي حسب راحتك.",
+        "حدّث بيانات حسابك وتابع كوينزك وطلباتك السابقة.",
+        "استخدم روابط الدعم الفني أو البريد للتواصل السريع.",
+      ],
+      pointsEn: [
+        "Switch language between Arabic and English anytime.",
+        "Choose light or dark theme based on your preference.",
+        "Update your account data and review your coins and previous requests.",
+        "Use support links or email for fast assistance.",
+      ],
+    },
+  ];
+
+  const REQUEST_FLOW_STEPS = [
+    {
+      ar: "سجّل الدخول بإيميلك أو رقم جوالك حتى يتم حفظ الطلب باسمك.",
+      en: "Sign in with your email or phone so your request is saved under your account.",
+    },
+    {
+      ar: "ادخل للقسم المناسب (سفريات، دراسة، أو توظيف) ثم اختر المكتب أو الخدمة.",
+      en: "Open the relevant section (travel, study, or jobs) then pick an office or service.",
+    },
+    {
+      ar: "اضغط زر تقديم/طلب الخدمة واملأ البيانات المطلوبة بدون اختصار.",
+      en: "Tap request/submit and complete all required fields carefully.",
+    },
+    {
+      ar: "راجع رقم الجوال وواتساب والبريد قبل التأكيد النهائي.",
+      en: "Review phone, WhatsApp, and email before final confirmation.",
+    },
+    {
+      ar: "أرسل الطلب واحتفظ برقم الطلب أو الرقم التسلسلي للمتابعة.",
+      en: "Submit the request and keep the request ID/serial for follow-up.",
+    },
+    {
+      ar: "تابع الحالة من حسابك: قيد المراجعة، تم التواصل، مكتمل، أو يحتاج تعديل.",
+      en: "Track status from your account: under review, contacted, completed, or requires update.",
+    },
   ];
 
   const UsageGuideModal = () => usageGuideOpen ? (
@@ -6502,32 +6727,59 @@ export default function App() {
           </div>
         </div>
 
-        {/* Steps */}
+        {/* Main Sections */}
         <div style={{ display: "grid", gap: 10 }}>
-          {USAGE_STEPS.map((step, i) => (
+          {USAGE_GUIDE_SECTIONS.map((section, i) => (
             <div
-              key={i}
+              key={section.titleAr}
               style={{
                 borderRadius: 16,
                 border: "1px solid rgba(212,175,55,0.22)",
                 background: "rgba(255,255,255,0.04)",
                 padding: "12px 14px",
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 12,
                 direction: dir,
               }}
             >
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #e7c55b, #c99a23)", color: "#11244f", fontSize: 11, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</div>
-                <span style={{ fontSize: 20 }}>{step.emoji}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, #e7c55b, #c99a23)", color: "#11244f", fontSize: 11, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</div>
+                <span style={{ fontSize: 18, lineHeight: 1 }}>{section.icon}</span>
+                <div style={{ color: "#f5d77b", fontSize: 13, fontWeight: 900 }}>
+                  {lang === "ar" ? section.titleAr : section.titleEn}
+                </div>
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ color: "#f5d77b", fontSize: 13, fontWeight: 900, marginBottom: 4 }}>{lang === "ar" ? step.titleAr : step.titleEn}</div>
-                <div style={{ color: "rgba(226,232,240,0.82)", fontSize: 11, fontWeight: 600, lineHeight: 1.75 }}>{lang === "ar" ? step.descAr : step.descEn}</div>
+              <div style={{ color: "rgba(226,232,240,0.82)", fontSize: 11, fontWeight: 700, lineHeight: 1.75, marginBottom: 8 }}>
+                {lang === "ar" ? section.introAr : section.introEn}
+              </div>
+              <div style={{ display: "grid", gap: 5 }}>
+                {(lang === "ar" ? section.pointsAr : section.pointsEn).map((point, pointIndex) => (
+                  <div key={point} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    <span style={{ color: "#f5d77b", fontSize: 11, marginTop: 1, fontWeight: 900 }}>{pointIndex + 1}.</span>
+                    <span style={{ color: "rgba(226,232,240,0.86)", fontSize: 11, fontWeight: 600, lineHeight: 1.7 }}>{point}</span>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Request Submission Guide */}
+        <div style={{ marginTop: 12, borderRadius: 16, border: "1px solid rgba(16,185,129,0.35)", background: "rgba(16,185,129,0.08)", padding: "12px 14px", direction: dir }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 18 }}>🧭</span>
+            <div style={{ color: "#6ee7b7", fontSize: 13, fontWeight: 900 }}>
+              {lang === "ar" ? "كيفية تقديم طلب داخل التطبيق" : "How to submit a request"}
+            </div>
+          </div>
+          <div style={{ display: "grid", gap: 6 }}>
+            {REQUEST_FLOW_STEPS.map((step, i) => (
+              <div key={step.ar} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <div style={{ width: 20, height: 20, borderRadius: 999, background: "rgba(16,185,129,0.25)", color: "#d1fae5", fontSize: 10, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
+                <div style={{ color: "rgba(236,253,245,0.92)", fontSize: 11, fontWeight: 600, lineHeight: 1.75 }}>
+                  {lang === "ar" ? step.ar : step.en}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Footer */}
@@ -6603,116 +6855,7 @@ export default function App() {
     </div>
   ) : null;
 
-  const AdminSecurityModal = () => adminSecurityOpen && isAdminUser ? (
-    <div style={{ ...styles.overlay, background: "rgba(2, 6, 23, 0.72)", backdropFilter: "blur(10px)" }}>
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 340,
-          borderRadius: 22,
-          padding: "20px 16px 16px",
-          background: dark
-            ? "linear-gradient(180deg, rgba(30,41,59,0.98) 0%, rgba(15,23,42,0.98) 100%)"
-            : "linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%)",
-          border: dark ? "1px solid rgba(148,163,184,0.35)" : "1px solid rgba(51,65,85,0.18)",
-          boxShadow: "0 24px 70px rgba(0,0,0,0.30)",
-        }}
-      >
-        <div style={{ fontSize: 30, textAlign: "center", marginBottom: 8 }}>🛡️</div>
-        <div style={{ fontSize: 15, fontWeight: 900, color: dark ? "#f8fafc" : "#0f172a", textAlign: "center", marginBottom: 6, fontFamily: "'Cairo',sans-serif" }}>
-          {lang === "ar" ? "أمان لوحة الأدمن" : "Admin Security Check"}
-        </div>
-        <div style={{ fontSize: 12, color: dark ? "rgba(226,232,240,0.92)" : "#334155", lineHeight: 1.7, textAlign: "center", marginBottom: 12, fontFamily: "'Cairo',sans-serif" }}>
-          {lang === "ar"
-            ? "أدخل كود الأدمن (6 أرقام) للمتابعة إلى لوحة التحكم."
-            : "Enter the 6-digit admin code to continue to the admin panel."}
-        </div>
-
-        <input
-          type="password"
-          inputMode="numeric"
-          maxLength={6}
-          value={adminSecurityCode}
-          onChange={(e) => {
-            setAdminSecurityCode(String(e.target.value || "").replace(/\D/g, "").slice(0, 6));
-            if (adminSecurityError) setAdminSecurityError("");
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleAdminSecuritySubmit();
-          }}
-          placeholder={lang === "ar" ? "••••••" : "••••••"}
-          style={{
-            width: "100%",
-            borderRadius: 14,
-            border: dark ? "1px solid rgba(148,163,184,0.42)" : "1px solid rgba(51,65,85,0.22)",
-            background: dark ? "rgba(15,23,42,0.85)" : "rgba(255,255,255,0.95)",
-            color: dark ? "#f8fafc" : "#0f172a",
-            fontSize: 18,
-            letterSpacing: 5,
-            textAlign: "center",
-            padding: "12px 10px",
-            outline: "none",
-            fontWeight: 900,
-            fontFamily: "'Cairo',sans-serif",
-            marginBottom: 8,
-          }}
-        />
-
-        {!!adminSecurityError && (
-          <div style={{ fontSize: 11, color: "#ef4444", textAlign: "center", marginBottom: 8, fontWeight: 800, lineHeight: 1.6, fontFamily: "'Cairo',sans-serif" }}>
-            {adminSecurityError}
-          </div>
-        )}
-
-        <div style={{ fontSize: 10, color: dark ? "rgba(148,163,184,0.9)" : "#475569", textAlign: "center", marginBottom: 12, fontFamily: "'Cairo',sans-serif" }}>
-          {lang === "ar" ? `عدد الأخطاء: ${adminSecurityAttempts}/2` : `Failed attempts: ${adminSecurityAttempts}/2`}
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <button
-            onClick={closeAdminSecurityModal}
-            disabled={adminSecurityBusy}
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              borderRadius: 12,
-              border: dark ? "1px solid rgba(148,163,184,0.4)" : "1px solid rgba(51,65,85,0.22)",
-              background: dark ? "rgba(30,41,59,0.7)" : "rgba(255,255,255,0.85)",
-              color: dark ? "#f8fafc" : "#334155",
-              fontSize: 12,
-              fontWeight: 800,
-              fontFamily: "'Cairo',sans-serif",
-              cursor: "pointer",
-              opacity: adminSecurityBusy ? 0.7 : 1,
-            }}
-          >
-            {lang === "ar" ? "إلغاء" : "Cancel"}
-          </button>
-          <button
-            onClick={handleAdminSecuritySubmit}
-            disabled={adminSecurityBusy}
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              borderRadius: 12,
-              border: "none",
-              background: "linear-gradient(135deg,#22c55e,#15803d)",
-              color: "#fff",
-              fontSize: 12,
-              fontWeight: 900,
-              fontFamily: "'Cairo',sans-serif",
-              cursor: "pointer",
-              opacity: adminSecurityBusy ? 0.75 : 1,
-            }}
-          >
-            {adminSecurityBusy
-              ? (lang === "ar" ? "جارٍ التحقق..." : "Checking...")
-              : (lang === "ar" ? "دخول" : "Enter")}
-          </button>
-        </div>
-      </div>
-    </div>
-  ) : null;
+  const AdminSecurityModal = () => null;
 
   const AdminAddOfficeModal = () => adminAddOfficeOpen && isAdminUser ? (
     <div style={{ ...styles.overlay, background: "rgba(2, 6, 23, 0.72)", backdropFilter: "blur(8px)" }}>
@@ -7056,8 +7199,8 @@ export default function App() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 18 }}>
           <div style={{ color: "rgba(255,255,255,0.76)", fontSize: 12, fontWeight: 700, fontFamily: "'Cairo',sans-serif" }}>
             {lang === "ar"
-              ? `المستخدمون: ${adminUsers.length} | الطلبات: ${adminOrders.length} | مقدمو الخدمات: ${providerRequestsVisible.length}`
-              : `Users: ${adminUsers.length} | Orders: ${adminOrders.length} | Providers: ${providerRequestsVisible.length}`}
+              ? `المستخدمون: ${adminUsers.length} | الطلبات: ${adminOrders.length} | طلبات مكاتب الدراسة: ${adminStudyAccessOrders.length} | مقدمو الخدمات: ${providerRequestsVisible.length}`
+              : `Users: ${adminUsers.length} | Orders: ${adminOrders.length} | Study access: ${adminStudyAccessOrders.length} | Providers: ${providerRequestsVisible.length}`}
           </div>
           <button
             onClick={() => {
@@ -7103,6 +7246,14 @@ export default function App() {
               tone: "linear-gradient(135deg, rgba(245,158,11,0.18), rgba(180,83,9,0.16))",
               border: "1px solid rgba(251,191,36,0.42)",
               icon: "📦",
+            }, {
+              key: "studyAccess",
+              titleAr: "طلبات مكاتب الدراسة",
+              titleEn: "Study Access Requests",
+              count: adminStudyAccessOrders.length,
+              tone: "linear-gradient(135deg, rgba(37,99,235,0.20), rgba(30,58,138,0.16))",
+              border: "1px solid rgba(96,165,250,0.45)",
+              icon: "🎓",
             }, {
               key: "providers",
               titleAr: "مقدمو الخدمات",
@@ -7523,6 +7674,81 @@ export default function App() {
             </div>
           )}
         </div>
+        </div>
+
+        <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(96,165,250,0.34)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px", display: adminPanelSection === "studyAccess" ? "block" : "none" }}>
+          <div style={{ marginBottom: 8, color: "#bfdbfe", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+            <span>{lang === "ar" ? "طلبات مكاتب الدراسة" : "Study Access Requests"}</span>
+            <span style={{ color: "#bfdbfe", fontSize: 10, fontWeight: 800 }}>
+              {filteredAdminStudyAccessOrders.length} / {adminStudyAccessOrders.length}
+            </span>
+          </div>
+
+          <input
+            value={adminStudyOrdersQuery}
+            onChange={(event) => setAdminStudyOrdersQuery(event.target.value)}
+            placeholder={lang === "ar" ? "بحث برقم الطلب أو الاسم أو الهاتف" : "Search by order id, name, or phone"}
+            style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(96,165,250,0.35)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", marginBottom: 8, fontFamily: "'Cairo',sans-serif" }}
+          />
+
+          <div style={{ display: "grid", gap: 7 }}>
+            {filteredAdminStudyAccessOrders.map((orderItem, index) => {
+              const orderId = String(orderItem.id || orderItem.firebaseId || "").trim();
+              const statusValue = String(orderItem.statusValue || orderItem.status || orderItem.orderStatus || "pending").trim().toLowerCase();
+              const isApproved = statusValue === "approved";
+              const busy = adminOrderActionBusyId === orderId;
+              const finalPrice = Number(orderItem.finalPriceUsd || orderItem.price || 5) || 5;
+
+              return (
+                <div key={orderId || `study-order-${index + 1}`} style={{ borderRadius: 14, border: `1px solid ${isApproved ? "rgba(34,197,94,0.35)" : "rgba(96,165,250,0.35)"}`, background: "rgba(255,255,255,0.05)", padding: "9px 10px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ color: "#f8fafc", fontSize: 11, fontWeight: 900, lineHeight: 1.35 }}>
+                        {lang === "ar" ? `طلب دراسة رقم ${index + 1}` : `Study request #${index + 1}`}
+                      </div>
+                      <div style={{ color: "#93c5fd", fontSize: 10, marginTop: 2 }}>
+                        {lang === "ar" ? "رقم الطلب" : "Order"}: {orderItem.serialLabel || "—"}
+                      </div>
+                      <div style={{ color: "#cbd5e1", fontSize: 10, marginTop: 2 }}>
+                        {lang === "ar" ? "الاسم" : "Name"}: {orderItem.customerName || "—"}
+                      </div>
+                      <div style={{ color: "#cbd5e1", fontSize: 10, marginTop: 2 }}>
+                        {lang === "ar" ? "الهاتف" : "Phone"}: {orderItem.customerPhone || orderItem.whatsapp || "—"}
+                      </div>
+                      <div style={{ color: "#bbf7d0", fontSize: 10, marginTop: 2 }}>
+                        {lang === "ar" ? "المبلغ" : "Amount"}: ${finalPrice}
+                      </div>
+                    </div>
+                    <div style={{ padding: "3px 8px", borderRadius: 999, fontSize: 10, fontWeight: 900, background: isApproved ? "rgba(34,197,94,0.16)" : "rgba(245,158,11,0.16)", color: isApproved ? "#86efac" : "#fde68a", border: isApproved ? "1px solid rgba(34,197,94,0.35)" : "1px solid rgba(245,158,11,0.35)" }}>
+                      {isApproved
+                        ? (lang === "ar" ? "معتمد" : "Approved")
+                        : (lang === "ar" ? "قيد المراجعة" : "Pending")}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 6, marginTop: 8 }}>
+                    <button
+                      onClick={() => handleAdminApproveStudyAccessOrder(orderItem)}
+                      disabled={isApproved || busy}
+                      style={{ width: "100%", padding: "8px 9px", borderRadius: 10, border: "none", background: isApproved ? "rgba(34,197,94,0.18)" : "linear-gradient(135deg,#22c55e,#166534)", color: isApproved ? "#86efac" : "#fff", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: isApproved || busy ? "not-allowed" : "pointer", opacity: isApproved || busy ? 0.7 : 1 }}
+                    >
+                      {busy
+                        ? (lang === "ar" ? "جارٍ الاعتماد..." : "Approving...")
+                        : isApproved
+                          ? (lang === "ar" ? "تم التفعيل" : "Activated")
+                          : (lang === "ar" ? "اعتماد وتفعيل الوصول الكامل" : "Approve and unlock full access")}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {!adminOrdersLoading && filteredAdminStudyAccessOrders.length === 0 && (
+              <div style={{ borderRadius: 14, border: "1px dashed rgba(96,165,250,0.40)", background: "rgba(255,255,255,0.03)", padding: "12px 10px", textAlign: "center", color: "rgba(255,255,255,0.82)", fontSize: 11, lineHeight: 1.7, fontWeight: 700, fontFamily: "'Cairo',sans-serif" }}>
+                {lang === "ar" ? "لا توجد طلبات مكاتب دراسة مطابقة للبحث." : "No matching study access requests."}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ===== ORDER DETAIL PAGE ===== */}
@@ -8458,6 +8684,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
       <nav style={{ padding: "16px 10px", flex: 1 }}>
         {[
           { key: "home",     icon: "🏠", label: tx.navHome,     action: () => goToCountryLanding() },
+          { key: "study",    icon: "🎓", label: tx.navStudy,    action: openStudyTabRoot },
           { key: "cv",       icon: "📄", label: tx.navCV,       action: () => { setMainTab("cv"); setCvMode(null); setSelectedCvPackage(null); setCvBuilderScreen("menu"); setSelectedCvBuilderOrder(null); setCvStep(0); setCvUnlocked(false); } },
           { key: "settings", icon: "⚙️", label: tx.navSettings, action: () => setMainTab("settings") },
         ].map(tab => {
@@ -8597,16 +8824,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
         );
 
         const promptOfficeReviewAuth = () => {
-          setOfficeReviewError(
-            lang === "ar"
-              ? "يجب تسجيل الدخول أو إنشاء حساب جديد لإضافة تقييم وتجربتك."
-              : "You need to sign in or create a new account to submit your review and experience."
-          );
-          setShowExitConfirm(false);
-          setAuthPreviewMode("login");
-          setAuthPreviewOpen(true);
-          setAuthPreviewError("");
-          setAuthPreviewSuccess("");
+          setShowGuestAuthAlert(true);
         };
 
         const openAdminOfficeEditor = () => {
@@ -8957,8 +9175,75 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
         return (
           <div style={{ position: "fixed", inset: 0, zIndex: 800, background: dark ? "#0a1628" : "#f0f4ff", overflowY: "auto", fontFamily: "'Cairo',sans-serif" }}>
 
+            {/* Guest Auth Alert Modal */}
+            {showGuestAuthAlert && (
+              <div
+                onClick={() => setShowGuestAuthAlert(false)}
+                style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", fontFamily: "'Cairo',sans-serif" }}
+              >
+                <div
+                  onClick={e => e.stopPropagation()}
+                  style={{
+                    width: 270,
+                    borderRadius: 18,
+                    padding: "22px 18px 18px",
+                    background: "linear-gradient(180deg, rgba(127,29,29,0.97) 0%, rgba(69,10,10,0.97) 100%)",
+                    border: "1px solid rgba(248,113,113,0.45)",
+                    boxShadow: "0 0 0 1px rgba(248,113,113,0.12), 0 0 28px rgba(239,68,68,0.35), 0 16px 40px rgba(0,0,0,0.45)",
+                    textAlign: "center",
+                  }}
+                >
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>🔒</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "#fca5a5", marginBottom: 6 }}>
+                    {lang === "ar" ? "برجاء تسجيل الدخول" : "Sign In Required"}
+                  </div>
+                  <div style={{ fontSize: 12, color: "rgba(252,165,165,0.8)", marginBottom: 18, lineHeight: 1.7 }}>
+                    {lang === "ar"
+                      ? "سجّل الدخول أو أنشئ حسابًا لإضافة تقييمك وتجربتك."
+                      : "Sign in or create an account to rate this office."}
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => { setShowGuestAuthAlert(false); setAuthPreviewMode("signup"); setAuthPreviewOpen(true); }}
+                      style={{ flex: 1, padding: "9px 0", borderRadius: 12, border: "1px solid rgba(248,113,113,0.5)", background: "rgba(239,68,68,0.15)", color: "#fca5a5", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Cairo',sans-serif" }}
+                    >
+                      {lang === "ar" ? "إنشاء حساب" : "Sign Up"}
+                    </button>
+                    <button
+                      onClick={() => { setShowGuestAuthAlert(false); setAuthPreviewMode("login"); setAuthPreviewOpen(true); }}
+                      style={{ flex: 1, padding: "9px 0", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #ef4444, #b91c1c)", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Cairo',sans-serif" }}
+                    >
+                      {lang === "ar" ? "تسجيل الدخول" : "Sign In"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Header */}
             <div style={{ position: "sticky", top: 0, zIndex: 10, background: dark ? "rgba(10,22,40,0.97)" : "rgba(255,255,255,0.97)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${t.border}`, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+              {/* زر الرجوع */}
+              <button
+                onClick={() => closeSelectedOfficeView()}
+                aria-label={lang === "ar" ? "رجوع" : "Back"}
+                style={{
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  border: `1.5px solid ${t.border}`,
+                  background: dark ? "rgba(30,42,60,0.92)" : "rgba(255,255,255,0.92)",
+                  color: t.gold,
+                  fontSize: 22,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.14)",
+                }}
+              >
+                {lang === "ar" ? "‹" : "›"}
+              </button>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: t.text, lineHeight: 1.2 }}>{officeNameLabel}</div>
                       <div style={{ fontSize: 10, color: t.gold }}>
@@ -9339,8 +9624,8 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     disabled={isGuestUser || userAlreadyReviewedOffice}
                     style={{ width: "100%", borderRadius: 12, border: `1px solid ${t.border}`, background: isGuestUser || userAlreadyReviewedOffice ? (dark ? "rgba(255,255,255,0.04)" : "#f8fafc") : t.inputBg, color: t.text, fontSize: 13, fontFamily: "'Cairo',sans-serif", padding: "10px 12px", resize: "none", outline: "none", boxSizing: "border-box", marginBottom: 10, opacity: isGuestUser || userAlreadyReviewedOffice ? 0.85 : 1 }}
                   />
-                  <button onClick={submitReview}
-                    style={{ width: "100%", padding: "12px", borderRadius: 12, border: "none", background: !isGuestUser && !userAlreadyReviewedOffice && userRating && !officeReviewSubmitting ? "linear-gradient(135deg,#d4af37,#b8860b)" : t.border, color: !isGuestUser && !userAlreadyReviewedOffice && userRating && !officeReviewSubmitting ? "#fff" : t.subText, fontSize: 14, fontWeight: 700, cursor: !isGuestUser && !userAlreadyReviewedOffice && userRating && !officeReviewSubmitting ? "pointer" : "default", fontFamily: "'Cairo',sans-serif", transition: "all 0.2s" }}>
+                  <button onClick={isGuestUser ? () => { setAuthPreviewMode("login"); setAuthPreviewOpen(true); } : submitReview}
+                    style={{ width: "100%", padding: "12px", borderRadius: 12, border: "none", background: isGuestUser ? "linear-gradient(135deg,#1e40af,#1d4ed8)" : (!userAlreadyReviewedOffice && userRating && !officeReviewSubmitting ? "linear-gradient(135deg,#d4af37,#b8860b)" : t.border), color: isGuestUser ? "#fff" : (!userAlreadyReviewedOffice && userRating && !officeReviewSubmitting ? "#fff" : t.subText), fontSize: 14, fontWeight: 700, cursor: isGuestUser || (!userAlreadyReviewedOffice && userRating && !officeReviewSubmitting) ? "pointer" : "default", fontFamily: "'Cairo',sans-serif", transition: "all 0.2s" }}>
                     {officeReviewSubmitting
                       ? (lang === "ar" ? "جارٍ إرسال التقييم..." : "Submitting review...")
                       : isGuestUser
@@ -9441,6 +9726,31 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               )}
 
             </div>
+
+            {/* زر الرجوع في الأسفل */}
+            <div style={{ padding: "0 16px 28px", display: "flex", justifyContent: "center" }}>
+              <button
+                onClick={() => closeSelectedOfficeView()}
+                aria-label={lang === "ar" ? "رجوع" : "Back"}
+                style={{
+                  width: 50,
+                  height: 50,
+                  borderRadius: "50%",
+                  border: `1.5px solid ${t.border}`,
+                  background: dark ? "rgba(30,42,60,0.92)" : "rgba(255,255,255,0.92)",
+                  color: t.gold,
+                  fontSize: 26,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  boxShadow: "0 4px 18px rgba(0,0,0,0.16)",
+                }}
+              >
+                {lang === "ar" ? "‹" : "›"}
+              </button>
+            </div>
+
           </div>
         );
       })()}
@@ -9727,6 +10037,36 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? "ادخل إلى المحافظات والمكاتب المرخصة كما هي بدون أي تغيير في محتواها." : "Open the governorates and licensed offices exactly as they are."}</div>
                     </div>
                     <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#16a34a18", color: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                  </button>
+
+                  <button
+                    onClick={openStudyTabRoot}
+                    className="section-card"
+                    style={{
+                      width: "100%",
+                      maxWidth: "100%",
+                      boxSizing: "border-box",
+                      textAlign: lang === "ar" ? "right" : "left",
+                      background: dark ? "linear-gradient(135deg, rgba(217,119,6,0.24), rgba(245,158,11,0.10))" : "linear-gradient(135deg, #fff8eb, #fffbf2)",
+                      border: "1px solid #d9770630",
+                      borderRadius: 22,
+                      padding: "12px 13px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 11,
+                      minHeight: 82,
+                      overflow: "hidden",
+                      boxShadow: dark ? "0 0 18px #d9770618" : "0 10px 22px #d9770612",
+                      fontFamily: "'Cairo',sans-serif",
+                    }}
+                  >
+                    <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #d9770628", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🎓</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: "#d97706", marginBottom: 3 }}>{lang === "ar" ? "مكاتب الدراسة بالخارج" : "Study Abroad Offices"}</div>
+                      <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? "استعرض مكاتب الدراسة الموثقة مع الدول المتاحة وطرق التواصل المباشرة." : "Browse trusted study abroad offices with destination countries and direct contact details."}</div>
+                    </div>
+                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#d9770618", color: "#d97706", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                   </button>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
@@ -11894,11 +12234,11 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               desc: lang==="ar" ? "بحث فعلي عن وظائف مناسبة مع سيرة ذاتية ممتازة وإرسال 32 فرصة مرتبطة بمجالك." : "Real job search support with a premium CV and 32 relevant opportunities.",
               cta: lang==="ar" ? "اطلب الباقة الكاملة" : "Get Full Package",
               accent: "#7c3aed",
-              cardBg: dark ? "linear-gradient(155deg,#2b174f,#3f216f)" : "linear-gradient(155deg,#32215e,#1f1440)",
-              titleColor: "#efe7ff",
-              textColor: "#dfd4ff",
-              chipBg: "rgba(255,255,255,0.12)",
-              ctaBg: "linear-gradient(135deg,#6d4ec7,#8a67eb)",
+              cardBg: dark ? "linear-gradient(145deg,#3d1a86,#2a145f 56%,#1e1048)" : "linear-gradient(145deg,#5f35df,#4b2dbd 56%,#382185)",
+              titleColor: "#f4eeff",
+              textColor: "#e5d9ff",
+              chipBg: "rgba(255,255,255,0.24)",
+              ctaBg: "linear-gradient(135deg,#7f49ff,#9a69ff)",
               ctaColor: "#f8f4ff",
             },
             {
@@ -11911,12 +12251,12 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               desc: lang==="ar" ? "سيرة ذاتية ممتازة مع عدد 16 فرصة مناسبة لتخصصك تُرسل إلى واتسابك الشخصي." : "Premium CV with 16 relevant opportunities sent to your WhatsApp.",
               cta: lang==="ar" ? "اطلب بريميوم" : "Choose Premium",
               accent: "#c8960c",
-              cardBg: dark ? "linear-gradient(155deg,#113965,#1d5f9e)" : "linear-gradient(155deg,#b8d9f6,#6ea9dd)",
-              titleColor: dark ? "#f9e7b7" : "#3a2a07",
-              textColor: dark ? "#eff6ff" : "#16324f",
-              chipBg: dark ? "rgba(200,150,12,0.30)" : "rgba(255,255,255,0.74)",
-              ctaBg: "linear-gradient(135deg,#c8960c,#a97706)",
-              ctaColor: "#fff9eb",
+              cardBg: dark ? "linear-gradient(145deg,#1f4f93,#2f73d1 58%,#4e9bf2)" : "linear-gradient(145deg,#7db6ff,#5f97ed 58%,#4f7fda)",
+              titleColor: "#f5f9ff",
+              textColor: "#dcecff",
+              chipBg: "rgba(255,255,255,0.24)",
+              ctaBg: "linear-gradient(135deg,#3e7cf1,#5ca7ff)",
+              ctaColor: "#f7fbff",
             },
             {
               key: "builder",
@@ -11928,14 +12268,24 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               desc: lang==="ar" ? "أنشئ سيرتك الذاتية بنفسك بخطوات واضحة واحصل على نسخة جاهزة للتصدير." : "Build your CV yourself with a clean guided flow and get an export-ready version.",
               cta: lang==="ar" ? "ابدأ الآن" : "Start Now",
               accent: "#0f766e",
-              cardBg: dark ? "linear-gradient(155deg,#123e45,#0f766e)" : "linear-gradient(155deg,#dff5f1,#b8e7df)",
-              titleColor: dark ? "#e6fffb" : "#083b36",
-              textColor: dark ? "#dcfdf7" : "#0f4d45",
-              chipBg: dark ? "rgba(15,118,110,0.35)" : "rgba(255,255,255,0.72)",
-              ctaBg: "linear-gradient(135deg,#0f766e,#0d9488)",
+              cardBg: dark ? "linear-gradient(145deg,#15584f,#13766a 58%,#18a18f)" : "linear-gradient(145deg,#dff4ee,#ccebe3 58%,#bbe3d8)",
+              titleColor: dark ? "#eafffb" : "#0b665c",
+              textColor: dark ? "#d8fcf6" : "#16786d",
+              chipBg: dark ? "rgba(15,118,110,0.35)" : "rgba(11,102,92,0.18)",
+              ctaBg: "linear-gradient(135deg,#049988,#00b29b)",
               ctaColor: "#ffffff",
             }
           ];
+          const cvPackageBadges = {
+            elite: lang === "ar" ? "الأكثر شمولاً" : "Most Complete",
+            premium: lang === "ar" ? "الأفضل توازناً" : "Best Value",
+            builder: lang === "ar" ? "الأكثر اقتصادية" : "Most Affordable",
+          };
+          const cvPackageFeatureRows = {
+            elite: lang === "ar" ? ["32 فرصة", "سيرة ذاتية ممتازة", "دعم واستشارات"] : ["32 Jobs", "Premium CV", "Support"],
+            premium: lang === "ar" ? ["16 فرصة", "سيرة ذاتية ممتازة", "دعم واستشارات"] : ["16 Jobs", "Premium CV", "Support"],
+            builder: lang === "ar" ? ["تصدير مجاني", "سريع", "سهل"] : ["Free Export", "Fast", "Simple"],
+          };
           const cvPaidServices = [
             {
               key: "premium",
@@ -11980,6 +12330,11 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     : "Package includes: Professional Arabic & English CV + 32 real targeted job opportunities from your field + active job search on your behalf.\n\nService duration: 1 month or until all 32 opportunities are delivered.\n\n✅ This package includes direct post-payment customer support via WhatsApp."
                 }
               : null;
+          const selectedCvRefundPolicy = ["premium", "elite"].includes(String(selectedCvPackage || ""))
+            ? (lang === "ar"
+                ? "سياسة الاسترداد: في حالة عدم تنفيذ المتفق عليه (عدد الوظائف والمتابعة) يحق للمستخدم طلب استرداد كامل للمبلغ بعد خصم 7 دولار فقط تكلفة المصاريف الإدارية وإعداد السيرة الذاتية."
+                : "Refund policy: If the agreed scope is not delivered (job count and follow-up), the user can request a full refund minus only a $7 fee for administrative processing and CV preparation.")
+            : "";
           const cvJobSites = [
             { key:"linkedin", name:"LinkedIn", short:"in", color:"#0A66C2", url:"https://www.linkedin.com/jobs/" },
             { key:"indeed", name:"Indeed", short:"id", color:"#2557A7", url:"https://www.indeed.com/" },
@@ -12120,7 +12475,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 </div>
               )}
               {!cvMode && (
-              <div style={{ ...cardStyle, padding:isCompactPhone ? "11px" : "16px", marginTop:6, background: dark ? "linear-gradient(135deg, rgba(15,23,42,0.97), rgba(30,41,59,0.92), rgba(14,116,144,0.22))" : "linear-gradient(135deg, #f8f4ea, #edf5ff, #d8f3ef)", border:`1px solid ${t.gold}3f`, boxShadow: dark ? "0 18px 38px rgba(0,0,0,0.24)" : "0 18px 38px rgba(15,23,42,0.09)", borderRadius:24 }}>
+              <div style={{ ...cardStyle, padding:isCompactPhone ? "11px" : "16px", margin:"6px auto 0", width:"100%", background: dark ? "linear-gradient(135deg, rgba(15,23,42,0.97), rgba(30,41,59,0.92), rgba(14,116,144,0.22))" : "linear-gradient(135deg, #f8f4ea, #edf5ff, #d8f3ef)", border:`1px solid ${t.gold}3f`, boxShadow: dark ? "0 18px 38px rgba(0,0,0,0.24)" : "0 18px 38px rgba(15,23,42,0.09)", borderRadius:24 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, marginBottom:isCompactPhone ? 5 : 6, flexWrap:"wrap" }}>
                   <span style={{ ...tagStyle, background:"#e53e3e18", color:"#e53e3e" }}>🔥 {lang==="ar" ? "خصم 50٪ لفترة محدودة" : "50% OFF for a limited time"}</span>
                   <span style={{ fontSize:cvScaleFont(11), color:t.subText, fontFamily:"'Cairo',sans-serif" }}>{lang==="ar" ? `ينتهي العرض في ${cvOfferEndsText}` : `Offer ends on ${cvOfferEndsText}`}</span>
@@ -12131,35 +12486,19 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 <div style={{ fontSize:cvScaleFont(isCompactPhone ? 10.5 : 12), color:t.subText, lineHeight:isCompactPhone ? 1.52 : 1.62, marginBottom:isCompactPhone ? 6 : 8, fontFamily:"'Cairo',sans-serif" }}>
                   {lang==="ar" ? "اختر مسارك المهني من بين خياراتنا المتكاملة للنجاح." : "Choose your career path from our complete success options."}
                 </div>
-                <div
-                  style={isCompactPhone
-                    ? {
-                        display:"grid",
-                        gridTemplateColumns:"repeat(3, minmax(0, 1fr))",
-                        gap:6,
-                        alignItems:"stretch",
-                      }
-                    : {
-                        display:"grid",
-                        gridTemplateColumns:"repeat(3, minmax(0, 1fr))",
-                        gap:12,
-                        alignItems:"stretch",
-                      }}
-                >
+                <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:12, alignItems:"stretch" }}>
                   {cvPackages.map(pkg => {
-                    const statsItem = cvPackageStatsCards.find(s => s.key === pkg.key);
                     const isActive = (pkg.key === "builder" && cvMode === "builder") || (pkg.key !== "builder" && cvMode === "services" && selectedCvPackage === pkg.key);
-                    const packageLayout = cvPackageLayout[pkg.key] || { desktopMinHeight: 360, desktopStatsOffset: 0 };
                     return (
                       <div
                         key={pkg.key}
                         style={{
                           display:"flex",
                           flexDirection:"column",
-                          gap:isCompactPhone ? 4 : 8,
+                          gap:8,
                           justifyContent:"flex-end",
                           minWidth:0,
-                          flex:isCompactPhone ? "1 1 0%" : "1 1 0%",
+                          flex:"1 1 0%",
                         }}
                       >
                         <button
@@ -12181,16 +12520,16 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                             setCvMode("services"); setSelectedCvPackage(pkg.key);
                               try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
                           }}
-                          className="cv-pricing-card"
+                          className={`cv-pricing-card cv-pricing-card--${pkg.key}`}
                           style={{
-                            borderRadius:isCompactPhone ? 16 : 24,
-                            padding:isCompactPhone ? "6px 5px" : "14px 12px",
+                            borderRadius:24,
+                            padding:"16px 16px",
                             border:`1px solid ${isActive ? `${pkg.accent}aa` : `${pkg.accent}55`}`,
                             background:pkg.cardBg,
-                            textAlign:"center",
+                            textAlign:"start",
                             cursor:cvPackageSelectionLocked ? "not-allowed" : "pointer",
                             fontFamily:"'Cairo',sans-serif",
-                            minHeight:isCompactPhone ? 190 : packageLayout.desktopMinHeight,
+                            minHeight:220,
                             position:"relative",
                             display:"flex",
                             flexDirection:"column",
@@ -12200,48 +12539,89 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                             opacity:cvPackageSelectionLocked && !isActive ? 0.45 : 1,
                             filter:cvPackageSelectionLocked && !isActive ? "grayscale(0.1)" : "none"
                           }}>
-                          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:isCompactPhone ? 3 : 10 }}>
-                            {pkg.oldPrice ? <span style={{ fontSize:cvScaleFont(isCompactPhone ? 6.5 : 9), color:dark ? "#fff0f0" : "#7f1d1d", background:dark ? "rgba(127,29,29,0.45)" : "#fee2e2", borderRadius:999, padding:isCompactPhone ? "1px 5px" : "3px 8px", fontWeight:800 }}>50%</span> : <span />}
-                            <span style={{ fontSize:cvScaleFont(isCompactPhone ? 12 : 31), lineHeight:1 }}>{pkg.icon}</span>
+                          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, marginBottom:10 }}>
+                            <span style={{ fontSize:13, fontWeight:900, color:pkg.titleColor, background:"rgba(255,255,255,0.16)", border:"1px solid rgba(255,255,255,0.34)", borderRadius:999, padding:"6px 13px", lineHeight:1.1 }}>
+                              {cvPackageBadges[pkg.key]}
+                            </span>
+                            {pkg.oldPrice
+                              ? <span style={{ fontSize:12.5, color:dark ? "#fff0f0" : "#7f1d1d", background:dark ? "rgba(127,29,29,0.45)" : "#fee2e2", borderRadius:999, padding:"5px 10px", fontWeight:900 }}>50%</span>
+                              : <span style={{ width:1, height:1 }} />}
                           </div>
-                          <div style={{ fontSize:cvScaleFont(isCompactPhone ? 9 : 18), fontWeight:900, color:pkg.titleColor, marginBottom:2, lineHeight:1.3 }}>{pkg.title}</div>
-                          <div style={{ fontSize:cvScaleFont(isCompactPhone ? 7.5 : 12), color:pkg.textColor, marginBottom:isCompactPhone ? 4 : 9, lineHeight:1.35, fontWeight:700 }}>{pkg.summary}</div>
-                          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:isCompactPhone ? 3 : 6, marginBottom:isCompactPhone ? 5 : 10, flexWrap:"wrap" }}>
-                            {pkg.oldPrice && <span style={{ fontSize:cvScaleFont(isCompactPhone ? 9 : 20), color:pkg.textColor, textDecoration:"line-through", opacity:0.8, fontWeight:900 }}>{pkg.oldPrice}</span>}
-                            <span style={{ fontSize:cvScaleFont(isCompactPhone ? 16 : 40), fontWeight:900, color:pkg.titleColor, lineHeight:1 }}>{pkg.price}</span>
+
+                          <div style={{ display:"grid", gridTemplateColumns:"76px 1fr", gap:12, alignItems:"center", marginBottom:10 }}>
+                            <div style={{ width:76, height:76, borderRadius:24, background:"rgba(255,255,255,0.22)", border:"1px solid rgba(255,255,255,0.40)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:40, lineHeight:1, boxShadow:"0 12px 24px rgba(15,23,42,0.13)" }}>{pkg.icon}</div>
+                            <div>
+                              <div style={{ fontSize:30, fontWeight:900, color:pkg.titleColor, lineHeight:1.15, marginBottom:4 }}>{pkg.title}</div>
+                              <div style={{ fontSize:14, color:pkg.textColor, lineHeight:1.55, fontWeight:700 }}>{pkg.summary}</div>
+                            </div>
                           </div>
-                          <div style={{ width:"100%", borderRadius:999, padding:isCompactPhone ? "5px 6px" : "11px 12px", background:pkg.ctaBg, color:pkg.ctaColor, fontSize:cvScaleFont(isCompactPhone ? 7.8 : 13), fontWeight:900, marginTop:isCompactPhone ? 4 : 8, boxShadow:"0 10px 20px rgba(0,0,0,0.16)", border:`1px solid ${pkg.chipBg}` }}>{pkg.cta}</div>
+
+                          <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+                            {cvPackageFeatureRows[pkg.key].map((feature) => (
+                              <span key={feature} style={{ fontSize:12, fontWeight:800, color:pkg.textColor, background:"rgba(255,255,255,0.16)", border:"1px solid rgba(255,255,255,0.28)", borderRadius:999, padding:"5px 10px", lineHeight:1.2 }}>{feature}</span>
+                            ))}
+                          </div>
+
+                          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
+                            <div style={{ display:"flex", alignItems:"baseline", gap:10, flexWrap:"wrap" }}>
+                              <span style={{ fontSize:42, fontWeight:900, color:pkg.titleColor, lineHeight:1 }}>{pkg.price}</span>
+                              {pkg.oldPrice && <span style={{ fontSize:24, color:pkg.textColor, textDecoration:"line-through", opacity:0.85, fontWeight:800 }}>{pkg.oldPrice}</span>}
+                            </div>
+                            <div style={{ minWidth:190, borderRadius:16, padding:"13px 16px", textAlign:"center", background:pkg.ctaBg, color:pkg.ctaColor, fontSize:17, fontWeight:900, boxShadow:"0 12px 24px rgba(0,0,0,0.18)", border:`1px solid ${pkg.chipBg}` }}>{pkg.cta}</div>
+                          </div>
                         </button>
-                        {statsItem && (
-                          <div
-                            className="cv-pricing-stats-card"
-                            style={{
-                            borderRadius:isCompactPhone ? 12 : 18,
-                            padding:isCompactPhone ? "6px 5px" : "12px 10px",
-                            border:`1px solid ${statsItem.accent}33`,
-                            background:dark ? "linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))" : "linear-gradient(145deg, rgba(255,255,255,0.78), rgba(255,255,255,0.55))",
-                            textAlign:"center",
-                            display:"flex",
-                            flexDirection:"column",
-                            justifyContent:"center",
-                            gap:isCompactPhone ? 1 : 3,
-                            marginTop:isCompactPhone ? 0 : packageLayout.desktopStatsOffset,
-                            minHeight:isCompactPhone ? 58 : 108,
-                          }}>
-                            <div style={{ fontSize:cvScaleFont(isCompactPhone ? 10 : 18), lineHeight:1 }}>{statsItem.icon}</div>
-                            <div style={{ fontSize:cvScaleFont((isCompactPhone ? 7.5 : 13) * 1.1), color:t.text, fontWeight:900, fontFamily:"'Cairo',sans-serif", lineHeight:1.3 }}>
-                              {statsItem.metric}: <span style={{ color:statsItem.accent, fontWeight:900 }}>{statsItem.users}</span>
-                            </div>
-                            <div style={{ fontSize:cvScaleFont((isCompactPhone ? 7.5 : 13) * 1.1), color:t.text, fontWeight:900, fontFamily:"'Cairo',sans-serif", lineHeight:1.3 }}>
-                              {lang==="ar" ? "متوسط التقييم:" : "Avg Rating:"}{" "}
-                              <span style={{ color:t.subText, fontWeight:900 }}>{statsItem.avg}/5</span>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     );
                   })}
                 </div>
+
+                <>
+                    <div style={{ marginTop:11 }}>
+                      <div style={{ fontSize:24, fontWeight:900, color:t.text, textAlign:"center", marginBottom:8, lineHeight:1.1, fontFamily:"'Cairo',sans-serif" }}>
+                        {lang === "ar" ? "إنجازات تتحدث عن نتائجنا" : "Results That Speak For Us"}
+                      </div>
+                      <div style={{ marginBottom:10, borderRadius:18, border:`1px solid ${t.border}`, background:dark ? "rgba(255,255,255,0.04)" : "#ffffff", display:"grid", gridTemplateColumns:"repeat(3, minmax(0, 1fr))", overflow:"hidden" }}>
+                        {[
+                          { icon:"😊", value:"98%", label:lang==="ar" ? "نسبة رضا العملاء" : "Client Satisfaction", color:"#0ea982" },
+                          { icon:"💼", value:"+100", label:lang==="ar" ? "تم توظيفهم بنجاح" : "Hired Successfully", color:"#5b5bd6" },
+                          { icon:"⭐", value:"+50", label:lang==="ar" ? "سيرة ذاتية تم إنشاؤها" : "CVs Created", color:"#d29d1d" },
+                        ].map((item, idx) => (
+                          <div key={item.label} style={{ padding:"10px 8px", textAlign:"center", borderInlineStart: idx === 0 ? "none" : `1px solid ${t.border}` }}>
+                            <div style={{ fontSize:20, marginBottom:2 }}>{item.icon}</div>
+                            <div style={{ fontSize:20, lineHeight:1.05, fontWeight:900, color:item.color, marginBottom:3 }}>{item.value}</div>
+                            <div style={{ fontSize:11, color:t.subText, lineHeight:1.3, fontWeight:700 }}>{item.label}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div style={{ fontSize:24, fontWeight:900, color:t.text, textAlign:"center", marginBottom:8, lineHeight:1.1, fontFamily:"'Cairo',sans-serif" }}>
+                        {lang === "ar" ? "لماذا تختارنا؟" : "Why Choose Us?"}
+                      </div>
+                      <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:8 }}>
+                        {[
+                          { icon:"🛡️", title:lang==="ar" ? "جودة مضمونة" : "Guaranteed Quality", sub:lang==="ar" ? "سير ذاتية احترافية مصممة من خبراء" : "Professional CVs by experts" },
+                          { icon:"🔒", title:lang==="ar" ? "خصوصية آمنة" : "Secure Privacy", sub:lang==="ar" ? "نحافظ على بياناتك بمعايير أمان" : "Your data is protected" },
+                          { icon:"⚡", title:lang==="ar" ? "نتائج سريعة" : "Fast Results", sub:lang==="ar" ? "تحسين السيرة خلال وقت قصير" : "Quick optimization turnaround" },
+                          { icon:"🎧", title:lang==="ar" ? "دعم متواصل" : "Continuous Support", sub:lang==="ar" ? "فريق جاهز للإجابة عند الحاجة" : "Team ready when needed" },
+                        ].map((card) => (
+                          <div key={card.title} style={{ borderRadius:14, padding:"10px 9px", border:`1px solid ${t.border}`, background:dark ? "rgba(255,255,255,0.05)" : "#ffffff", textAlign:"center" }}>
+                            <div style={{ fontSize:20, marginBottom:4 }}>{card.icon}</div>
+                            <div style={{ fontSize:12.5, fontWeight:900, color:t.text, marginBottom:3, lineHeight:1.2 }}>{card.title}</div>
+                            <div style={{ fontSize:10.5, color:t.subText, lineHeight:1.35, fontWeight:700 }}>{card.sub}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop:10, borderRadius:16, padding:"12px 10px", textAlign:"center", border:`1px solid ${t.border}`, background:dark ? "linear-gradient(145deg, rgba(67,56,202,0.30), rgba(124,58,237,0.26))" : "linear-gradient(145deg,#ebe7ff,#e0dcff)" }}>
+                      <div style={{ fontSize:31, fontWeight:900, color:dark ? "#f1efff" : "#4d37b2", lineHeight:1.05, marginBottom:4, fontFamily:"'Cairo',sans-serif" }}>
+                        {lang === "ar" ? "ضمان استرداد الأموال" : "Money-Back Guarantee"}
+                      </div>
+                      <div style={{ fontSize:14, color:dark ? "#ddd6fe" : "#5b4eb2", lineHeight:1.45, fontWeight:800 }}>
+                        {lang === "ar" ? "عدم تنفيذ المتفق عليه (الوظائف والمتابعة) = استرداد كامل بعد خصم 7 دولار فقط" : "If agreed delivery is not met (jobs and follow-up): full refund minus only $7"}
+                      </div>
+                    </div>
+                </>
               </div>
               )}
 
@@ -12262,7 +12642,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               )}
 
               {!cvMode ? (
-                <div style={{ display:"grid", gap:10, marginTop: -11 }}>
+                <div style={{ display:"grid", gap:10, marginTop: 12 }}>
                   {cvJobSitesCard}
                   {cvJobSitesAdCard}
                 </div>
@@ -13128,6 +13508,30 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     </div>
                   </div>
                   <div style={{ display:"grid", gap:12 }}>
+                    <button
+                      onClick={() => setCvPreviewOpen(true)}
+                      style={{
+                        ...cardStyle,
+                        marginBottom: 0,
+                        textAlign: "center",
+                        background: "linear-gradient(135deg,#0f172a,#1e3a8a 62%,#3b82f6)",
+                        border: "1px solid rgba(251,191,36,0.38)",
+                        color: "#fff",
+                        cursor: "pointer",
+                        boxShadow: "0 20px 34px rgba(15,23,42,0.24)",
+                      }}
+                    >
+                      <div style={{ fontSize: 26, marginBottom: 8 }}>🖥️</div>
+                      <div style={{ fontSize: 15, fontWeight: 900, color: "#f8fafc", fontFamily: "'Cairo',sans-serif", marginBottom: 5 }}>
+                        {lang === "ar" ? "معاينة احترافية للسيرة الذاتية" : "Professional CV Preview"}
+                      </div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.84)", lineHeight: 1.8, fontFamily: "'Cairo',sans-serif" }}>
+                        {lang === "ar"
+                          ? "افتح معاينة A4 كاملة بالعربي والإنجليزي مع تكبير وتصغير قبل التصدير."
+                          : "Open a full A4 preview in Arabic and English with live zoom before exporting."}
+                      </div>
+                    </button>
+
                     <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:10 }}>
                     <button onClick={() => openCvExportLangModal("pdf")} disabled={cvPdfExporting} style={{ ...cardStyle, marginBottom:0, textAlign:"center", background:"linear-gradient(135deg,#fff1f2,#f8fafc)", border:"1px solid #fda4af", cursor:cvPdfExporting ? "wait" : "pointer", opacity:cvPdfExporting ? 0.75 : 1, minHeight:96, padding:"10px" }}>
                       <div style={{ fontSize:20, marginBottom:4 }}>📄</div>
@@ -13149,6 +13553,22 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       </div>
                     </button>
                     </div>
+
+                    {cvPreviewOpen && (
+                      <CvExportPreview
+                        cvData={cvData}
+                        lang={lang}
+                        onClose={() => setCvPreviewOpen(false)}
+                        onExportPdf={(exportLang) => {
+                          setCvPreviewOpen(false);
+                          void handleCvPdfDownload(exportLang);
+                        }}
+                        onExportWord={(exportLang) => {
+                          setCvPreviewOpen(false);
+                          void handleCvWordDownload(exportLang);
+                        }}
+                      />
+                    )}
 
                     <button onClick={openCvServiceEmailConfirm} style={{ ...cardStyle, marginBottom:0, textAlign:"center", background:"linear-gradient(135deg,#fff8e6,#fffdf7)", border:`1px solid ${t.gold}66`, cursor:"pointer", boxShadow:`0 10px 26px ${t.gold}18` }}>
                       <div style={{ fontSize:28, marginBottom:8 }}>📨</div>
@@ -13279,26 +13699,36 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   {selectedCvService && (
                     <>
                       {cvPaidScreen === "list" && (
-                        <div style={{ ...cardStyle, border:`1px solid ${selectedCvService.price === 20 ? "#c8960c44" : "#7c3aed44"}`, background:selectedCvService.price === 20 ? "rgba(200,150,12,0.08)" : "rgba(124,58,237,0.08)" }}>
-                          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, marginBottom:8, flexWrap:"wrap" }}>
-                            <div style={{ fontSize:14, fontWeight:800, color:selectedCvService.price === 20 ? "#c8960c" : "#7c3aed", fontFamily:"'Cairo',sans-serif" }}>
-                              {selectedCvPackageIntro?.title}
-                            </div>
-                            <div style={{ fontSize:11, fontWeight:800, color:"#e53e3e", background:"#fee2e2", borderRadius:999, padding:"3px 9px" }}>
-                              {lang==="ar" ? "خصم 50٪" : "50% OFF"}
-                            </div>
-                          </div>
-                          <div style={{ fontSize:12, color:t.text, lineHeight:1.9, fontFamily:"'Cairo',sans-serif", marginBottom:12 }}>
-                            {selectedCvPackageIntro?.body}
-                          </div>
-                          <div style={{ display:"grid", gap:8 }}>
-                            {selectedCvService.features.map((feature, idx) => (
-                              <div key={idx} style={{ fontSize:11, color:t.text, fontFamily:"'Cairo',sans-serif" }}>
-                                ✓ {feature}
+                        <>
+                          <div style={{ ...cardStyle, border:`1px solid ${selectedCvService.price === 20 ? "#c8960c44" : "#7c3aed44"}`, background:selectedCvService.price === 20 ? "rgba(200,150,12,0.08)" : "rgba(124,58,237,0.08)" }}>
+                            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, marginBottom:8, flexWrap:"wrap" }}>
+                              <div style={{ fontSize:16.9, fontWeight:800, color:selectedCvService.price === 20 ? "#c8960c" : "#7c3aed", fontFamily:"'Cairo',sans-serif" }}>
+                                {selectedCvPackageIntro?.title}
                               </div>
-                            ))}
+                              <div style={{ fontSize:13.3, fontWeight:800, color:"#e53e3e", background:"#fee2e2", borderRadius:999, padding:"3px 9px" }}>
+                                {lang==="ar" ? "خصم 50٪" : "50% OFF"}
+                              </div>
+                            </div>
+                            <div style={{ fontSize:14.5, color:t.text, lineHeight:1.9, fontFamily:"'Cairo',sans-serif", marginBottom:12 }}>
+                              {selectedCvPackageIntro?.body}
+                            </div>
+                            <div style={{ display:"grid", gap:8 }}>
+                              {selectedCvService.features.map((feature, idx) => (
+                                <div key={idx} style={{ fontSize:13.3, color:t.text, fontFamily:"'Cairo',sans-serif" }}>
+                                  ✓ {feature}
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                          <div style={{ ...cardStyle, marginTop:10, border:`1px solid ${selectedCvService.price === 20 ? "#c8960c55" : "#7c3aed55"}`, background:selectedCvService.price === 20 ? "rgba(200,150,12,0.12)" : "rgba(124,58,237,0.12)" }}>
+                            <div style={{ fontSize:14.2, fontWeight:900, color:selectedCvService.price === 20 ? "#9a7306" : "#6b21a8", marginBottom:6, fontFamily:"'Cairo',sans-serif" }}>
+                              {lang === "ar" ? "سياسة الاسترداد" : "Refund Policy"}
+                            </div>
+                            <div style={{ fontSize:13.6, color:t.text, lineHeight:1.9, fontFamily:"'Cairo',sans-serif" }}>
+                              {selectedCvRefundPolicy}
+                            </div>
+                          </div>
+                        </>
                       )}
                       <React.Suspense fallback={null}>
                       <PaidFlowErrorBoundary lang={lang} resetKey={`cv-${selectedCvService.key}-${cvPaidBackRequest}`}>
@@ -13353,6 +13783,21 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
             </div>
           );
         })()}
+
+        {/* ══ STUDY ABROAD TAB ═════════════════════════════════════════════ */}        
+        {mainTab === "study" && (
+          <div style={{ padding: "62px 0 0" }}>
+            <StudyAbroadDirectory
+              lang={lang}
+              dark={dark}
+              isAdminUser={isAdminUser}
+              authUser={authPreviewUser}
+              onRequestAuth={promptStudyReviewsAuth}
+              onRequestAccessAuth={promptStudyAccessAuth}
+              resetSignal={studyTabResetToken}
+            />
+          </div>
+        )}
 
         {/* ══ SETTINGS TAB ══════════════════════════════════════════════════ */}
         {mainTab === "settings" && (
@@ -13772,6 +14217,17 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
             ),
           },
           {
+            key: "study", label: tx.navStudy,
+            icon: (active) => (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? t.gold : (dark ? "rgba(255,255,255,0.45)" : "rgba(30,64,175,0.4)")} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 4 3 8.5 12 13l9-4.5L12 4Z"/>
+                <path d="M7 11.2V15.5C7 16.7 9.2 18 12 18s5-1.3 5-2.5v-4.3"/>
+                <path d="M21 9v6"/>
+                <path d="M21 15.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"/>
+              </svg>
+            ),
+          },
+          {
             key: "cv", label: tx.navCV,
             icon: (active) => (
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? t.gold : (dark ? "rgba(255,255,255,0.45)" : "rgba(30,64,175,0.4)")} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -13800,6 +14256,12 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               onClick={() => {
                 if (tab.key === "home") {
                   goToCountryLanding();
+                  scrollAppToTop();
+                  if (typeof window !== "undefined") {
+                    window.requestAnimationFrame(() => {
+                      scrollAppToTop();
+                    });
+                  }
                 } else if (tab.key === "cv") {
                   setMainTab("cv");
                   setCvMode(null);
@@ -13808,6 +14270,8 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   setSelectedCvBuilderOrder(null);
                   setCvStep(0);
                   setCvUnlocked(false);
+                } else if (tab.key === "study") {
+                  openStudyTabRoot();
                 } else {
                   setMainTab(tab.key);
                 }

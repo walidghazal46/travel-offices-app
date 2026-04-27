@@ -295,131 +295,283 @@ export function buildCvPdfDocument(cvData, exportLang = "en") {
 
   const summaryParagraph = data.summaryLines.length
     ? data.summaryLines.map((line) => `<div class="cv-summary-line">${escapeHtml(line)}</div>`).join("")
-    : `<div class="cv-summary-line">${escapeHtml(labels.summaryPlaceholder)}</div>`;
+    : `<div class="cv-muted-line">${escapeHtml(labels.summaryPlaceholder)}</div>`;
 
   const summaryBullets = data.achievements.length
-    ? `
-      <div class="cv-inline-label">${escapeHtml(labels.provenRecord)}</div>
-      <ul class="cv-bullets">
-        ${data.achievements.slice(0, 4).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
-      </ul>
-    `
+    ? `<ul class="cv-bullets">${data.achievements.slice(0, 4).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
     : (data.summaryBullets.length
-      ? `
-        <ul class="cv-bullets">
-          ${data.summaryBullets.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
-        </ul>
-      `
+      ? `<ul class="cv-bullets">${data.summaryBullets.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
       : "");
 
-  const coreExpertise = data.coreCompetencies.length
-    ? `<div class="cv-inline-list">${data.coreCompetencies.map(escapeHtml).join(" | ")}</div>`
-    : `<div class="cv-inline-list">${escapeHtml(labels.expertisePlaceholder)}</div>`;
+  const expertiseChips = data.coreCompetencies.length
+    ? data.coreCompetencies.map((item) => `<span class="cv-chip">${escapeHtml(item)}</span>`).join("")
+    : `<div class="cv-muted-line">${escapeHtml(labels.expertisePlaceholder)}</div>`;
 
   const toolsSection = [...data.toolsSoftware, ...data.keywords].filter(Boolean);
+  const toolChips = toolsSection.length
+    ? toolsSection.map((item) => `<span class="cv-chip cv-chip-soft">${escapeHtml(item)}</span>`).join("")
+    : `<div class="cv-muted-line">${escapeHtml(labels.toolsPlaceholder)}</div>`;
+
+  const contactPills = contactLines.length
+    ? contactLines.map((line) => `<span class="cv-contact-pill">${escapeHtml(line)}</span>`).join("")
+    : `<span class="cv-contact-pill">${escapeHtml(labels.roleFallback)}</span>`;
+
+  const renderListOrPlaceholder = (items, placeholder, className = "cv-simple-line") => (
+    items.length
+      ? items.map((item) => `<div class="${className}">${escapeHtml(item)}</div>`).join("")
+      : `<div class="cv-muted-line">${escapeHtml(placeholder)}</div>`
+  );
 
   return `
     <style>
-      .cv-pdf-shell { width: 794px; background: #eef3fb; padding: 18px 0; font-family: 'Cairo', Arial, Helvetica, sans-serif; direction:${labels.dir}; }
+      .cv-pdf-shell {
+        width: 794px;
+        background: linear-gradient(160deg, #e9f1fb 0%, #e3ecf8 100%);
+        padding: 20px 0;
+        font-family: 'Cairo', Arial, Helvetica, sans-serif;
+        direction:${labels.dir};
+      }
       .cv-pdf-page {
         width: 595px;
         min-height: 842px;
         background: #ffffff;
-        margin: 0 auto 18px;
+        margin: 0 auto 16px;
         box-sizing: border-box;
-        padding: 34px 34px 26px;
-        color: #1f2937;
+        padding: 26px 26px 24px;
+        color: #172033;
         position: relative;
-        box-shadow: 0 0 0 1px rgba(15,23,42,0.04);
+        box-shadow: 0 20px 44px rgba(15, 23, 42, 0.10), 0 0 0 1px rgba(15, 23, 42, 0.07);
+        overflow: hidden;
         direction:${labels.dir};
         text-align:${labels.dir === "rtl" ? "right" : "left"};
       }
-      .cv-name { font-size: 18px; font-weight: 800; color: ${CV_PDF_SECTION_COLOR}; letter-spacing: 0.2px; margin-bottom: 8px; ${labels.dir === "ltr" ? "text-transform: uppercase;" : ""} }
-      .cv-role { font-size: 11px; font-weight: 700; color: ${CV_PDF_SECTION_COLOR}; margin-bottom: 8px; }
-      .cv-contact-line, .cv-identity-line, .cv-summary-line, .cv-inline-list, .cv-edu-line, .cv-cert-line, .cv-lang-line { font-size: 10px; line-height: 1.45; margin-bottom: 2px; }
-      .cv-section { margin-top: 14px; }
-      .cv-section-title {
+      .cv-page-accent {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 8px;
+        background: linear-gradient(90deg, #1f4e8f, #2c74c9, #5fa8ff);
+      }
+      .cv-hero {
+        border: 1px solid #dbe5f2;
+        border-radius: 16px;
+        padding: 14px 14px 12px;
+        background: linear-gradient(145deg, #f7fafe 0%, #edf3fb 100%);
+        margin-bottom: 12px;
+      }
+      .cv-name {
+        font-size: 20px;
+        font-weight: 900;
+        color: ${CV_PDF_SECTION_COLOR};
+        letter-spacing: 0.2px;
+        margin-bottom: 4px;
+        ${labels.dir === "ltr" ? "text-transform: uppercase;" : ""}
+      }
+      .cv-role {
         font-size: 11px;
+        font-weight: 800;
+        color: #2f4768;
+        margin-bottom: 10px;
+      }
+      .cv-contact-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .cv-contact-pill {
+        font-size: 9px;
+        font-weight: 700;
+        color: #244368;
+        border: 1px solid #c5d8ee;
+        background: #ffffff;
+        border-radius: 999px;
+        padding: 4px 9px;
+        line-height: 1.2;
+      }
+      .cv-layout {
+        display: grid;
+        grid-template-columns: ${labels.dir === "rtl" ? "1fr 208px" : "208px 1fr"};
+        gap: 10px;
+        align-items: start;
+      }
+      .cv-sidebar {
+        border: 1px solid #d8e3f1;
+        border-radius: 14px;
+        background: #f8fbff;
+        padding: 10px 9px;
+      }
+      .cv-main {
+        border: 1px solid #e3ebf6;
+        border-radius: 14px;
+        background: #ffffff;
+        padding: 10px 11px;
+      }
+      .cv-summary-line, .cv-simple-line, .cv-edu-line, .cv-cert-line, .cv-lang-line {
+        font-size: 9px;
+        line-height: 1.55;
+        margin-bottom: 3px;
+        color: #1f2f46;
+      }
+      .cv-muted-line {
+        font-size: 9px;
+        line-height: 1.5;
+        color: #5f6f84;
+      }
+      .cv-section { margin-top: 10px; }
+      .cv-section:first-child { margin-top: 0; }
+      .cv-section-title {
+        font-size: 10px;
         font-weight: 800;
         color: ${CV_PDF_SECTION_COLOR};
         text-transform: uppercase;
-        border-top: 2px solid ${CV_PDF_BORDER_COLOR};
-        padding-top: 7px;
-        margin-bottom: 7px;
+        border-bottom: 1px solid #d6e2f2;
+        padding-bottom: 4px;
+        margin-bottom: 6px;
+        letter-spacing: 0.2px;
       }
-      .cv-inline-label { font-size: 10px; font-weight: 700; margin-top: 4px; margin-bottom: 3px; }
+      .cv-chip-wrap {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+      .cv-chip {
+        display: inline-flex;
+        align-items: center;
+        font-size: 8.5px;
+        font-weight: 700;
+        color: #1f4c82;
+        border: 1px solid #c7daf0;
+        background: #eef5ff;
+        border-radius: 999px;
+        padding: 3px 7px;
+        line-height: 1.2;
+      }
+      .cv-chip-soft {
+        color: #2b4b6d;
+        border-color: #d7e4f3;
+        background: #f4f8fd;
+      }
       .cv-bullets, .cv-project-list {
-        margin: 4px ${labels.dir === "rtl" ? "18px 0 0" : "0 0 0 18px"};
+        margin: 4px ${labels.dir === "rtl" ? "16px 0 0" : "0 0 0 16px"};
         padding: 0;
-        font-size: 10px;
-        line-height: 1.4;
+        font-size: 9px;
+        line-height: 1.5;
+        color: #22344e;
       }
-      .cv-bullets li, .cv-project-list li { margin-bottom: 2px; }
+      .cv-bullets li, .cv-project-list li { margin-bottom: 3px; }
       .cv-exp-item {
-        border-top: 2px solid ${CV_PDF_BORDER_COLOR};
-        padding-top: 7px;
-        margin-top: 10px;
+        border: 1px solid #d8e3f1;
+        border-radius: 11px;
+        background: linear-gradient(145deg, #ffffff 0%, #f9fbff 100%);
+        padding: 9px 9px;
+        margin-top: 8px;
         display: flex;
         flex-direction:${labels.dir === "rtl" ? "row-reverse" : "row"};
-        gap: 14px;
+        gap: 10px;
         align-items: flex-start;
       }
       .cv-exp-copy { flex: 1; min-width: 0; }
-      .cv-exp-title { font-size: 10px; font-weight: 800; color: #111827; margin-bottom: 2px; }
-      .cv-exp-company { font-size: 10px; font-weight: 700; color: #1f2937; margin-bottom: 2px; }
-      .cv-exp-dates { font-size: 10px; color: #374151; margin-bottom: 4px; }
-      .cv-projects-title { font-size: 10px; font-weight: 700; margin-top: 5px; }
+      .cv-exp-title { font-size: 9.5px; font-weight: 800; color: #13243b; margin-bottom: 2px; }
+      .cv-exp-company { font-size: 9px; font-weight: 700; color: #294767; margin-bottom: 1px; }
+      .cv-exp-dates { font-size: 8.5px; color: #576a83; margin-bottom: 4px; }
+      .cv-projects-title { font-size: 8.8px; font-weight: 800; margin-top: 5px; color: #2f4768; }
       .cv-exp-mark {
         flex-shrink: 0;
-        width: 54px;
+        width: 52px;
         height: 24px;
-        border: 1px solid #d7dee7;
-        color: #4b5563;
+        border: 1px solid #c4d6ec;
+        color: #1f4c82;
+        background: #eef5ff;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 800;
-        border-radius: 2px;
+        border-radius: 999px;
         margin-top: 3px;
+      }
+      .cv-split-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .cv-card {
+        border: 1px solid #dbe6f4;
+        border-radius: 11px;
+        background: #f9fbff;
+        padding: 8px 9px;
       }
       .cv-footer {
         position: absolute;
-        ${labels.dir === "rtl" ? "left" : "right"}: 34px;
-        bottom: 18px;
-        font-size: 10px;
-        color: #374151;
+        left: 26px;
+        right: 26px;
+        bottom: 11px;
+        font-size: 8.5px;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .cv-footer-brand {
+        font-weight: 700;
+        color: #2f4768;
       }
     </style>
     <div class="cv-pdf-shell">
       <div class="cv-pdf-page cv-pdf-page-node">
-        <div class="cv-name">${escapeHtml(data.fullName || labels.nameFallback)}</div>
-        <div class="cv-role">${escapeHtml(data.jobTitle || labels.roleFallback)}</div>
-        ${contactLines.map((line) => `<div class="cv-contact-line">${escapeHtml(line)}</div>`).join("")}
-        ${identityLines.map((line) => `<div class="cv-identity-line">${escapeHtml(line)}</div>`).join("")}
-
-        <div class="cv-section">
-          <div class="cv-section-title">${escapeHtml(labels.summary)}</div>
-          ${summaryParagraph}
-          ${summaryBullets}
+        <div class="cv-page-accent"></div>
+        <div class="cv-hero">
+          <div class="cv-name">${escapeHtml(data.fullName || labels.nameFallback)}</div>
+          <div class="cv-role">${escapeHtml(data.jobTitle || labels.roleFallback)}</div>
+          <div class="cv-contact-grid">${contactPills}</div>
         </div>
 
-        <div class="cv-section">
-          <div class="cv-section-title">${escapeHtml(labels.expertise)}</div>
-          ${coreExpertise}
+        <div class="cv-layout">
+          <div class="cv-sidebar">
+            <div class="cv-section">
+              <div class="cv-section-title">${escapeHtml(labels.nationality)}</div>
+              ${identityLines.length
+                ? identityLines.map((line) => `<div class="cv-simple-line">${escapeHtml(line)}</div>`).join("")
+                : `<div class="cv-muted-line">${escapeHtml(labels.nationality)}: -</div>`}
+            </div>
+
+            <div class="cv-section">
+              <div class="cv-section-title">${escapeHtml(labels.expertise)}</div>
+              <div class="cv-chip-wrap">${expertiseChips}</div>
+            </div>
+
+            <div class="cv-section">
+              <div class="cv-section-title">${escapeHtml(labels.tools)}</div>
+              <div class="cv-chip-wrap">${toolChips}</div>
+            </div>
+          </div>
+
+          <div class="cv-main">
+            <div class="cv-section">
+              <div class="cv-section-title">${escapeHtml(labels.summary)}</div>
+              ${summaryParagraph}
+              ${summaryBullets}
+            </div>
+
+            <div class="cv-section">
+              <div class="cv-section-title">${escapeHtml(labels.experience)}</div>
+              ${data.firstPageExperiences.length
+                ? data.firstPageExperiences.map((exp) => renderCvPdfExperience(exp, exportLang)).join("")
+                : `<div class="cv-muted-line">${escapeHtml(labels.experiencePlaceholder)}</div>`}
+            </div>
+          </div>
         </div>
 
-        <div class="cv-section">
-          <div class="cv-section-title">${escapeHtml(labels.experience)}</div>
-          ${data.firstPageExperiences.length
-            ? data.firstPageExperiences.map((exp) => renderCvPdfExperience(exp, exportLang)).join("")
-            : `<div class="cv-summary-line">${escapeHtml(labels.experiencePlaceholder)}</div>`}
+        <div class="cv-footer">
+          <span class="cv-footer-brand">Trusted Offices CV</span>
+          <span>${escapeHtml(labels.page)} 1 / 2</span>
         </div>
-
-        <div class="cv-footer">${escapeHtml(labels.page)} 1 / 2</div>
       </div>
 
       <div class="cv-pdf-page cv-pdf-page-node">
+        <div class="cv-page-accent"></div>
+
         ${data.secondPageExperiences.length ? `
           <div class="cv-section">
             <div class="cv-section-title">${escapeHtml(labels.experience)}</div>
@@ -427,49 +579,49 @@ export function buildCvPdfDocument(cvData, exportLang = "en") {
           </div>
         ` : ""}
 
-        <div class="cv-section">
-          <div class="cv-section-title">${escapeHtml(labels.achievements)}</div>
-          ${data.achievements.length
-            ? `<ul class="cv-bullets">${data.achievements.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
-            : `<div class="cv-summary-line">${escapeHtml(labels.achievementsPlaceholder)}</div>`}
-        </div>
+        <div class="cv-split-grid">
+          <div class="cv-card">
+            <div class="cv-section-title">${escapeHtml(labels.achievements)}</div>
+            ${data.achievements.length
+              ? `<ul class="cv-bullets">${data.achievements.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+              : `<div class="cv-muted-line">${escapeHtml(labels.achievementsPlaceholder)}</div>`}
+          </div>
 
-        <div class="cv-section">
-          <div class="cv-section-title">${escapeHtml(labels.tools)}</div>
-          ${toolsSection.length
-            ? toolsSection.map((item) => `<div class="cv-summary-line">${escapeHtml(item)}</div>`).join("")
-            : `<div class="cv-summary-line">${escapeHtml(labels.toolsPlaceholder)}</div>`}
-        </div>
+          <div class="cv-card">
+            <div class="cv-section-title">${escapeHtml(labels.languages)}</div>
+            ${data.languages.length
+              ? data.languages.map((langItem) => `<div class="cv-lang-line">${escapeHtml(langItem.lang)}${langItem.level ? ` - ${escapeHtml(langItem.level)}` : ""}</div>`).join("")
+              : `<div class="cv-muted-line">${escapeHtml(labels.languages)}: -</div>`}
+          </div>
 
-        <div class="cv-section">
-          <div class="cv-section-title">${escapeHtml(labels.education)}</div>
-          ${data.education.length
-            ? data.education.map((edu) => `<div class="cv-edu-line">${escapeHtml([edu.degree, edu.major].filter(Boolean).join(" - "))}</div><div class="cv-edu-line">${escapeHtml([edu.university, edu.year].filter(Boolean).join(" — "))}</div>`).join("")
-            : `<div class="cv-summary-line">${escapeHtml(labels.educationPlaceholder)}</div>`}
-        </div>
+          <div class="cv-card">
+            <div class="cv-section-title">${escapeHtml(labels.education)}</div>
+            ${data.education.length
+              ? data.education.map((edu) => `<div class="cv-edu-line">${escapeHtml([edu.degree, edu.major].filter(Boolean).join(" - "))}</div><div class="cv-edu-line">${escapeHtml([edu.university, edu.year].filter(Boolean).join(" - "))}</div>`).join("")
+              : `<div class="cv-muted-line">${escapeHtml(labels.educationPlaceholder)}</div>`}
+          </div>
 
-        <div class="cv-section">
-          <div class="cv-section-title">${escapeHtml(labels.certifications)}</div>
-          ${data.certifications.length
-            ? data.certifications.map((cert) => `<div class="cv-cert-line">${escapeHtml([cert.name, cert.issuer, cert.year].filter(Boolean).join(" — "))}</div>`).join("")
-            : `<div class="cv-summary-line">${escapeHtml(labels.certificationsPlaceholder)}</div>`}
+          <div class="cv-card">
+            <div class="cv-section-title">${escapeHtml(labels.certifications)}</div>
+            ${data.certifications.length
+              ? data.certifications.map((cert) => `<div class="cv-cert-line">${escapeHtml([cert.name, cert.issuer, cert.year].filter(Boolean).join(" - "))}</div>`).join("")
+              : `<div class="cv-muted-line">${escapeHtml(labels.certificationsPlaceholder)}</div>`}
+          </div>
         </div>
 
         <div class="cv-section">
           <div class="cv-section-title">${escapeHtml(labels.awards)}</div>
-          ${data.awards.length
-            ? data.awards.map((award) => `<div class="cv-cert-line">${escapeHtml([award.name, award.issuer, award.year].filter(Boolean).join(" — "))}</div>`).join("")
-            : `<div class="cv-summary-line">${escapeHtml(labels.awardsPlaceholder)}</div>`}
+          ${renderListOrPlaceholder(
+            data.awards.map((award) => [award.name, award.issuer, award.year].filter(Boolean).join(" - ")),
+            labels.awardsPlaceholder,
+            "cv-cert-line"
+          )}
         </div>
 
-        ${data.languages.length ? `
-          <div class="cv-section">
-            <div class="cv-section-title">${escapeHtml(labels.languages)}</div>
-            ${data.languages.map((langItem) => `<div class="cv-lang-line">${escapeHtml(langItem.lang)}${langItem.level ? ` — ${escapeHtml(langItem.level)}` : ""}</div>`).join("")}
-          </div>
-        ` : ""}
-
-        <div class="cv-footer">${escapeHtml(labels.page)} 2 / 2</div>
+        <div class="cv-footer">
+          <span class="cv-footer-brand">Trusted Offices CV</span>
+          <span>${escapeHtml(labels.page)} 2 / 2</span>
+        </div>
       </div>
     </div>
   `;
