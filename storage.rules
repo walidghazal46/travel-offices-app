@@ -1,0 +1,33 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isVerifiedEmail() {
+      return isAuthenticated() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerifiedEmail() &&
+        request.auth.token.email in ['walidghazal46@gmail.com', 'walidghazal51@yahoo.com'];
+    }
+
+    // Ad images are public for display in app, write is admin-only.
+    match /studyads/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Order receipts can be uploaded by authenticated users.
+    match /order-receipts/{allPaths=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Deny any other storage access by default.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

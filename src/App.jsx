@@ -52,9 +52,14 @@ import {
   updateServiceProviderRequestInFirebase,
   upsertAuthUserProfileInFirebase,
   saveOrderToFirebase,
+  saveJobsBannerAdConfigInFirebase,
+  saveMainBannerAdConfigInFirebase,
   submitServiceProviderRequestToFirebase,
+  saveStudyOfficesInlineAdConfigInFirebase,
+  subscribeStudyOfficesInlineAdFromFirebase,
   subscribeJobsBannerAdFromFirebase,
   subscribeMainBannerAdFromFirebase,
+  uploadStudyAdImageToFirebase,
   uploadReceiptToFirebase,
   verifyCurrentUserPhoneUpdateCode,
   verifyPhoneVerificationCode,
@@ -69,6 +74,7 @@ import CvExportPreview from "./components/cv/CvExportPreview";
 import { buildCvPdfDocument, buildCvWordDocument } from "./components/cv/cvExportDocument";
 import ServiceProviderPortalFlow from "./components/ServiceProviderPortalFlow";
 import StudyAbroadDirectory from "./components/studyAbroad/StudyAbroadDirectory";
+import { setAndroidSecureScreen } from "./services/screenSecurity";
 const PaidServicesFlow = React.lazy(() => import("./components/order/PaidServicesFlow"));
 import logo from './assets/splash.png';
 const PRIMARY_ADMIN_EMAIL = "walidghazal46@gmail.com";
@@ -82,6 +88,9 @@ const OTHER_NATIONALITY_VALUE = "__other_nationality__";
 const LINKEDIN = "https://www.linkedin.com/in/walid-ghazal-pmi-pmp%C2%AE-85208678/";
 const YOUTUBE = "http://www.youtube.com/@WalidGhazal";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.travel.offices";
+const TRAVEL_AD_DEFAULT_CLICK_URL = "https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D8%B5%D9%81%D8%AD%D8%A9%20%D9%85%D9%83%D8%A7%D8%AA%D8%A8%20%D8%A7%D9%84%D8%B3%D9%81%D8%B1%D9%8A%D8%A7%D8%AA";
+const JOBS_AD_DEFAULT_CLICK_URL = "https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D9%82%D8%B3%D9%85%20%D8%A7%D9%84%D8%AA%D9%88%D8%B8%D9%8A%D9%81";
+const STUDY_AD_DEFAULT_CLICK_URL = "https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D8%B5%D9%81%D8%AD%D8%A9%20%D9%85%D9%83%D8%A7%D8%AA%D8%A8%20%D8%A7%D9%84%D8%AF%D8%B1%D8%A7%D8%B3%D8%A9";
 
 const sanitizeNationalityValue = (value) => {
   const trimmed = String(value || "").trim();
@@ -156,9 +165,15 @@ const T = {
     forbiddenDesc: "تأكد أن المكتب ليس ضمن الشركات المحظورة من قِبل وزارة العمل المصرية قبل دفع أي مبالغ.",
     forbiddenLink: "🔍 اعرض قائمة الشركات المحظورة الرسمية",
     discTitle: "إشعار هام",
-    discBody: "هذا التطبيق تطبيق مستقل غير تابع لأي جهة حكومية.",
-    discSub: "البيانات مأخوذة من القائمة الرسمية لوزارة العمل المصرية ولا تمثل هذه الجهة بأي شكل.",
+    discBody: "هذا التطبيق دليل مستقل ولا يمثل أي جهة حكومية ولا يقدم خدمات حكومية نيابة عنها.",
+    discSub: "تعتمد البيانات الحكومية الظاهرة داخل التطبيق على مصادر رسمية معلنة لكل قسم، مثل بوابات وزارة العمل المصرية، وزارات العمل الرسمية، وبوابات السفارات ووزارات الخارجية المعروضة داخل التطبيق.",
     discEn: "This app is independently developed and is not affiliated with, endorsed by, or representing any government entity.",
+    discExpand: "عرض الإشعار",
+    discCollapse: "إخفاء الإشعار",
+    discSourcesTitle: "المصادر الرسمية المعروضة",
+    discSourcesNote: "كل بطاقة جهة حكومية أو سفارة داخل التطبيق تعرض موقعها الرسمي عند توفره. يُنصح دائمًا بمراجعة المصدر الرسمي قبل اتخاذ أي إجراء.",
+    discSourcesExpand: "عرض المصادر الرسمية",
+    discSourcesCollapse: "إخفاء المصادر الرسمية",
     discBtn: "فهمت — أكمل للتطبيق",
     footerEgypt: "تطبيق مستقل — البيانات من وزارة العمل المصرية — غير تابع لأي جهة حكومية",
     footerOther: (countryName) => `تطبيق مستقل — لا يتبع الجهة الحكومية لـ ${countryName}`,
@@ -251,9 +266,15 @@ const T = {
     forbiddenDesc: "Verify the office is not on the Ministry of Labor's prohibited companies list before paying any fees.",
     forbiddenLink: "🔍 View Official Prohibited Companies List",
     discTitle: "Important Notice",
-    discBody: "This is an independent app, not affiliated with any government entity.",
-    discSub: "Data is sourced from the official list on the Egyptian Ministry of Labor website and does not represent this entity in any way.",
+    discBody: "This is an independent guide app. It does not represent any government entity and does not provide government services on its behalf.",
+    discSub: "Government-related information shown in the app is compiled from official public sources for each section, including the Egyptian Ministry of Labor, official labor ministry portals, and official embassy or foreign ministry portals shown in the app.",
     discEn: "This app is independently developed and is not affiliated with, endorsed by, or representing any government entity.",
+    discExpand: "Show Notice",
+    discCollapse: "Hide Notice",
+    discSourcesTitle: "Official Sources Shown",
+    discSourcesNote: "Each government office or embassy card in the app shows its official website when available. Always verify details from the official source before taking action.",
+    discSourcesExpand: "Show Official Sources",
+    discSourcesCollapse: "Hide Official Sources",
     discBtn: "I Understand — Continue",
     footerEgypt: "Independent app — Data from Egyptian Ministry of Labor — Not affiliated with any government entity",
     footerOther: (countryName) => `Independent app — Not affiliated with the government of ${countryName}`,
@@ -306,6 +327,69 @@ const T = {
       { icon: "⚖️", label: "Labor Attorney Needed" },
     ],
   },
+};
+
+const OFFICIAL_SOURCE_GROUPS = {
+  ar: [
+    {
+      label: "شركات إلحاق العمالة المرخصة في مصر",
+      url: "https://www.manpower.gov.eg/",
+    },
+    {
+      label: "بوابات وزارات العمل الرسمية بالدول المعروضة",
+      url: "https://hrsd.gov.sa/",
+    },
+    {
+      label: "بوابات السفارات والقنصليات المصرية الرسمية",
+      url: "https://egyptconsulates.org/",
+    },
+    {
+      label: "بوابات السفارات ووزارات الخارجية الرسمية المعروضة",
+      url: "https://embassies.mofa.gov.sa/",
+    },
+    {
+      label: "بعثات الإمارات الرسمية",
+      url: "https://www.mofa.gov.ae/en/missions",
+    },
+    {
+      label: "بوابة السفارات الأردنية الرسمية",
+      url: "https://mfa.gov.jo/ar/embassies",
+    },
+    {
+      label: "بوابة بعثات قطر الرسمية",
+      url: "https://www.mofa.gov.qa/qatar-and-the-world-ar",
+    },
+  ],
+  en: [
+    {
+      label: "Licensed recruitment offices in Egypt",
+      url: "https://www.manpower.gov.eg/",
+    },
+    {
+      label: "Official labor ministry portals for the countries shown",
+      url: "https://hrsd.gov.sa/",
+    },
+    {
+      label: "Official Egyptian embassy and consulate portals",
+      url: "https://egyptconsulates.org/",
+    },
+    {
+      label: "Official embassy and foreign ministry portals shown in the app",
+      url: "https://embassies.mofa.gov.sa/",
+    },
+    {
+      label: "Official UAE missions portal",
+      url: "https://www.mofa.gov.ae/en/missions",
+    },
+    {
+      label: "Official Jordanian embassies portal",
+      url: "https://mfa.gov.jo/ar/embassies",
+    },
+    {
+      label: "Official Qatar missions portal",
+      url: "https://www.mofa.gov.qa/qatar-and-the-world-ar",
+    },
+  ],
 };
 
 
@@ -996,6 +1080,8 @@ export default function App() {
   const [accountPhoneOtp, setAccountPhoneOtp] = useState(["", "", "", "", "", ""]);
   const [accountDeleteConfirm, setAccountDeleteConfirm] = useState(false);
   const [usageGuideOpen, setUsageGuideOpen] = useState(false);
+  const [discNoticeOpen, setDiscNoticeOpen] = useState(false);
+  const [discSourcesOpen, setDiscSourcesOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
   const [adminSecurityOpen, setAdminSecurityOpen] = useState(false);
@@ -1031,6 +1117,30 @@ export default function App() {
   const [adminProviderActionBusyId, setAdminProviderActionBusyId] = useState("");
   const [adminPanelSection, setAdminPanelSection] = useState("overview");
   const [adminSelectedProviderRequestId, setAdminSelectedProviderRequestId] = useState("");
+  const [adminTravelAdImageUrl, setAdminTravelAdImageUrl] = useState("");
+  const [adminTravelAdClickUrl, setAdminTravelAdClickUrl] = useState(TRAVEL_AD_DEFAULT_CLICK_URL);
+  const [adminTravelAdTitle, setAdminTravelAdTitle] = useState("");
+  const [adminTravelAdActive, setAdminTravelAdActive] = useState(true);
+  const [adminTravelAdFile, setAdminTravelAdFile] = useState(null);
+  const [adminTravelAdBusy, setAdminTravelAdBusy] = useState(false);
+  const [adminTravelAdError, setAdminTravelAdError] = useState("");
+  const [adminTravelAdSuccess, setAdminTravelAdSuccess] = useState("");
+  const [adminJobsAdImageUrl, setAdminJobsAdImageUrl] = useState("");
+  const [adminJobsAdClickUrl, setAdminJobsAdClickUrl] = useState(JOBS_AD_DEFAULT_CLICK_URL);
+  const [adminJobsAdTitle, setAdminJobsAdTitle] = useState("");
+  const [adminJobsAdActive, setAdminJobsAdActive] = useState(true);
+  const [adminJobsAdFile, setAdminJobsAdFile] = useState(null);
+  const [adminJobsAdBusy, setAdminJobsAdBusy] = useState(false);
+  const [adminJobsAdError, setAdminJobsAdError] = useState("");
+  const [adminJobsAdSuccess, setAdminJobsAdSuccess] = useState("");
+  const [adminStudyAdImageUrl, setAdminStudyAdImageUrl] = useState("");
+  const [adminStudyAdClickUrl, setAdminStudyAdClickUrl] = useState(STUDY_AD_DEFAULT_CLICK_URL);
+  const [adminStudyAdTitle, setAdminStudyAdTitle] = useState("");
+  const [adminStudyAdActive, setAdminStudyAdActive] = useState(true);
+  const [adminStudyAdFile, setAdminStudyAdFile] = useState(null);
+  const [adminStudyAdBusy, setAdminStudyAdBusy] = useState(false);
+  const [adminStudyAdError, setAdminStudyAdError] = useState("");
+  const [adminStudyAdSuccess, setAdminStudyAdSuccess] = useState("");
   const [providerApprovalSnapshot, setProviderApprovalSnapshot] = useState(null);
   const [providerAllRequests, setProviderAllRequests] = useState([]);
   const [providerPortalMode, setProviderPortalMode] = useState("service");
@@ -1087,6 +1197,9 @@ export default function App() {
   const authPhoneVerifierRef = useRef(null);
   const authPhoneConfirmationRef = useRef(null);
   const accountPhoneVerifierRef = useRef(null);
+  const adminTravelAdFileInputRef = useRef(null);
+  const adminJobsAdFileInputRef = useRef(null);
+  const adminStudyAdFileInputRef = useRef(null);
 
   // ── CV Builder States ──────────────────────────────────────────────────────
   const [cvStep, setCvStep] = useState(0);
@@ -2086,8 +2199,307 @@ export default function App() {
     setAdminProviderRequestsError("");
     setAdminProviderRequestsQuery("");
     setAdminProviderActionBusyId("");
+    setAdminTravelAdError("");
+    setAdminTravelAdSuccess("");
+    setAdminTravelAdFile(null);
+    setAdminJobsAdError("");
+    setAdminJobsAdSuccess("");
+    setAdminJobsAdFile(null);
+    setAdminStudyAdError("");
+    setAdminStudyAdSuccess("");
+    setAdminStudyAdFile(null);
     setAdminExitConfirm(false);
   }, []);
+
+  useEffect(() => {
+    if (!isAdminUser) return undefined;
+
+    const unsubscribe = subscribeMainBannerAdFromFirebase((adConfig) => {
+      setAdminTravelAdImageUrl(String(adConfig?.imageUrl || "").trim());
+      setAdminTravelAdClickUrl(String(adConfig?.linkUrl || "").trim() || TRAVEL_AD_DEFAULT_CLICK_URL);
+      setAdminTravelAdTitle(String(adConfig?.title || "").trim());
+      setAdminTravelAdActive(adConfig?.active !== false);
+    });
+
+    return () => unsubscribe?.();
+  }, [isAdminUser]);
+
+  useEffect(() => {
+    if (!isAdminUser) return undefined;
+
+    const unsubscribe = subscribeJobsBannerAdFromFirebase((adConfig) => {
+      setAdminJobsAdImageUrl(String(adConfig?.imageUrl || "").trim());
+      setAdminJobsAdClickUrl(String(adConfig?.linkUrl || "").trim() || JOBS_AD_DEFAULT_CLICK_URL);
+      setAdminJobsAdTitle(String(adConfig?.title || "").trim());
+      setAdminJobsAdActive(adConfig?.active !== false);
+    });
+
+    return () => unsubscribe?.();
+  }, [isAdminUser]);
+
+  const handleAdminJobsAdSave = useCallback(async () => {
+    if (!isAdminUser || adminJobsAdBusy) return;
+
+    setAdminJobsAdBusy(true);
+    setAdminJobsAdError("");
+    setAdminJobsAdSuccess("");
+
+    try {
+      let nextImageUrl = String(adminJobsAdImageUrl || "").trim();
+
+      if (adminJobsAdFile) {
+        const uploaded = await uploadStudyAdImageToFirebase(adminJobsAdFile);
+        nextImageUrl = String(uploaded?.url || "").trim();
+      }
+
+      if (!nextImageUrl) {
+        setAdminJobsAdError(
+          lang === "ar"
+            ? "من فضلك ارفع صورة أو أدخل رابط صورة صحيح."
+            : "Please upload an image or enter a valid image URL."
+        );
+        return;
+      }
+
+      await saveJobsBannerAdConfigInFirebase({
+        active: adminJobsAdActive,
+        imageUrl: nextImageUrl,
+        linkUrl: String(adminJobsAdClickUrl || "").trim() || JOBS_AD_DEFAULT_CLICK_URL,
+        title: String(adminJobsAdTitle || "").trim(),
+      });
+
+      setAdminJobsAdImageUrl(nextImageUrl);
+      setJobsBannerAd((prev) => ({
+        ...prev,
+        active: adminJobsAdActive,
+        imageUrl: nextImageUrl,
+        linkUrl: String(adminJobsAdClickUrl || "").trim() || JOBS_AD_DEFAULT_CLICK_URL,
+        title: String(adminJobsAdTitle || "").trim(),
+      }));
+      setAdminJobsAdFile(null);
+      if (adminJobsAdFileInputRef.current) {
+        adminJobsAdFileInputRef.current.value = "";
+      }
+      setAdminJobsAdSuccess(
+        lang === "ar"
+          ? "تم حفظ إعلان التوظيف بنجاح."
+          : "Jobs ad saved successfully."
+      );
+    } catch (error) {
+      console.error("Failed to save jobs ad config", error);
+      setAdminJobsAdError(
+        lang === "ar"
+          ? "تعذر حفظ إعدادات الإعلان الآن."
+          : "Unable to save ad settings right now."
+      );
+    } finally {
+      setAdminJobsAdBusy(false);
+    }
+  }, [
+    adminJobsAdActive,
+    adminJobsAdBusy,
+    adminJobsAdClickUrl,
+    adminJobsAdFile,
+    adminJobsAdImageUrl,
+    adminJobsAdTitle,
+    isAdminUser,
+    lang,
+  ]);
+
+  const adminJobsAdPreviewUrl = useMemo(() => {
+    if (adminJobsAdFile) {
+      return URL.createObjectURL(adminJobsAdFile);
+    }
+    return String(adminJobsAdImageUrl || "").trim();
+  }, [adminJobsAdFile, adminJobsAdImageUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (adminJobsAdPreviewUrl && adminJobsAdPreviewUrl.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(adminJobsAdPreviewUrl);
+        } catch {}
+      }
+    };
+  }, [adminJobsAdPreviewUrl]);
+
+  const handleAdminTravelAdSave = useCallback(async () => {
+    if (!isAdminUser || adminTravelAdBusy) return;
+
+    setAdminTravelAdBusy(true);
+    setAdminTravelAdError("");
+    setAdminTravelAdSuccess("");
+
+    try {
+      let nextImageUrl = String(adminTravelAdImageUrl || "").trim();
+
+      if (adminTravelAdFile) {
+        const uploaded = await uploadStudyAdImageToFirebase(adminTravelAdFile);
+        nextImageUrl = String(uploaded?.url || "").trim();
+      }
+
+      if (!nextImageUrl) {
+        setAdminTravelAdError(
+          lang === "ar"
+            ? "من فضلك ارفع صورة أو أدخل رابط صورة صحيح."
+            : "Please upload an image or enter a valid image URL."
+        );
+        return;
+      }
+
+      await saveMainBannerAdConfigInFirebase({
+        active: adminTravelAdActive,
+        imageUrl: nextImageUrl,
+        linkUrl: String(adminTravelAdClickUrl || "").trim() || TRAVEL_AD_DEFAULT_CLICK_URL,
+        title: String(adminTravelAdTitle || "").trim(),
+      });
+
+      setAdminTravelAdImageUrl(nextImageUrl);
+      setMainBannerAd((prev) => ({
+        ...prev,
+        active: adminTravelAdActive,
+        imageUrl: nextImageUrl,
+        linkUrl: String(adminTravelAdClickUrl || "").trim() || TRAVEL_AD_DEFAULT_CLICK_URL,
+        title: String(adminTravelAdTitle || "").trim(),
+      }));
+      setAdminTravelAdFile(null);
+      if (adminTravelAdFileInputRef.current) {
+        adminTravelAdFileInputRef.current.value = "";
+      }
+      setAdminTravelAdSuccess(
+        lang === "ar"
+          ? "تم حفظ إعلان مكاتب السفريات بنجاح."
+          : "Travel offices ad saved successfully."
+      );
+    } catch (error) {
+      console.error("Failed to save travel ad config", error);
+      setAdminTravelAdError(
+        lang === "ar"
+          ? "تعذر حفظ إعدادات الإعلان الآن."
+          : "Unable to save ad settings right now."
+      );
+    } finally {
+      setAdminTravelAdBusy(false);
+    }
+  }, [
+    adminTravelAdActive,
+    adminTravelAdBusy,
+    adminTravelAdClickUrl,
+    adminTravelAdFile,
+    adminTravelAdImageUrl,
+    adminTravelAdTitle,
+    isAdminUser,
+    lang,
+  ]);
+
+  const adminTravelAdPreviewUrl = useMemo(() => {
+    if (adminTravelAdFile) {
+      return URL.createObjectURL(adminTravelAdFile);
+    }
+    return String(adminTravelAdImageUrl || "").trim();
+  }, [adminTravelAdFile, adminTravelAdImageUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (adminTravelAdPreviewUrl && adminTravelAdPreviewUrl.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(adminTravelAdPreviewUrl);
+        } catch {}
+      }
+    };
+  }, [adminTravelAdPreviewUrl]);
+
+  useEffect(() => {
+    if (!isAdminUser) return undefined;
+
+    const unsubscribe = subscribeStudyOfficesInlineAdFromFirebase((adConfig) => {
+      setAdminStudyAdImageUrl(String(adConfig?.imageUrl || "").trim());
+      setAdminStudyAdClickUrl(String(adConfig?.linkUrl || "").trim() || STUDY_AD_DEFAULT_CLICK_URL);
+      setAdminStudyAdTitle(String(adConfig?.title || "").trim());
+      setAdminStudyAdActive(adConfig?.active !== false);
+    });
+
+    return () => unsubscribe?.();
+  }, [isAdminUser]);
+
+  const handleAdminStudyAdSave = useCallback(async () => {
+    if (!isAdminUser || adminStudyAdBusy) return;
+
+    setAdminStudyAdBusy(true);
+    setAdminStudyAdError("");
+    setAdminStudyAdSuccess("");
+
+    try {
+      let nextImageUrl = String(adminStudyAdImageUrl || "").trim();
+
+      if (adminStudyAdFile) {
+        const uploaded = await uploadStudyAdImageToFirebase(adminStudyAdFile);
+        nextImageUrl = String(uploaded?.url || "").trim();
+      }
+
+      if (!nextImageUrl) {
+        setAdminStudyAdError(
+          lang === "ar"
+            ? "من فضلك ارفع صورة أو أدخل رابط صورة صحيح."
+            : "Please upload an image or enter a valid image URL."
+        );
+        return;
+      }
+
+      await saveStudyOfficesInlineAdConfigInFirebase({
+        active: adminStudyAdActive,
+        imageUrl: nextImageUrl,
+        linkUrl: String(adminStudyAdClickUrl || "").trim() || STUDY_AD_DEFAULT_CLICK_URL,
+        title: String(adminStudyAdTitle || "").trim(),
+      });
+
+      setAdminStudyAdImageUrl(nextImageUrl);
+      setAdminStudyAdFile(null);
+      if (adminStudyAdFileInputRef.current) {
+        adminStudyAdFileInputRef.current.value = "";
+      }
+      setAdminStudyAdSuccess(
+        lang === "ar"
+          ? "تم حفظ إعلان مكاتب الدراسة بنجاح."
+          : "Study offices ad saved successfully."
+      );
+    } catch (error) {
+      console.error("Failed to save study ad config", error);
+      setAdminStudyAdError(
+        lang === "ar"
+          ? "تعذر حفظ إعدادات الإعلان الآن."
+          : "Unable to save ad settings right now."
+      );
+    } finally {
+      setAdminStudyAdBusy(false);
+    }
+  }, [
+    adminStudyAdActive,
+    adminStudyAdBusy,
+    adminStudyAdClickUrl,
+    adminStudyAdFile,
+    adminStudyAdImageUrl,
+    adminStudyAdTitle,
+    isAdminUser,
+    lang,
+  ]);
+
+  const adminStudyAdPreviewUrl = useMemo(() => {
+    if (adminStudyAdFile) {
+      return URL.createObjectURL(adminStudyAdFile);
+    }
+    return String(adminStudyAdImageUrl || "").trim();
+  }, [adminStudyAdFile, adminStudyAdImageUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (adminStudyAdPreviewUrl && adminStudyAdPreviewUrl.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(adminStudyAdPreviewUrl);
+        } catch {}
+      }
+    };
+  }, [adminStudyAdPreviewUrl]);
 
   const loadAdminUsers = useCallback(async () => {
     setAdminUsersLoading(true);
@@ -4697,12 +5109,28 @@ export default function App() {
   const dir = lang === "ar" ? "rtl" : "ltr";
   const t = dark ? themes.dark : themes.light;
   const tx = lang === "ar" ? T.ar : T.en;
+  const disclaimerSources = OFFICIAL_SOURCE_GROUPS[lang] || OFFICIAL_SOURCE_GROUPS.ar;
   const isCompactPhone = typeof window !== "undefined" && window.innerWidth <= 430;
   const landingAdConfig = {
     enabled: false,
     web: { client: "ca-pub-xxxxxxxxxxxxxxxx", slot: "1234567890" },
     mobile: { androidUnitId: "ca-app-pub-xxxxxxxxxxxxxxxx/1234567890" },
   };
+
+  useEffect(() => {
+    const shouldBlockScreenshots = mainTab === "study";
+    setAndroidSecureScreen(shouldBlockScreenshots);
+
+    return () => {
+      setAndroidSecureScreen(false);
+    };
+  }, [mainTab]);
+
+  useEffect(() => {
+    if (!discNoticeOpen && discSourcesOpen) {
+      setDiscSourcesOpen(false);
+    }
+  }, [discNoticeOpen, discSourcesOpen]);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof document === "undefined") return;
@@ -7281,6 +7709,30 @@ export default function App() {
               tone: "linear-gradient(135deg, rgba(34,197,94,0.18), rgba(21,128,61,0.16))",
               border: "1px solid rgba(74,222,128,0.42)",
               icon: "🧰",
+            }, {
+              key: "travelAds",
+              titleAr: "إعلان مكاتب السفريات",
+              titleEn: "Travel Offices Ad",
+              count: adminTravelAdImageUrl ? 1 : 0,
+              tone: "linear-gradient(135deg, rgba(59,130,246,0.20), rgba(30,64,175,0.16))",
+              border: "1px solid rgba(96,165,250,0.42)",
+              icon: "🧭",
+            }, {
+              key: "jobsAds",
+              titleAr: "إعلان التوظيف",
+              titleEn: "Jobs Ad",
+              count: adminJobsAdImageUrl ? 1 : 0,
+              tone: "linear-gradient(135deg, rgba(16,185,129,0.20), rgba(5,150,105,0.16))",
+              border: "1px solid rgba(52,211,153,0.42)",
+              icon: "💼",
+            }, {
+              key: "studyAds",
+              titleAr: "إعلان مكاتب الدراسة",
+              titleEn: "Study Offices Ad",
+              count: adminStudyAdImageUrl ? 1 : 0,
+              tone: "linear-gradient(135deg, rgba(14,165,233,0.18), rgba(3,105,161,0.16))",
+              border: "1px solid rgba(56,189,248,0.42)",
+              icon: "🖼️",
             }].map((item) => (
               <button
                 key={item.key}
@@ -7764,6 +8216,321 @@ export default function App() {
             {!adminOrdersLoading && filteredAdminStudyAccessOrders.length === 0 && (
               <div style={{ borderRadius: 14, border: "1px dashed rgba(96,165,250,0.40)", background: "rgba(255,255,255,0.03)", padding: "12px 10px", textAlign: "center", color: "rgba(255,255,255,0.82)", fontSize: 11, lineHeight: 1.7, fontWeight: 700, fontFamily: "'Cairo',sans-serif" }}>
                 {lang === "ar" ? "لا توجد طلبات مكاتب دراسة مطابقة للبحث." : "No matching study access requests."}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(96,165,250,0.34)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px", display: adminPanelSection === "travelAds" ? "block" : "none" }}>
+          <div style={{ marginBottom: 8, color: "#bfdbfe", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif" }}>
+            {lang === "ar" ? "إدارة إعلان مكاتب السفريات" : "Travel Offices Ad Management"}
+          </div>
+
+          <div style={{ display: "grid", gap: 8 }}>
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "رابط صورة الإعلان" : "Ad image URL"}</span>
+              <input
+                value={adminTravelAdImageUrl}
+                onChange={(event) => setAdminTravelAdImageUrl(event.target.value)}
+                placeholder="https://..."
+                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(96,165,250,0.35)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "sans-serif" }}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "رابط الضغط عند فتح الإعلان" : "Ad click URL"}</span>
+              <input
+                value={adminTravelAdClickUrl}
+                onChange={(event) => setAdminTravelAdClickUrl(event.target.value)}
+                placeholder="https://..."
+                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(96,165,250,0.35)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "sans-serif" }}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "عنوان الإعلان (اختياري)" : "Ad title (optional)"}</span>
+              <input
+                value={adminTravelAdTitle}
+                onChange={(event) => setAdminTravelAdTitle(event.target.value)}
+                placeholder={lang === "ar" ? "مثال: مساحة إعلانية" : "e.g. Ad Space"}
+                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(96,165,250,0.35)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "'Cairo',sans-serif" }}
+              />
+            </label>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                id="adminTravelAdActive"
+                type="checkbox"
+                checked={adminTravelAdActive}
+                onChange={(event) => setAdminTravelAdActive(event.target.checked)}
+              />
+              <label htmlFor="adminTravelAdActive" style={{ color: "#e2e8f0", fontSize: 11, fontWeight: 800, fontFamily: "'Cairo',sans-serif", cursor: "pointer" }}>
+                {lang === "ar" ? "تفعيل الإعلان" : "Ad active"}
+              </label>
+            </div>
+
+            <div style={{ borderRadius: 12, border: "1px dashed rgba(96,165,250,0.45)", background: "rgba(30,64,175,0.14)", padding: "8px" }}>
+              <div style={{ color: "#bfdbfe", fontSize: 10, fontWeight: 800, marginBottom: 5, fontFamily: "'Cairo',sans-serif" }}>
+                {lang === "ar" ? "أو ارفع صورة مباشرة" : "Or upload image directly"}
+              </div>
+              <input
+                ref={adminTravelAdFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  const nextFile = event.target.files?.[0] || null;
+                  setAdminTravelAdFile(nextFile);
+                }}
+                style={{ width: "100%", color: "#f8fafc", fontSize: 11, fontFamily: "'Cairo',sans-serif" }}
+              />
+              {!!adminTravelAdFile && (
+                <div style={{ marginTop: 5, color: "#dbeafe", fontSize: 10, fontWeight: 700, fontFamily: "'Cairo',sans-serif", wordBreak: "break-word" }}>
+                  {lang === "ar" ? "الملف المحدد" : "Selected"}: {adminTravelAdFile.name}
+                </div>
+              )}
+            </div>
+
+            {!!adminTravelAdPreviewUrl && (
+              <div style={{ borderRadius: 12, border: "1px solid rgba(96,165,250,0.35)", background: "rgba(2,6,23,0.22)", padding: 8 }}>
+                <div style={{ color: "#bfdbfe", fontSize: 10, fontWeight: 800, marginBottom: 5, fontFamily: "'Cairo',sans-serif" }}>
+                  {lang === "ar" ? "معاينة الإعلان قبل الحفظ" : "Ad preview before save"}
+                </div>
+                <img
+                  src={adminTravelAdPreviewUrl}
+                  alt={adminTravelAdTitle || (lang === "ar" ? "معاينة الإعلان" : "Ad preview")}
+                  style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.14)", maxHeight: 180, objectFit: "cover", display: "block" }}
+                />
+              </div>
+            )}
+
+            <button
+              onClick={handleAdminTravelAdSave}
+              disabled={adminTravelAdBusy}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 12, border: "none", background: "linear-gradient(135deg,#3b82f6,#1e40af)", color: "#fff", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: adminTravelAdBusy ? "not-allowed" : "pointer", opacity: adminTravelAdBusy ? 0.7 : 1 }}
+            >
+              {adminTravelAdBusy
+                ? (lang === "ar" ? "جارٍ الحفظ..." : "Saving...")
+                : (lang === "ar" ? "حفظ إعلان مكاتب السفريات" : "Save Travel Ad")}
+            </button>
+
+            {!!adminTravelAdError && (
+              <div style={{ borderRadius: 10, border: "1px solid rgba(248,113,113,0.35)", background: "rgba(127,29,29,0.2)", color: "#fecaca", padding: "8px 9px", fontSize: 10, fontWeight: 800, textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
+                {adminTravelAdError}
+              </div>
+            )}
+            {!!adminTravelAdSuccess && (
+              <div style={{ borderRadius: 10, border: "1px solid rgba(34,197,94,0.35)", background: "rgba(21,128,61,0.2)", color: "#bbf7d0", padding: "8px 9px", fontSize: 10, fontWeight: 800, textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
+                {adminTravelAdSuccess}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(52,211,153,0.34)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px", display: adminPanelSection === "jobsAds" ? "block" : "none" }}>
+          <div style={{ marginBottom: 8, color: "#bbf7d0", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif" }}>
+            {lang === "ar" ? "إدارة إعلان التوظيف" : "Jobs Ad Management"}
+          </div>
+
+          <div style={{ display: "grid", gap: 8 }}>
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "رابط صورة الإعلان" : "Ad image URL"}</span>
+              <input
+                value={adminJobsAdImageUrl}
+                onChange={(event) => setAdminJobsAdImageUrl(event.target.value)}
+                placeholder="https://..."
+                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(52,211,153,0.35)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "sans-serif" }}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "رابط الضغط عند فتح الإعلان" : "Ad click URL"}</span>
+              <input
+                value={adminJobsAdClickUrl}
+                onChange={(event) => setAdminJobsAdClickUrl(event.target.value)}
+                placeholder="https://..."
+                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(52,211,153,0.35)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "sans-serif" }}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "عنوان الإعلان (اختياري)" : "Ad title (optional)"}</span>
+              <input
+                value={adminJobsAdTitle}
+                onChange={(event) => setAdminJobsAdTitle(event.target.value)}
+                placeholder={lang === "ar" ? "مثال: مساحة إعلانية" : "e.g. Ad Space"}
+                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(52,211,153,0.35)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "'Cairo',sans-serif" }}
+              />
+            </label>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                id="adminJobsAdActive"
+                type="checkbox"
+                checked={adminJobsAdActive}
+                onChange={(event) => setAdminJobsAdActive(event.target.checked)}
+              />
+              <label htmlFor="adminJobsAdActive" style={{ color: "#e2e8f0", fontSize: 11, fontWeight: 800, fontFamily: "'Cairo',sans-serif", cursor: "pointer" }}>
+                {lang === "ar" ? "تفعيل الإعلان" : "Ad active"}
+              </label>
+            </div>
+
+            <div style={{ borderRadius: 12, border: "1px dashed rgba(52,211,153,0.45)", background: "rgba(5,150,105,0.14)", padding: "8px" }}>
+              <div style={{ color: "#bbf7d0", fontSize: 10, fontWeight: 800, marginBottom: 5, fontFamily: "'Cairo',sans-serif" }}>
+                {lang === "ar" ? "أو ارفع صورة مباشرة" : "Or upload image directly"}
+              </div>
+              <input
+                ref={adminJobsAdFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  const nextFile = event.target.files?.[0] || null;
+                  setAdminJobsAdFile(nextFile);
+                }}
+                style={{ width: "100%", color: "#f8fafc", fontSize: 11, fontFamily: "'Cairo',sans-serif" }}
+              />
+              {!!adminJobsAdFile && (
+                <div style={{ marginTop: 5, color: "#d1fae5", fontSize: 10, fontWeight: 700, fontFamily: "'Cairo',sans-serif", wordBreak: "break-word" }}>
+                  {lang === "ar" ? "الملف المحدد" : "Selected"}: {adminJobsAdFile.name}
+                </div>
+              )}
+            </div>
+
+            {!!adminJobsAdPreviewUrl && (
+              <div style={{ borderRadius: 12, border: "1px solid rgba(52,211,153,0.35)", background: "rgba(2,6,23,0.22)", padding: 8 }}>
+                <div style={{ color: "#bbf7d0", fontSize: 10, fontWeight: 800, marginBottom: 5, fontFamily: "'Cairo',sans-serif" }}>
+                  {lang === "ar" ? "معاينة الإعلان قبل الحفظ" : "Ad preview before save"}
+                </div>
+                <img
+                  src={adminJobsAdPreviewUrl}
+                  alt={adminJobsAdTitle || (lang === "ar" ? "معاينة الإعلان" : "Ad preview")}
+                  style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.14)", maxHeight: 180, objectFit: "cover", display: "block" }}
+                />
+              </div>
+            )}
+
+            <button
+              onClick={handleAdminJobsAdSave}
+              disabled={adminJobsAdBusy}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 12, border: "none", background: "linear-gradient(135deg,#10b981,#047857)", color: "#fff", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: adminJobsAdBusy ? "not-allowed" : "pointer", opacity: adminJobsAdBusy ? 0.7 : 1 }}
+            >
+              {adminJobsAdBusy
+                ? (lang === "ar" ? "جارٍ الحفظ..." : "Saving...")
+                : (lang === "ar" ? "حفظ إعلان التوظيف" : "Save Jobs Ad")}
+            </button>
+
+            {!!adminJobsAdError && (
+              <div style={{ borderRadius: 10, border: "1px solid rgba(248,113,113,0.35)", background: "rgba(127,29,29,0.2)", color: "#fecaca", padding: "8px 9px", fontSize: 10, fontWeight: 800, textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
+                {adminJobsAdError}
+              </div>
+            )}
+            {!!adminJobsAdSuccess && (
+              <div style={{ borderRadius: 10, border: "1px solid rgba(34,197,94,0.35)", background: "rgba(21,128,61,0.2)", color: "#bbf7d0", padding: "8px 9px", fontSize: 10, fontWeight: 800, textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
+                {adminJobsAdSuccess}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(56,189,248,0.34)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px", display: adminPanelSection === "studyAds" ? "block" : "none" }}>
+          <div style={{ marginBottom: 8, color: "#bae6fd", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif" }}>
+            {lang === "ar" ? "إدارة إعلان مكاتب الدراسة" : "Study Offices Ad Management"}
+          </div>
+
+          <div style={{ display: "grid", gap: 8 }}>
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "رابط صورة الإعلان" : "Ad image URL"}</span>
+              <input
+                value={adminStudyAdImageUrl}
+                onChange={(event) => setAdminStudyAdImageUrl(event.target.value)}
+                placeholder="https://..."
+                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(56,189,248,0.35)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "sans-serif" }}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "رابط الضغط عند فتح الإعلان" : "Ad click URL"}</span>
+              <input
+                value={adminStudyAdClickUrl}
+                onChange={(event) => setAdminStudyAdClickUrl(event.target.value)}
+                placeholder="https://..."
+                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(56,189,248,0.35)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "sans-serif" }}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "عنوان الإعلان (اختياري)" : "Ad title (optional)"}</span>
+              <input
+                value={adminStudyAdTitle}
+                onChange={(event) => setAdminStudyAdTitle(event.target.value)}
+                placeholder={lang === "ar" ? "مثال: مساحة إعلانية" : "e.g. Ad Space"}
+                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(56,189,248,0.35)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "'Cairo',sans-serif" }}
+              />
+            </label>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                id="adminStudyAdActive"
+                type="checkbox"
+                checked={adminStudyAdActive}
+                onChange={(event) => setAdminStudyAdActive(event.target.checked)}
+              />
+              <label htmlFor="adminStudyAdActive" style={{ color: "#e2e8f0", fontSize: 11, fontWeight: 800, fontFamily: "'Cairo',sans-serif", cursor: "pointer" }}>
+                {lang === "ar" ? "تفعيل الإعلان" : "Ad active"}
+              </label>
+            </div>
+
+            <div style={{ borderRadius: 12, border: "1px dashed rgba(56,189,248,0.45)", background: "rgba(14,116,144,0.14)", padding: "8px" }}>
+              <div style={{ color: "#bae6fd", fontSize: 10, fontWeight: 800, marginBottom: 5, fontFamily: "'Cairo',sans-serif" }}>
+                {lang === "ar" ? "أو ارفع صورة مباشرة" : "Or upload image directly"}
+              </div>
+              <input
+                ref={adminStudyAdFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  const nextFile = event.target.files?.[0] || null;
+                  setAdminStudyAdFile(nextFile);
+                }}
+                style={{ width: "100%", color: "#f8fafc", fontSize: 11, fontFamily: "'Cairo',sans-serif" }}
+              />
+              {!!adminStudyAdFile && (
+                <div style={{ marginTop: 5, color: "#e0f2fe", fontSize: 10, fontWeight: 700, fontFamily: "'Cairo',sans-serif", wordBreak: "break-word" }}>
+                  {lang === "ar" ? "الملف المحدد" : "Selected"}: {adminStudyAdFile.name}
+                </div>
+              )}
+            </div>
+
+            {!!adminStudyAdPreviewUrl && (
+              <div style={{ borderRadius: 12, border: "1px solid rgba(56,189,248,0.35)", background: "rgba(2,6,23,0.22)", padding: 8 }}>
+                <div style={{ color: "#bae6fd", fontSize: 10, fontWeight: 800, marginBottom: 5, fontFamily: "'Cairo',sans-serif" }}>
+                  {lang === "ar" ? "معاينة الإعلان قبل الحفظ" : "Ad preview before save"}
+                </div>
+                <img
+                  src={adminStudyAdPreviewUrl}
+                  alt={adminStudyAdTitle || (lang === "ar" ? "معاينة الإعلان" : "Ad preview")}
+                  style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.14)", maxHeight: 180, objectFit: "cover", display: "block" }}
+                />
+              </div>
+            )}
+
+            <button
+              onClick={handleAdminStudyAdSave}
+              disabled={adminStudyAdBusy}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 12, border: "none", background: "linear-gradient(135deg,#0ea5e9,#0369a1)", color: "#fff", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: adminStudyAdBusy ? "not-allowed" : "pointer", opacity: adminStudyAdBusy ? 0.7 : 1 }}
+            >
+              {adminStudyAdBusy
+                ? (lang === "ar" ? "جارٍ الحفظ..." : "Saving...")
+                : (lang === "ar" ? "حفظ إعلان مكاتب الدراسة" : "Save Study Ad")}
+            </button>
+
+            {!!adminStudyAdError && (
+              <div style={{ borderRadius: 10, border: "1px solid rgba(248,113,113,0.35)", background: "rgba(127,29,29,0.2)", color: "#fecaca", padding: "8px 9px", fontSize: 10, fontWeight: 800, textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
+                {adminStudyAdError}
+              </div>
+            )}
+            {!!adminStudyAdSuccess && (
+              <div style={{ borderRadius: 10, border: "1px solid rgba(34,197,94,0.35)", background: "rgba(21,128,61,0.2)", color: "#bbf7d0", padding: "8px 9px", fontSize: 10, fontWeight: 800, textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
+                {adminStudyAdSuccess}
               </div>
             )}
           </div>
@@ -13823,29 +14590,31 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
           <div style={{ padding: "20px 0" }}>
             <h2 style={{ fontSize: 18, fontWeight: 900, color: t.text, fontFamily: "'Cairo',sans-serif", marginBottom: 20 }}>⚙️ {tx.settingsTitle}</h2>
 
-            {/* Language */}
-            <div style={{ ...styles.sectionCard, background: t.cardBg, border: `1px solid ${t.border}`, marginBottom: 12, padding: "10px 12px" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: t.subText, fontFamily: "'Cairo',sans-serif", marginBottom: 10, textAlign: dir === "rtl" ? "right" : "left" }}>🌐 {tx.settingsLang}</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {["ar", "en"].map(l => (
-                  <button key={l} onClick={() => setLang(l)}
-                    style={{ flex: 1, height: 36, padding: "0 12px", borderRadius: 14, border: `2px solid ${lang === l ? "#16a34a" : t.border}`, background: lang === l ? "rgba(22,163,74,0.12)" : t.inputBg, color: lang === l ? "#15803d" : t.text, boxShadow: lang === l ? "0 0 14px rgba(22,163,74,0.16)" : "none", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "'Cairo',sans-serif", transition: "all 0.2s", display: "inline-flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}>
-                    {l === "ar" ? tx.settingsLangAr : tx.settingsLangEn}
-                  </button>
-                ))}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+              {/* Language */}
+              <div style={{ ...styles.sectionCard, background: t.cardBg, border: `1px solid ${t.border}`, marginBottom: 0, padding: "8px 10px", minHeight: 76, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: t.subText, fontFamily: "'Cairo',sans-serif", marginBottom: 6, textAlign: dir === "rtl" ? "right" : "left" }}>🌐 {tx.settingsLang}</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {["ar", "en"].map(l => (
+                    <button key={l} onClick={() => setLang(l)}
+                      style={{ flex: 1, height: 32, padding: "0 10px", borderRadius: 12, border: `2px solid ${t.border}`, background: "transparent", color: t.text, boxShadow: "none", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "'Cairo',sans-serif", transition: "all 0.2s", display: "inline-flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}>
+                      {l === "ar" ? tx.settingsLangAr : tx.settingsLangEn}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Theme */}
-            <div style={{ ...styles.sectionCard, background: t.cardBg, border: `1px solid ${t.border}`, marginBottom: 12, padding: "10px 12px" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: t.subText, fontFamily: "'Cairo',sans-serif", marginBottom: 10, textAlign: dir === "rtl" ? "right" : "left" }}>🎨 {tx.settingsTheme}</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {[false, true].map(isDark => (
-                  <button key={String(isDark)} onClick={() => setDark(isDark)}
-                    style={{ flex: 1, height: 36, padding: "0 12px", borderRadius: 14, border: `2px solid ${dark === isDark ? "#16a34a" : t.border}`, background: dark === isDark ? "rgba(22,163,74,0.12)" : t.inputBg, color: dark === isDark ? "#15803d" : t.text, boxShadow: dark === isDark ? "0 0 14px rgba(22,163,74,0.16)" : "none", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "'Cairo',sans-serif", transition: "all 0.2s", display: "inline-flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}>
-                    {isDark ? `🌙 ${tx.settingsThemeDark}` : `☀️ ${tx.settingsThemeLight}`}
-                  </button>
-                ))}
+              {/* Theme */}
+              <div style={{ ...styles.sectionCard, background: t.cardBg, border: `1px solid ${t.border}`, marginBottom: 0, padding: "8px 10px", minHeight: 76, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: t.subText, fontFamily: "'Cairo',sans-serif", marginBottom: 6, textAlign: dir === "rtl" ? "right" : "left" }}>🎨 {tx.settingsTheme}</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {[false, true].map(isDark => (
+                    <button key={String(isDark)} onClick={() => setDark(isDark)}
+                      style={{ flex: 1, height: 32, padding: "0 10px", borderRadius: 12, border: `2px solid ${t.border}`, background: "transparent", color: t.text, boxShadow: "none", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "'Cairo',sans-serif", transition: "all 0.2s", display: "inline-flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}>
+                      {isDark ? `🌙 ${tx.settingsThemeDark}` : `☀️ ${tx.settingsThemeLight}`}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -13871,167 +14640,171 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
             </div>
 
             {/* ── سوشيال ميديا ── */}
-            <div style={{ ...styles.sectionCard, background: t.cardBg, border: `1px solid ${t.border}`, marginBottom: 10, padding: "13px 12px" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: t.text, fontFamily: "'Cairo',sans-serif", marginBottom: 2 }}>
-                📱 {lang === "ar" ? "تابعنا على" : "Follow Us"}
-              </div>
-              <div style={{ fontSize: 11, color: t.subText, fontFamily: "'Cairo',sans-serif", marginBottom: 12 }}>
-                {lang === "ar" ? "تواصل معنا عبر منصات التواصل الاجتماعي" : "Connect with us on social media"}
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <a href={YOUTUBE} target="_blank" rel="noreferrer"
-                  style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, padding: "9px 5px", borderRadius: 14, background: "#fff0f0", border: "1px solid #ffcccc", textDecoration: "none" }}>
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, padding: "9px 5px", borderRadius: 14, background: dark ? t.cardBg : "#ffffff", border: "none", textDecoration: "none" }}>
                   <div style={{ width: 32, height: 32, borderRadius: 10, background: "#ff0000", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M23.495 6.205a3.007 3.007 0 00-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 00.527 6.205a31.247 31.247 0 00-.522 5.805 31.247 31.247 0 00.522 5.783 3.007 3.007 0 002.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 002.088-2.088 31.247 31.247 0 00.5-5.783 31.247 31.247 0 00-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
                   </div>
                   <span style={{ fontSize: 11, fontWeight: 700, color: "#ff0000", fontFamily: "sans-serif" }}>YouTube</span>
                 </a>
                 <a href={LINKEDIN} target="_blank" rel="noreferrer"
-                  style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, padding: "9px 5px", borderRadius: 14, background: "#e8f4fd", border: "1px solid #b3d9f5", textDecoration: "none" }}>
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, padding: "9px 5px", borderRadius: 14, background: dark ? t.cardBg : "#ffffff", border: "none", textDecoration: "none" }}>
                   <div style={{ width: 32, height: 32, borderRadius: 10, background: "#0077b6", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
                   </div>
                   <span style={{ fontSize: 11, fontWeight: 700, color: "#0077b6", fontFamily: "sans-serif" }}>LinkedIn</span>
                 </a>
-                <a href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noreferrer"
-                  style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, padding: "9px 5px", borderRadius: 14, background: "#e8faf0", border: "1px solid #b3e6c8", textDecoration: "none" }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 10, background: "#25d366", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
-                  </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#25d366", fontFamily: "sans-serif" }}>WhatsApp</span>
-                </a>
               </div>
             </div>
 
             {!!authPreviewUser ? (
-              /* ── مسجّل: الثلاثة في صف واحد ── */
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
-                <button
-                  onClick={() => setUsageGuideOpen(true)}
-                  style={{
-                    padding: "12px 6px",
-                    borderRadius: 16,
-                    border: "1px solid rgba(212,175,55,0.38)",
-                    background: dark ? "rgba(212,175,55,0.08)" : "rgba(212,175,55,0.10)",
-                    color: dark ? "#f5d77b" : "#7c5100",
-                    fontSize: 12,
-                    fontWeight: 900,
-                    fontFamily: "'Cairo',sans-serif",
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 4,
-                  }}
-                >
-                  <span style={{ fontSize: 16 }}>📖</span>
-                  {lang === "ar" ? "شرح الاستخدام" : "How to use"}
-                </button>
-                <button
-                  onClick={() => {
-                    setAccountProfileError("");
-                    setAccountProfileSuccess("");
-                    setAccountDeleteConfirm(false);
-                    setAccountPanelOpen(true);
-                  }}
-                  style={{
-                    padding: "12px 6px",
-                    borderRadius: 16,
-                    border: `1px solid ${t.border}`,
-                    background: t.cardBg,
-                    color: t.text,
-                    fontSize: 12,
-                    fontWeight: 800,
-                    fontFamily: "'Cairo',sans-serif",
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 4,
-                  }}
-                >
-                  <span style={{ fontSize: 16 }}>👤</span>
-                  {lang === "ar" ? "الحساب" : "Account"}
-                </button>
-                <button
-                  onClick={() => setSignOutConfirmOpen(true)}
-                  style={{
-                    padding: "12px 6px",
-                    borderRadius: 16,
-                    border: "1px solid rgba(248,113,113,0.52)",
-                    background: dark ? "linear-gradient(135deg, rgba(127,29,29,0.30), rgba(185,28,28,0.24))" : "linear-gradient(135deg, rgba(254,226,226,0.96), rgba(254,202,202,0.96))",
-                    color: dark ? "#fecaca" : "#991b1b",
-                    fontSize: 12,
-                    fontWeight: 800,
-                    fontFamily: "'Cairo',sans-serif",
-                    cursor: "pointer",
-                    boxShadow: "0 0 12px rgba(239,68,68,0.20)",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 4,
-                  }}
-                >
-                  <span style={{ fontSize: 16 }}>🚪</span>
-                  {lang === "ar" ? "تسجيل الخروج" : "Sign Out"}
-                </button>
+              /* ── مسجّل: مربعات بنفس مواصفات الدعم الفني ── */
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                {[
+                  {
+                    icon: "📖",
+                    label: lang === "ar" ? "شرح الاستخدام" : "How to use",
+                    desc: lang === "ar" ? "دليل سريع" : "Quick guide",
+                    action: () => setUsageGuideOpen(true),
+                  },
+                  {
+                    icon: "👤",
+                    label: lang === "ar" ? "الحساب" : "Account",
+                    desc: lang === "ar" ? "إدارة البيانات" : "Manage profile",
+                    action: () => {
+                      setAccountProfileError("");
+                      setAccountProfileSuccess("");
+                      setAccountDeleteConfirm(false);
+                      setAccountPanelOpen(true);
+                    },
+                  },
+                  {
+                    icon: "🚪",
+                    label: lang === "ar" ? "تسجيل الخروج" : "Sign Out",
+                    desc: lang === "ar" ? "إنهاء الجلسة" : "End session",
+                    action: () => setSignOutConfirmOpen(true),
+                  },
+                  ...(isAdminUser
+                    ? [{
+                        icon: "👑",
+                        label: lang === "ar" ? "حساب الأدمن" : "Admin Account",
+                        desc: lang === "ar" ? "أمان وصلاحيات" : "Security & access",
+                        action: openAdminSecurityModal,
+                      }]
+                    : []),
+                ].map((item, i) => (
+                  <button
+                    key={i}
+                    onClick={item.action}
+                    style={{
+                      display: "block",
+                      textDecoration: "none",
+                      padding: "5px 4px",
+                      borderRadius: 12,
+                      background: t.cardBg,
+                      border: `1px solid ${t.border}`,
+                      cursor: "pointer",
+                      width: "100%",
+                      textAlign: "center",
+                      minHeight: 38,
+                    }}
+                  >
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 3 }}>
+                      <div style={{ width: 22, height: 22, borderRadius: 8, flexShrink: 0, background: t.inputBg, border: `1px solid ${t.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>
+                        {item.icon}
+                      </div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: t.text, fontFamily: "'Cairo',sans-serif", lineHeight: 1.25 }}>
+                        {item.label}
+                      </div>
+                      <div style={{ fontSize: 9, color: t.subText, fontFamily: "'Cairo',sans-serif", lineHeight: 1.25 }}>
+                        {item.desc}
+                      </div>
+                    </div>
+                  </button>
+                ))}
               </div>
             ) : (
-              /* ── غير مسجّل: زر شرح فقط ── */
-              <div style={{ marginBottom: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: isGuestUser ? "1fr 1fr" : "1fr", gap: 10, marginBottom: 12 }}>
                 <button
                   onClick={() => setUsageGuideOpen(true)}
                   style={{
                     width: "100%",
-                    padding: "12px 14px",
-                    borderRadius: 16,
-                    border: "1px solid rgba(212,175,55,0.38)",
-                    background: dark ? "rgba(212,175,55,0.08)" : "rgba(212,175,55,0.10)",
+                    padding: "5px 4px",
+                    minHeight: 38,
+                    borderRadius: 12,
+                    border: `1px solid ${t.border}`,
+                    background: t.cardBg,
                     color: dark ? "#f5d77b" : "#7c5100",
-                    fontSize: 13,
-                    fontWeight: 900,
+                    fontSize: 11,
+                    fontWeight: 800,
                     fontFamily: "'Cairo',sans-serif",
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: 8,
+                    textAlign: "center",
                   }}
                 >
-                  <span style={{ fontSize: 16 }}>📖</span>
-                  {lang === "ar" ? "شرح الاستخدام" : "How to use"}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 3 }}>
+                    <div style={{ width: 22, height: 22, borderRadius: 8, flexShrink: 0, background: t.inputBg, border: `1px solid ${t.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>
+                      📖
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: t.text, fontFamily: "'Cairo',sans-serif", lineHeight: 1.25 }}>
+                      {lang === "ar" ? "شرح الاستخدام" : "How to use"}
+                    </div>
+                    <div style={{ fontSize: 9, color: t.subText, fontFamily: "'Cairo',sans-serif", lineHeight: 1.25, visibility: "hidden" }}>
+                      {lang === "ar" ? "-" : "-"}
+                    </div>
+                  </div>
                 </button>
-              </div>
-            )}
 
-            {!authPreviewUser && isGuestUser && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10, marginBottom: 12 }}>
-                <button
-                  onClick={() => {
-                    setGuestMode(false);
-                    setAuthPreviewMode("login");
-                    setAuthPreviewOpen(true);
-                    setAuthPreviewError("");
-                    setAuthPreviewSuccess("");
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "12px 14px",
-                    borderRadius: 16,
-                    border: "1px solid rgba(212,175,55,0.46)",
-                    background: "linear-gradient(135deg, rgba(231,197,91,0.24), rgba(201,154,35,0.20))",
-                    color: dark ? "#fde68a" : "#7c5100",
-                    fontSize: 13,
-                    fontWeight: 900,
-                    fontFamily: "'Cairo',sans-serif",
-                    cursor: "pointer",
-                  }}
-                >
-                  {lang === "ar" ? "تسجيل الدخول بحساب" : "Sign In With Account"}
-                </button>
+                {isGuestUser && (
+                  <button
+                    onClick={() => {
+                      setGuestMode(false);
+                      setAuthPreviewMode("login");
+                      setAuthPreviewOpen(true);
+                      setAuthPreviewError("");
+                      setAuthPreviewSuccess("");
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "5px 4px",
+                      minHeight: 38,
+                      borderRadius: 12,
+                        border: "1px solid rgba(248,113,113,0.34)",
+                        background: dark
+                          ? "linear-gradient(145deg, rgba(127,29,29,0.30) 0%, rgba(185,28,28,0.18) 58%, rgba(255,255,255,0.10) 100%)"
+                          : "linear-gradient(145deg, rgba(255,246,246,0.98) 0%, rgba(255,233,233,0.97) 58%, rgba(255,255,255,0.94) 100%)",
+                        color: dark ? "#fecaca" : "#7f1d1d",
+                      fontSize: 11,
+                      fontWeight: 800,
+                      fontFamily: "'Cairo',sans-serif",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      textAlign: "center",
+                        boxShadow: dark
+                          ? "0 0 12px rgba(248,113,113,0.24), inset 0 1px 0 rgba(255,255,255,0.32), inset 0 -10px 14px rgba(255,255,255,0.08)"
+                          : "0 0 14px rgba(248,113,113,0.20), inset 0 1px 0 rgba(255,255,255,0.86), inset 0 -10px 14px rgba(255,255,255,0.42)",
+                    }}
+                  >
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 3 }}>
+                        <div style={{ width: 22, height: 22, borderRadius: 8, flexShrink: 0, background: dark ? "linear-gradient(150deg, rgba(127,29,29,0.42), rgba(185,28,28,0.28))" : "linear-gradient(150deg, rgba(254,226,226,0.98), rgba(255,245,245,0.95))", border: "1px solid rgba(248,113,113,0.30)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, boxShadow: dark ? "0 0 8px rgba(248,113,113,0.22), inset 0 1px 0 rgba(255,255,255,0.25)" : "0 0 8px rgba(248,113,113,0.16), inset 0 1px 0 rgba(255,255,255,0.75)" }}>
+                        🔐
+                      </div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: t.text, fontFamily: "'Cairo',sans-serif", lineHeight: 1.25 }}>
+                        {lang === "ar" ? "تسجيل الدخول بحساب" : "Sign In With Account"}
+                      </div>
+                      <div style={{ fontSize: 9, color: t.subText, fontFamily: "'Cairo',sans-serif", lineHeight: 1.25, visibility: "hidden" }}>
+                        {lang === "ar" ? "-" : "-"}
+                      </div>
+                    </div>
+                  </button>
+                )}
               </div>
             )}
 
@@ -14039,59 +14812,108 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
 
             {/* ── إشعار هام ── */}
             <div style={{ marginTop: 16, borderRadius: 14, border: `1px solid ${t.gold}30`, background: dark ? `${t.gold}08` : `${t.gold}0a`, padding: "14px 16px" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: t.gold, marginBottom: 6, fontFamily: "'Cairo',sans-serif" }}>⚠️ {tx.discTitle}</div>
-              <div style={{ fontSize: 12, color: t.text, lineHeight: 1.8, fontFamily: "'Cairo',sans-serif", marginBottom: 4 }}>{tx.discBody}</div>
-              <div style={{ fontSize: 10, color: t.subText, fontFamily: "sans-serif", lineHeight: 1.6 }}>{tx.discEn}</div>
-            </div>
-
-            {isAdminUser && (
               <button
-                onClick={openAdminSecurityModal}
+                type="button"
+                onClick={() => setDiscNoticeOpen((prev) => !prev)}
                 style={{
                   width: "100%",
-                  marginTop: 14,
+                  borderRadius: 10,
+                  border: `1px solid ${t.gold}2b`,
+                  background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.82)",
+                  color: t.gold,
+                  padding: "10px 11px",
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
-                  gap: 10,
-                  padding: "12px 18px",
-                  borderRadius: 18,
-                  border: "1.5px solid rgba(74,222,128,0.7)",
-                  background: dark ? "rgba(6,78,59,0.22)" : "rgba(240,253,244,0.96)",
-                  color: dark ? "#bbf7d0" : "#166534",
-                  fontSize: 13,
-                  fontWeight: 800,
-                  cursor: "pointer",
+                  justifyContent: "space-between",
+                  fontSize: 12,
+                  fontWeight: 900,
                   fontFamily: "'Cairo',sans-serif",
-                  boxShadow: dark
-                    ? "0 0 0 4px rgba(74,222,128,0.12), 0 0 18px rgba(74,222,128,0.18)"
-                    : "0 0 0 4px rgba(34,197,94,0.12), 0 10px 22px rgba(34,197,94,0.14)",
-                  backdropFilter: "blur(12px)",
+                  cursor: "pointer",
                 }}
               >
-                <span style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: "50%",
-                  background: "rgba(74,222,128,0.18)",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 14,
-                }}>
-                  👑
+                <span>⚠️ {tx.discTitle}</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800 }}>{discNoticeOpen ? tx.discCollapse : tx.discExpand}</span>
+                  <span style={{ fontSize: 14, lineHeight: 1 }}>{discNoticeOpen ? "▴" : "▾"}</span>
                 </span>
-                <span>{lang === "ar" ? "حساب الأدمن" : "Admin Account"}</span>
-                <span style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  background: "#4ade80",
-                  boxShadow: "0 0 8px #4ade80",
-                  animation: "goldPulse 1.8s ease-in-out infinite",
-                }} />
               </button>
-            )}
+
+              {discNoticeOpen && (
+                <>
+                  <div style={{ fontSize: 12, color: t.text, lineHeight: 1.8, fontFamily: "'Cairo',sans-serif", marginTop: 8, marginBottom: 4 }}>{tx.discBody}</div>
+                  <div style={{ fontSize: 11, color: t.text, lineHeight: 1.8, fontFamily: "'Cairo',sans-serif", marginBottom: 6 }}>{tx.discSub}</div>
+                  <div style={{ fontSize: 10, color: t.subText, fontFamily: "sans-serif", lineHeight: 1.6 }}>{tx.discEn}</div>
+                  <div style={{ marginTop: 10, fontSize: 11, fontWeight: 800, color: t.gold, fontFamily: "'Cairo',sans-serif" }}>{tx.discSourcesTitle}</div>
+                  <button
+                    type="button"
+                    onClick={() => setDiscSourcesOpen((prev) => !prev)}
+                    style={{
+                      width: "100%",
+                      marginTop: 6,
+                      borderRadius: 10,
+                      border: `1px solid ${t.gold}33`,
+                      background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.86)",
+                      color: t.gold,
+                      padding: "9px 10px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      fontSize: 11,
+                      fontWeight: 800,
+                      fontFamily: "'Cairo',sans-serif",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span>{discSourcesOpen ? tx.discSourcesCollapse : tx.discSourcesExpand}</span>
+                    <span style={{ fontSize: 14, lineHeight: 1 }}>{discSourcesOpen ? "▴" : "▾"}</span>
+                  </button>
+                  {discSourcesOpen && (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        borderRadius: 12,
+                        border: `1px solid ${t.gold}30`,
+                        background: dark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.75)",
+                        padding: "10px 10px 8px",
+                      }}
+                    >
+                      <div style={{ display: "grid", gap: 7 }}>
+                        {disclaimerSources.map((source) => (
+                          <div
+                            key={source.url}
+                            style={{
+                              borderBottom: `1px dashed ${t.gold}22`,
+                              paddingBottom: 7,
+                            }}
+                          >
+                            <div style={{ fontSize: 11, fontWeight: 700, color: t.text, fontFamily: "'Cairo',sans-serif", marginBottom: 2 }}>
+                              • {source.label}
+                            </div>
+                            <a
+                              href={source.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                fontSize: 10,
+                                fontFamily: "sans-serif",
+                                color: dark ? "#93c5fd" : "#1d4ed8",
+                                textDecoration: "none",
+                                wordBreak: "break-all",
+                              }}
+                            >
+                              {source.url}
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ marginTop: 8, fontSize: 10, color: t.subText, lineHeight: 1.7, fontFamily: "'Cairo',sans-serif" }}>{tx.discSourcesNote}</div>
+                </>
+              )}
+            </div>
+
+
           </div>
         )}
 

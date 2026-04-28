@@ -4,6 +4,7 @@ import {
   createOrderViaFirebaseFunction,
   fetchUserOrdersFromFirebase,
   fetchUserProfileFromFirebase,
+  subscribeStudyOfficesInlineAdFromFirebase,
   upsertAuthUserProfileInFirebase,
 } from "../../firebase";
 import FilterBar from "./FilterBar";
@@ -22,6 +23,8 @@ const STUDY_ACCESS_DISCOUNTED_PRICE_USD = 5;
 const STUDY_ACCESS_DISCOUNT_PERCENT = 50;
 const STUDY_ACCESS_SERVICE_KEY = "study-offices-access";
 const WHATSAPP_NUMBER = "201064463650";
+const STUDY_INLINE_AD_FALLBACK_IMAGE_URL = "https://firebasestorage.googleapis.com/v0/b/travel-offices-90c53.firebasestorage.app/o/studyads%2FChatGPT%20Image%20Apr%2028%2C%202026%2C%2010_52_43%20AM.png?alt=media&token=6e14882b-8807-4c82-9461-41769058ce51";
+const STUDY_INLINE_AD_FALLBACK_LINK_URL = "https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D8%B5%D9%81%D8%AD%D8%A9%20%D9%85%D9%83%D8%A7%D8%AA%D8%A8%20%D8%A7%D9%84%D8%AF%D8%B1%D8%A7%D8%B3%D8%A9";
 
 function generateStudyAccessOrderSerial() {
   const ts = Date.now().toString(36).toUpperCase();
@@ -177,6 +180,14 @@ export default function StudyAbroadDirectory({
     whatsapp: "",
     email: "",
   });
+  const [studyInlineAd, setStudyInlineAd] = useState({
+    active: true,
+    imageUrl: STUDY_INLINE_AD_FALLBACK_IMAGE_URL,
+    linkUrl: STUDY_INLINE_AD_FALLBACK_LINK_URL,
+    title: "",
+    startDate: "",
+    endDate: "",
+  });
 
   const canViewAllStudyOffices = isAdminUser || fullAccessEnabled;
 
@@ -316,6 +327,30 @@ export default function StudyAbroadDirectory({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeStudyOfficesInlineAdFromFirebase((nextAd) => {
+      const hasRemoteImage = Boolean(String(nextAd?.imageUrl || "").trim());
+      if (hasRemoteImage) {
+        setStudyInlineAd(nextAd);
+        return;
+      }
+
+      setStudyInlineAd({
+        active: true,
+        imageUrl: STUDY_INLINE_AD_FALLBACK_IMAGE_URL,
+        linkUrl: STUDY_INLINE_AD_FALLBACK_LINK_URL,
+        title: "",
+        startDate: "",
+        endDate: "",
+      });
+    });
+
+    return () => unsubscribe?.();
+  }, []);
+
+  const studyInlineAdImageUrl = String(studyInlineAd?.imageUrl || "").trim();
+  const studyInlineAdLinkUrl = String(studyInlineAd?.linkUrl || "").trim() || STUDY_INLINE_AD_FALLBACK_LINK_URL;
 
   const filteredOffices = useMemo(() => {
     const normalizedSearch = String(deferredSearchValue || "").trim().toLowerCase();
@@ -524,6 +559,53 @@ export default function StudyAbroadDirectory({
     }
   }, [authUid, authUser?.email, copy.requiredField, copy.submitFailed, lang, paymentBusy, paymentForm.email, paymentForm.name, paymentForm.phone, paymentForm.whatsapp]);
 
+  const renderStudyInlineAdCard = (cardClassName) => (
+    <article className={cardClassName}>
+      {studyInlineAdImageUrl ? (
+        <a
+          href={studyInlineAdLinkUrl}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            display: "block",
+            width: "100%",
+            lineHeight: 0,
+            borderRadius: 12,
+            overflow: "hidden",
+            border: "1px solid rgba(30,58,138,0.14)",
+          }}
+        >
+          <img
+            src={studyInlineAdImageUrl}
+            alt={copy.adTitle}
+            loading="lazy"
+            style={{
+              width: "100%",
+              height: "100%",
+              minHeight: 190,
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        </a>
+      ) : (
+        <>
+          <span className={styles.inlineAdBadge}>{copy.adLabel}</span>
+          <h3 className={styles.inlineAdTitle}>{copy.adTitle}</h3>
+          <p className={styles.inlineAdText}>{copy.adText}</p>
+          <a
+            className={styles.inlineAdAction}
+            href={STUDY_INLINE_AD_FALLBACK_LINK_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {copy.adCta}
+          </a>
+        </>
+      )}
+    </article>
+  );
+
   return (
     <div
       className={styles.page}
@@ -621,19 +703,7 @@ export default function StudyAbroadDirectory({
             </div>
           </div>
 
-          <article className={styles.accessAdCard}>
-            <span className={styles.accessAdBadge}>{copy.adLabel}</span>
-            <h3 className={styles.accessAdTitle}>{copy.adTitle}</h3>
-            <p className={styles.accessAdText}>{copy.adText}</p>
-            <a
-              className={styles.accessAdAction}
-              href="https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D8%B5%D9%81%D8%AD%D8%A9%20%D9%85%D9%83%D8%A7%D8%AA%D8%A8%20%D8%A7%D9%84%D8%AF%D8%B1%D8%A7%D8%B3%D8%A9"
-              target="_blank"
-              rel="noreferrer"
-            >
-              {copy.adCta}
-            </a>
-          </article>
+          {renderStudyInlineAdCard(styles.accessAdCard)}
         </section>
       ) : null}
 
@@ -685,21 +755,7 @@ export default function StudyAbroadDirectory({
               </button>
             </div>
           </div>
-          {isGuestUser ? (
-            <article className={styles.lockedGuestAdCard}>
-              <span className={styles.lockedGuestAdBadge}>{copy.adLabel}</span>
-              <h3 className={styles.lockedGuestAdTitle}>{copy.adTitle}</h3>
-              <p className={styles.lockedGuestAdText}>{copy.adText}</p>
-              <a
-                className={styles.lockedGuestAdAction}
-                href="https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D8%B5%D9%81%D8%AD%D8%A9%20%D9%85%D9%83%D8%A7%D8%AA%D8%A8%20%D8%A7%D9%84%D8%AF%D8%B1%D8%A7%D8%B3%D8%A9"
-                target="_blank"
-                rel="noreferrer"
-              >
-                {copy.adCta}
-              </a>
-            </article>
-          ) : null}
+          {isGuestUser ? renderStudyInlineAdCard(styles.lockedGuestAdCard) : null}
         </section>
       ) : null}
 
@@ -795,21 +851,7 @@ export default function StudyAbroadDirectory({
             </article>
           ) : null}
 
-        {!loading && !error && pagedOffices.length > 0 ? (
-          <article className={`${styles.card} ${styles.inlineAdCard}`}>
-            <span className={styles.inlineAdBadge}>{copy.adLabel}</span>
-            <h3 className={styles.inlineAdTitle}>{copy.adTitle}</h3>
-            <p className={styles.inlineAdText}>{copy.adText}</p>
-            <a
-              className={styles.inlineAdAction}
-              href="https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D8%B5%D9%81%D8%AD%D8%A9%20%D9%85%D9%83%D8%A7%D8%AA%D8%A8%20%D8%A7%D9%84%D8%AF%D8%B1%D8%A7%D8%B3%D8%A9"
-              target="_blank"
-              rel="noreferrer"
-            >
-              {copy.adCta}
-            </a>
-          </article>
-        ) : null}
+        {!loading && !error && pagedOffices.length > 0 ? renderStudyInlineAdCard(`${styles.card} ${styles.inlineAdCard}`) : null}
       </div>
 
       {!loading && !error && visibleOfficesByAccess.length > 0 ? (

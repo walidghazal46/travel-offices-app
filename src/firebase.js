@@ -127,6 +127,86 @@ export function subscribeJobsBannerAdFromFirebase(callback) {
   );
 }
 
+export function subscribeStudyOfficesInlineAdFromFirebase(callback) {
+  return onSnapshot(
+    doc(firestoreDb, "Ads", "study_offices_inline"),
+    (snapshot) => callback(normalizeBannerAd(snapshot)),
+    (error) => {
+      console.warn("Study offices inline ad subscription failed", error);
+      callback(emptyBannerAd());
+    }
+  );
+}
+
+export async function uploadStudyAdImageToFirebase(file) {
+  if (!file) return null;
+  const cleanName = sanitizeFileName(file.name || "study-ad");
+  const storageRef = ref(firebaseStorage, `studyads/${Date.now()}-${cleanName}`);
+
+  await withRetry(async () => {
+    await uploadBytes(storageRef, file, {
+      contentType: file.type || "application/octet-stream",
+    });
+  }, 2, 500);
+
+  const downloadUrl = await getDownloadURL(storageRef);
+  return {
+    path: storageRef.fullPath,
+    url: downloadUrl,
+    name: file.name || cleanName,
+    type: file.type || "",
+    size: file.size || 0,
+  };
+}
+
+export async function saveStudyOfficesInlineAdConfigInFirebase(config = {}) {
+  const payload = removeUndefined({
+    active: config.active !== false,
+    image_url: String(config.imageUrl || "").trim(),
+    link: String(config.linkUrl || "").trim(),
+    title: String(config.title || "").trim(),
+    start_date: String(config.startDate || "").trim(),
+    end_date: String(config.endDate || "").trim(),
+    updatedAt: serverTimestamp(),
+  });
+
+  await withRetry(async () =>
+    setDoc(doc(firestoreDb, "Ads", "study_offices_inline"), payload, { merge: true })
+  );
+}
+
+export async function saveMainBannerAdConfigInFirebase(config = {}) {
+  const payload = removeUndefined({
+    active: config.active !== false,
+    image_url: String(config.imageUrl || "").trim(),
+    link: String(config.linkUrl || "").trim(),
+    title: String(config.title || "").trim(),
+    start_date: String(config.startDate || "").trim(),
+    end_date: String(config.endDate || "").trim(),
+    updatedAt: serverTimestamp(),
+  });
+
+  await withRetry(async () =>
+    setDoc(doc(firestoreDb, "Ads", "main_banner"), payload, { merge: true })
+  );
+}
+
+export async function saveJobsBannerAdConfigInFirebase(config = {}) {
+  const payload = removeUndefined({
+    active: config.active !== false,
+    image_url: String(config.imageUrl || "").trim(),
+    link: String(config.linkUrl || "").trim(),
+    title: String(config.title || "").trim(),
+    start_date: String(config.startDate || "").trim(),
+    end_date: String(config.endDate || "").trim(),
+    updatedAt: serverTimestamp(),
+  });
+
+  await withRetry(async () =>
+    setDoc(doc(firestoreDb, "Ads", "second banner"), payload, { merge: true })
+  );
+}
+
 export const CREATE_ORDER_FUNCTION_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/createOrder";
 export const UPLOAD_ORDER_RECEIPT_FUNCTION_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/uploadOrderReceipt";
 export const EXCHANGE_CUSTOM_TOKEN_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/exchangeIdTokenForCustomToken";

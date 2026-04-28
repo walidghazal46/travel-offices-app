@@ -12,6 +12,7 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
+		registerPlugin(ScreenSecurityPlugin.class);
 		super.onCreate(savedInstanceState);
 
 		// Hide ActionBar if somehow still visible
