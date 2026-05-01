@@ -1082,6 +1082,7 @@ export default function App() {
   const [usageGuideOpen, setUsageGuideOpen] = useState(false);
   const [discNoticeOpen, setDiscNoticeOpen] = useState(false);
   const [discSourcesOpen, setDiscSourcesOpen] = useState(false);
+  const [privacyPolicyOpen, setPrivacyPolicyOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
   const [adminSecurityOpen, setAdminSecurityOpen] = useState(false);
@@ -5194,6 +5195,14 @@ export default function App() {
   }, []);
 
   const topCountries = useMemo(() => countriesData.slice(0, 10), []);
+  const upcomingCountryCards = useMemo(() => ([
+    { key: "soon-country-1", icon: "🌍", name: "الإتحاد الاوربي", nameEn: "European Union" },
+    { key: "soon-country-2", icon: "🧭", name: "أمريكا", nameEn: "America" },
+  ]), []);
+  const topCountryTiles = useMemo(
+    () => [...topCountries, ...upcomingCountryCards],
+    [topCountries, upcomingCountryCards]
+  );
   const country = useMemo(() => countriesData.find((c) => c.name === selectedCountry) || null, [selectedCountry]);
   const nationalityCountry = useMemo(() => countriesData.find((c) => c.name === selectedNationality) || null, [selectedNationality]);
   const isOtherNationalitySelected = selectedNationality === OTHER_NATIONALITY_VALUE;
@@ -10793,192 +10802,148 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   </h1>
                 </div>
 
-                <div style={{ display: "grid", gap: 10 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+                  {/* ── HERO CARD: مكاتب السفريات الموثوقة ── */}
                   <button
                     onClick={() => { setView("home"); setSelectedGov(null); setSearch(""); }}
-                    className="section-card"
+                    className="crystal-card"
                     style={{
-                      width: "100%",
-                      maxWidth: "100%",
-                      boxSizing: "border-box",
-                      textAlign: lang === "ar" ? "right" : "left",
-                      background: dark ? "linear-gradient(135deg, rgba(22,163,74,0.24), rgba(34,197,94,0.10))" : "linear-gradient(135deg, #f0fdf4, #ecfdf5)",
-                      border: "1px solid #16a34a33",
-                      borderRadius: 22,
-                      padding: "12px 13px",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 11,
-                      minHeight: 82,
+                      width: "100%", border: "none", cursor: "pointer", padding: 0,
+                      borderRadius: 26,
+                      background: "linear-gradient(135deg, #1e3a8a 0%, #3730a3 50%, #5b21b6 100%)",
+                      boxShadow: "0 20px 50px rgba(30,58,138,0.40), 0 6px 16px rgba(91,33,182,0.25)",
                       overflow: "hidden",
-                      boxShadow: dark ? "0 0 18px #16a34a18" : "0 10px 22px #16a34a12",
+                      position: "relative",
+                      minHeight: 155,
+                      display: "flex",
+                      alignItems: "flex-end",
+                      textAlign: lang === "ar" ? "right" : "left",
                       fontFamily: "'Cairo',sans-serif",
+                      boxSizing: "border-box",
                     }}
                   >
-                    <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #16a34a28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🏢</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 900, color: "#16a34a", marginBottom: 3 }}>{lang === "ar" ? "مكاتب السفريات الموثوقة" : "Trusted Travel Offices"}</div>
-                      <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? "ادخل إلى المحافظات والمكاتب المرخصة كما هي بدون أي تغيير في محتواها." : "Open the governorates and licensed offices exactly as they are."}</div>
-                    </div>
-                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#16a34a18", color: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
-                  </button>
-
-                  <button
-                    onClick={openStudyTabRoot}
-                    className="section-card"
-                    style={{
-                      width: "100%",
-                      maxWidth: "100%",
-                      boxSizing: "border-box",
-                      textAlign: lang === "ar" ? "right" : "left",
-                      background: dark ? "linear-gradient(135deg, rgba(217,119,6,0.24), rgba(245,158,11,0.10))" : "linear-gradient(135deg, #fff8eb, #fffbf2)",
-                      border: "1px solid #d9770630",
-                      borderRadius: 22,
-                      padding: "12px 13px",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 11,
-                      minHeight: 82,
-                      overflow: "hidden",
-                      boxShadow: dark ? "0 0 18px #d9770618" : "0 10px 22px #d9770612",
-                      fontFamily: "'Cairo',sans-serif",
-                    }}
-                  >
-                    <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #d9770628", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🎓</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 900, color: "#d97706", marginBottom: 3 }}>{lang === "ar" ? "مكاتب الدراسة بالخارج" : "Study Abroad Offices"}</div>
-                      <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? "استعرض مكاتب الدراسة الموثقة مع الدول المتاحة وطرق التواصل المباشرة." : "Browse trusted study abroad offices with destination countries and direct contact details."}</div>
-                    </div>
-                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#d9770618", color: "#d97706", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
-                  </button>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
-                    <div
-                      className="section-card"
-                      style={{
-                        width: "100%",
-                        maxWidth: "100%",
-                        boxSizing: "border-box",
-                        textAlign: lang === "ar" ? "right" : "left",
-                        background: dark ? "linear-gradient(135deg, rgba(229,62,62,0.12), rgba(229,62,62,0.06))" : "linear-gradient(135deg, #fff5f5, #fffafa)",
-                        border: "1px solid #e53e3e28",
-                        borderRadius: 22,
-                        padding: "12px 12px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 11,
-                        boxShadow: dark ? "0 0 18px #e53e3e14" : "0 10px 22px #e53e3e0d",
-                        fontFamily: "'Cairo',sans-serif",
-                        minHeight: 82,
-                        overflow: "hidden",
-                        opacity: 0.86
-                      }}
-                    >
-                      <div style={{ width: 38, height: 38, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #e53e3e20", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🚫</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                          <div style={{ fontSize: 14, fontWeight: 900, color: "#e53e3e" }}>{lang === "ar" ? "مكاتب محظورة" : "Blocked Offices"}</div>
-                          <span style={{ fontSize: 9, fontWeight: 800, color: "#e53e3e", background: "#e53e3e14", border: "1px solid #e53e3e28", borderRadius: 999, padding: "2px 7px" }}>{lang === "ar" ? "قريبًا" : "Soon"}</span>
-                        </div>
-                        <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? "هذا القسم سيُضاف لاحقًا في هذه الدولة." : "This section will be added later for this country."}</div>
+                    <div style={{ position: "absolute", top: -30, [lang === "ar" ? "left" : "right"]: -30, width: 130, height: 130, borderRadius: "50%", background: "rgba(139,92,246,0.35)", filter: "blur(30px)", pointerEvents: "none" }} />
+                    <div style={{ position: "absolute", top: 6, [lang === "ar" ? "left" : "right"]: 8, fontSize: 66, lineHeight: 1, filter: "drop-shadow(0 8px 18px rgba(0,0,0,0.35))", userSelect: "none", pointerEvents: "none" }}>✈️</div>
+                    <div style={{ position: "absolute", top: 30, [lang === "ar" ? "left" : "right"]: 62, fontSize: 42, lineHeight: 1, filter: "drop-shadow(0 6px 12px rgba(0,0,0,0.3))", userSelect: "none", pointerEvents: "none" }}>🌍</div>
+                    <div style={{ position: "absolute", top: 72, [lang === "ar" ? "left" : "right"]: 10, fontSize: 36, lineHeight: 1, filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.28))", userSelect: "none", pointerEvents: "none" }}>🧳</div>
+                    <div style={{ padding: "16px 16px 18px", flex: 1, position: "relative", zIndex: 1, maxWidth: lang === "ar" ? "70%" : "68%" }}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(34,197,94,0.20)", border: "1px solid rgba(34,197,94,0.45)", borderRadius: 999, padding: "3px 10px", marginBottom: 9 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block", flexShrink: 0 }} />
+                        <span style={{ fontSize: 12.5, fontWeight: 800, color: "#4ade80", fontFamily: "'Cairo',sans-serif" }}>{lang === "ar" ? "موثوق" : "Verified"}</span>
+                      </div>
+                      <div style={{ fontSize: 20, fontWeight: 900, color: "#ffffff", marginBottom: 6, lineHeight: 1.35 }}>{lang === "ar" ? "المكاتب الموثوقة" : "Trusted Offices"}</div>
+                      <div style={{ fontSize: 13, color: "rgba(255,255,255,0.68)", lineHeight: 1.65, marginBottom: 14 }}>{lang === "ar" ? "استعرض مكاتب السفريات الموثوقة في مصر" : "Browse trusted travel offices in Egypt."}</div>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)", backdropFilter: "blur(8px)", borderRadius: 999, padding: "7px 15px" }}>
+                        <span style={{ fontSize: 14.5, fontWeight: 800, color: "#ffffff", fontFamily: "'Cairo',sans-serif" }}>{lang === "ar" ? "استكشف الآن" : "Explore Now"}</span>
+                        <span style={{ fontSize: 15, color: "rgba(255,255,255,0.85)" }}>{lang === "ar" ? "←" : "→"}</span>
                       </div>
                     </div>
+                  </button>
+
+                  {/* ── GRID (محظورة + مدفوعة) ── */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+
+                    {/* مكاتب محظورة */}
+                    <div
+                      className="crystal-card"
+                      style={{
+                        borderRadius: 22,
+                        background: dark ? "linear-gradient(145deg, rgba(239,68,68,0.20), rgba(220,38,38,0.11))" : "linear-gradient(145deg, #fff1f2, #ffe4e6)",
+                        boxShadow: dark ? "0 10px 28px rgba(239,68,68,0.16)" : "0 10px 28px rgba(239,68,68,0.14)",
+                        minHeight: 126,
+                        display: "flex", flexDirection: "column", justifyContent: "space-between",
+                        padding: "13px",
+                        textAlign: lang === "ar" ? "right" : "left",
+                        fontFamily: "'Cairo',sans-serif", opacity: 0.88, boxSizing: "border-box",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexDirection: lang === "ar" ? "row-reverse" : "row" }}>
+                        <div style={{ width: 54, height: 54, borderRadius: 16, background: dark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.72)", boxShadow: dark ? "0 4px 12px rgba(0,0,0,0.25)" : "0 4px 14px rgba(239,68,68,0.20)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, flexShrink: 0 }}>🚫</div>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: "#ef4444", background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.32)", borderRadius: 999, padding: "3px 9px", alignSelf: "flex-start" }}>{lang === "ar" ? "قريبًا" : "Soon"}</span>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 16, fontWeight: 900, color: dark ? "#f87171" : "#dc2626", marginBottom: 4, lineHeight: 1.3 }}>{lang === "ar" ? "مكاتب محظورة" : "Blocked Offices"}</div>
+                        <div style={{ fontSize: 12, color: dark ? "rgba(255,255,255,0.52)" : "#64748b", lineHeight: 1.55 }}>{lang === "ar" ? "قائمة الشركات الممنوعة" : "Banned companies list"}</div>
+                      </div>
+                    </div>
+
+                    {/* خدمات مدفوعة */}
+                    <button
+                      onClick={() => { setEgyptServicesScreen("list"); setView("egyptServices"); }}
+                      className="crystal-card"
+                      style={{
+                        border: "none", cursor: "pointer", borderRadius: 22,
+                        background: dark ? "linear-gradient(145deg, rgba(59,130,246,0.22), rgba(37,99,235,0.12))" : "linear-gradient(145deg, #eff6ff, #dbeafe)",
+                        boxShadow: dark ? "0 10px 28px rgba(59,130,246,0.18)" : "0 10px 28px rgba(59,130,246,0.15)",
+                        minHeight: 126,
+                        display: "flex", flexDirection: "column", justifyContent: "space-between",
+                        padding: "13px",
+                        textAlign: lang === "ar" ? "right" : "left",
+                        fontFamily: "'Cairo',sans-serif", boxSizing: "border-box",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexDirection: lang === "ar" ? "row-reverse" : "row" }}>
+                        <div style={{ width: 54, height: 54, borderRadius: 16, background: dark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.72)", boxShadow: dark ? "0 4px 12px rgba(0,0,0,0.25)" : "0 4px 14px rgba(59,130,246,0.22)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, flexShrink: 0 }}>💳</div>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: "#3b82f6", background: "rgba(59,130,246,0.13)", border: "1px solid rgba(59,130,246,0.30)", borderRadius: 999, padding: "3px 9px", alignSelf: "flex-start" }}>{lang === "ar" ? "سفريات" : "Travel"}</span>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 16, fontWeight: 900, color: dark ? "#93c5fd" : "#1d4ed8", marginBottom: 4, lineHeight: 1.3 }}>{lang === "ar" ? "خدمات مدفوعة" : "Paid Services"}</div>
+                        <div style={{ fontSize: 12, color: dark ? "rgba(255,255,255,0.52)" : "#64748b", lineHeight: 1.55 }}>{lang === "ar" ? "وزارة العمل والطوارئ" : "Labor ministry & emergency"}</div>
+                      </div>
+                    </button>
+
                   </div>
 
-                  <button
-                    onClick={() => {
-                      setEgyptServicesScreen("list");
-                      setView("egyptServices");
-                    }}
-                    className="section-card"
-                    style={{
-                      width: "100%",
-                      maxWidth: "100%",
-                      boxSizing: "border-box",
-                      textAlign: lang === "ar" ? "right" : "left",
-                      background: dark ? "linear-gradient(135deg, rgba(14,116,144,0.24), rgba(6,182,212,0.12))" : "linear-gradient(135deg, #ecfeff, #f0fdfa)",
-                      border: "1px solid #0f766e33",
-                      borderRadius: 22,
-                      padding: "12px 13px",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 11,
-                      minHeight: 82,
-                      overflow: "hidden",
-                      boxShadow: dark ? "0 0 18px #0f766e18" : "0 10px 22px #0f766e12",
-                      fontFamily: "'Cairo',sans-serif",
-                    }}
-                  >
-                    <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #0f766e28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🛂</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 900, color: "#0f766e", marginBottom: 3 }}>{lang === "ar" ? "خدمات مدفوعة" : "Paid Services"}</div>
-                      <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? "هنا تجد طلب خدمات مدفوعة ووزارة العمل والطوارئ في دولة مصر فقط." : "Here you will find paid service requests, the Ministry of Labor, and emergency contacts in Egypt only."}</div>
-                    </div>
-                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#0f766e18", color: "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
-                  </button>
-
+                  {/* ── ضيف خدمتك - horizontal ── */}
                   <button
                     onClick={openProviderPortalOrPromptLogin}
-                    className="section-card"
+                    className="crystal-card"
                     style={{
-                      width: "100%",
-                      maxWidth: "100%",
-                      boxSizing: "border-box",
-                      textAlign: lang === "ar" ? "right" : "left",
-                      background: dark ? "linear-gradient(135deg, rgba(202,138,4,0.24), rgba(245,158,11,0.10))" : "linear-gradient(135deg, #fffbeb, #fef3c7)",
-                      border: "1px solid rgba(202,138,4,0.30)",
+                      width: "100%", border: "none", cursor: "pointer",
                       borderRadius: 22,
-                      padding: "12px 13px",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 11,
-                      minHeight: 82,
-                      overflow: "hidden",
-                      boxShadow: dark ? "0 0 18px rgba(202,138,4,0.18)" : "0 10px 22px rgba(202,138,4,0.12)",
-                      fontFamily: "'Cairo',sans-serif",
+                      background: dark ? "linear-gradient(135deg, rgba(202,138,4,0.24), rgba(245,158,11,0.13))" : "linear-gradient(135deg, #fffbeb, #fef3c7)",
+                      boxShadow: dark ? "0 10px 28px rgba(202,138,4,0.20)" : "0 10px 28px rgba(202,138,4,0.16)",
+                      minHeight: 84,
+                      display: "flex", alignItems: "center", gap: 14,
+                      padding: "14px 16px",
+                      textAlign: lang === "ar" ? "right" : "left",
+                      flexDirection: lang === "ar" ? "row-reverse" : "row",
+                      fontFamily: "'Cairo',sans-serif", boxSizing: "border-box",
                     }}
                   >
-                    <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(202,138,4,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🧰</div>
+                    <div style={{ width: 56, height: 56, borderRadius: 18, flexShrink: 0, background: dark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.72)", boxShadow: dark ? "0 4px 14px rgba(0,0,0,0.25)" : "0 4px 16px rgba(202,138,4,0.22)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34 }}>🧰</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#fde68a" : "#a16207", marginBottom: 3 }}>{lang === "ar" ? "ضيف خدمتك" : "Add Your Service"}</div>
-                      <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? "سجل خدمتك ليتم مراجعتها واعتمادها من الأدمن." : "Submit your service so it can be reviewed and approved by admin."}</div>
+                      <div style={{ fontSize: 18, fontWeight: 900, color: dark ? "#fcd34d" : "#b45309", marginBottom: 4, lineHeight: 1.3 }}>{lang === "ar" ? "ضيف خدمتك" : "Add Your Service"}</div>
+                      <div style={{ fontSize: 13, color: dark ? "rgba(255,255,255,0.58)" : "#64748b", lineHeight: 1.6 }}>{lang === "ar" ? "سجل خدمتك ليتم مراجعتها واعتمادها من الأدمن." : "Register & await admin approval."}</div>
                     </div>
-                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: dark ? "rgba(202,138,4,0.20)" : "rgba(180,83,9,0.10)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: dark ? "#fcd34d" : "#b45309", flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                   </button>
 
+                  {/* ── BOTTOM CARD: تواصل مع سفارتك ── */}
                   {!isOtherNationalitySelected && (
                     <button
                       onClick={() => setView("egyptEmbassies")}
-                      className="section-card"
+                      className="crystal-card"
                       style={{
-                        width: "100%",
-                        maxWidth: "100%",
-                        boxSizing: "border-box",
-                        textAlign: lang === "ar" ? "right" : "left",
-                        background: dark ? "linear-gradient(135deg, rgba(8,145,178,0.24), rgba(14,165,233,0.10))" : "linear-gradient(135deg, #ecfeff, #e0f2fe)",
-                        border: "1px solid rgba(14,165,233,0.28)",
+                        width: "100%", border: "none", cursor: "pointer",
                         borderRadius: 22,
-                        padding: "12px 13px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 11,
-                        minHeight: 82,
-                        overflow: "hidden",
-                        boxShadow: dark ? "0 0 18px rgba(14,165,233,0.18)" : "0 10px 22px rgba(14,165,233,0.12)",
-                        fontFamily: "'Cairo',sans-serif",
+                        background: dark ? "linear-gradient(135deg, rgba(8,145,178,0.24), rgba(14,165,233,0.13))" : "linear-gradient(135deg, #f0f9ff, #e0f2fe)",
+                        boxShadow: dark ? "0 10px 28px rgba(8,145,178,0.20)" : "0 10px 28px rgba(8,145,178,0.14)",
+                        minHeight: 84,
+                        display: "flex", alignItems: "center", gap: 14,
+                        padding: "14px 16px",
+                        textAlign: lang === "ar" ? "right" : "left",
+                        flexDirection: lang === "ar" ? "row-reverse" : "row",
+                        fontFamily: "'Cairo',sans-serif", boxSizing: "border-box",
                       }}
                     >
-                      <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(14,165,233,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🏛️</div>
+                      <div style={{ width: 56, height: 56, borderRadius: 18, flexShrink: 0, background: dark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.72)", boxShadow: dark ? "0 4px 14px rgba(0,0,0,0.25)" : "0 4px 16px rgba(8,145,178,0.22)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34 }}>🏛️</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#67e8f9" : "#0f766e", marginBottom: 3 }}>{lang === "ar" ? "تواصل مع سفارتك" : "Contact Your Embassy"}</div>
-                        <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? `الوصول السريع إلى سفارتك داخل مصر${selectedNationality ? ` - الجنسية الحالية: ${selectedNationality}` : ""}` : `Quick access to your embassy inside Egypt${selectedNationality ? ` - current nationality: ${countryNamesEn[selectedNationality] || selectedNationality}` : ""}`}</div>
+                        <div style={{ fontSize: 18, fontWeight: 900, color: dark ? "#67e8f9" : "#0369a1", marginBottom: 4, lineHeight: 1.3 }}>{lang === "ar" ? "تواصل مع سفارتك" : "Contact Your Embassy"}</div>
+                        <div style={{ fontSize: 13, color: dark ? "rgba(255,255,255,0.58)" : "#475569", lineHeight: 1.6 }}>{lang === "ar" ? `الوصول السريع لسفارتك داخل مصر${selectedNationality ? ` · ${selectedNationality}` : ""}` : `Quick access to your embassy in Egypt${selectedNationality ? ` · ${countryNamesEn[selectedNationality] || selectedNationality}` : ""}`}</div>
                       </div>
-                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(14,165,233,0.16)", color: dark ? "#67e8f9" : "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                      <div style={{ width: 30, height: 30, borderRadius: "50%", background: dark ? "rgba(14,165,233,0.20)" : "rgba(3,105,161,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: dark ? "#67e8f9" : "#0369a1", flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                     </button>
                   )}
 
@@ -11048,157 +11013,141 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   zoom: isCompactPhone ? 0.88 : 1,
                   margin: "18px auto 0",
                 }}>
-                  <div style={{ marginBottom: 14, borderRadius: 18, padding: "5.2px 13px", background: dark ? "linear-gradient(135deg, rgba(14,116,144,0.26), rgba(6,182,212,0.12))" : "linear-gradient(135deg, #ecfeff, #dbeafe)", border: "1px solid rgba(14,165,233,0.26)", boxShadow: dark ? "0 0 20px rgba(34,211,238,0.14), inset 0 1px 0 rgba(255,255,255,0.05)" : "0 0 18px rgba(14,165,233,0.12), 0 10px 20px rgba(14,165,233,0.08)", position: "relative", overflow: "hidden" }}>
-                    <div style={{ position: "absolute", top: -26, left: lang === "ar" ? "auto" : -24, right: lang === "ar" ? -24 : "auto", width: 90, height: 90, borderRadius: "50%", background: "radial-gradient(circle, rgba(56,189,248,0.26), rgba(56,189,248,0))" }} />
-                    <div style={{ display: "flex", flexDirection: isCompactPhone ? "column" : "row", alignItems: isCompactPhone ? "stretch" : "center", gap: 7, position: "relative" }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 10, lineHeight: 1.45, color: dark ? "#d5f5ff" : "#155e75", fontFamily: "'Cairo',sans-serif" }}>
-                          {lang === "ar" ? "يرجى كتابة جنسيتك ثم اختيار الدولة التي تقيم بها." : "Please enter your nationality, then choose the country where you currently live."}
-                        </div>
-                      </div>
-                      <div style={{ minWidth: isCompactPhone ? "100%" : 220, display: "flex", gap: 6 }}>
-                        {nationalityEditMode || !selectedNationality ? (
-                          <>
-                            <input
-                              type="text"
-                              value={nationalityInputText}
-                              onChange={(e) => setNationalityInputText(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" && nationalityInputText.trim()) {
-                                  const val = nationalityInputText.trim();
-                                  setSelectedNationality(val);
-                                  setNationalityEditMode(false);
-                                  setNationalityConfirmToast(val);
-                                  setTimeout(() => setNationalityConfirmToast(""), 2500);
-                                }
-                              }}
-                              placeholder={lang === "ar" ? "اكتب جنسيتك..." : "Type your nationality..."}
-                              style={{
-                                flex: 1, padding: "7px 12px", borderRadius: 12,
-                                border: `1px solid ${dark ? "rgba(125,211,252,0.28)" : "rgba(14,165,233,0.26)"}`,
-                                background: dark ? "rgba(8,47,73,0.72)" : "rgba(255,255,255,0.95)",
-                                color: t.text, fontWeight: 800, fontSize: 12,
-                                fontFamily: "'Cairo',sans-serif", outline: "none",
-                                boxShadow: dark ? "0 0 0 1px rgba(103,232,249,0.08)" : "0 6px 12px rgba(14,165,233,0.08)"
-                              }}
-                            />
-                            <button
-                              onClick={() => {
-                                const val = nationalityInputText.trim();
-                                if (!val) return;
-                                setSelectedNationality(val);
-                                setNationalityEditMode(false);
-                                setNationalityConfirmToast(val);
-                                setTimeout(() => setNationalityConfirmToast(""), 2500);
-                              }}
-                              style={{
-                                padding: "7px 13px", borderRadius: 12, border: "none",
-                                background: nationalityInputText.trim() ? (dark ? "rgba(34,211,238,0.22)" : "#0e7490") : (dark ? "rgba(255,255,255,0.07)" : "#e2e8f0"),
-                                color: nationalityInputText.trim() ? (dark ? "#67e8f9" : "#fff") : t.subText,
-                                fontWeight: 800, fontSize: 12, fontFamily: "'Cairo',sans-serif",
-                                cursor: nationalityInputText.trim() ? "pointer" : "not-allowed",
-                                transition: "all 0.2s", whiteSpace: "nowrap",
-                              }}
-                            >
-                              {lang === "ar" ? "تأكيد" : "Confirm"}
-                            </button>
-                          </>
-                        ) : (
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-                            <div style={{
-                              flex: 1, padding: "7px 12px", borderRadius: 12,
-                              border: `1px solid ${dark ? "rgba(34,197,94,0.35)" : "rgba(22,163,74,0.3)"}`,
-                              background: dark ? "rgba(22,163,74,0.15)" : "rgba(220,252,231,0.8)",
-                              color: dark ? "#86efac" : "#15803d", fontWeight: 800, fontSize: 12,
-                              fontFamily: "'Cairo',sans-serif", display: "flex", alignItems: "center", gap: 6,
-                            }}>
-                              <span>✅</span>
-                              <span>{selectedNationality}</span>
-                            </div>
-                            <button
-                              onClick={() => { setNationalityEditMode(true); setNationalityInputText(selectedNationality); }}
-                              style={{
-                                padding: "7px 13px", borderRadius: 12, border: "none",
-                                background: dark ? "rgba(255,255,255,0.09)" : "#e2e8f0",
-                                color: t.text, fontWeight: 800, fontSize: 12,
-                                fontFamily: "'Cairo',sans-serif", cursor: "pointer",
-                                whiteSpace: "nowrap", transition: "all 0.2s",
-                              }}
-                            >
-                              {lang === "ar" ? "تغيير" : "Change"}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
                   <div style={{ marginBottom: 14, borderRadius: 18, padding: "12px 14px", background: dark ? "linear-gradient(135deg, rgba(30,64,175,0.22), rgba(59,130,246,0.10))" : "linear-gradient(135deg, #eff6ff, #dbeafe)", border: `1px solid ${dark ? "rgba(99,179,237,0.22)" : "rgba(59,130,246,0.22)"}`, boxShadow: dark ? "0 0 20px rgba(59,130,246,0.12)" : "0 0 18px rgba(59,130,246,0.10), 0 10px 20px rgba(59,130,246,0.07)", position: "relative", overflow: "hidden" }}>
                     <div style={{ position: "absolute", top: -24, left: lang === "ar" ? "auto" : -22, right: lang === "ar" ? -22 : "auto", width: 88, height: 88, borderRadius: "50%", background: "radial-gradient(circle, rgba(96,165,250,0.22), rgba(96,165,250,0))" }} />
-                    <div style={{ fontSize: 11, fontWeight: 900, color: dark ? "#93c5fd" : "#1d4ed8", marginBottom: 10, fontFamily: "'Cairo',sans-serif", position: "relative" }}>
+                    <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#93c5fd" : "#1d4ed8", marginBottom: 10, fontFamily: "'Cairo',sans-serif", position: "relative" }}>
                       {lang === "ar" ? "🌍 اختر الدولة التي تقيم بها" : "🌍 Choose the country you live in"}
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 10, position: "relative" }}>
-                    {topCountries.map((country) => (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10, position: "relative" }}>
+                    {topCountryTiles.map((c) => {
+                      const isComingSoon = Boolean(c.key?.startsWith("soon-country-"));
+                      const isSelected = !isComingSoon && selectedCountry === c.name;
+                      return (
                       <button
-                        key={country.name}
-                        onClick={() => handleCountrySelect(country.name)}
-                        disabled={!hasSelectedNationality}
-                        className="landing-country-card"
+                        key={c.name || c.key}
+                        onClick={() => {
+                          if (!isComingSoon) handleCountrySelect(c.name);
+                        }}
+                        disabled={!hasSelectedNationality || isComingSoon}
                         style={{
-                          background: "transparent",
-                          border: "none",
-                          borderRadius: 0,
-                          padding: 0,
-                          cursor: !hasSelectedNationality ? "not-allowed" : "pointer",
+                          background: dark
+                            ? (isComingSoon
+                              ? "linear-gradient(160deg, rgba(255,255,255,0.08), rgba(148,163,184,0.06))"
+                              : (isSelected ? "rgba(30,58,138,0.35)" : "rgba(255,255,255,0.05)"))
+                            : (isComingSoon
+                              ? "linear-gradient(160deg, rgba(255,255,255,0.82), rgba(226,232,240,0.92))"
+                              : (isSelected ? "#eef2ff" : "#ffffff")),
+                          border: isSelected
+                            ? `2px solid ${dark ? "#6366f1" : "#4f46e5"}`
+                            : `1.5px solid ${isComingSoon
+                              ? (dark ? "rgba(255,255,255,0.14)" : "rgba(148,163,184,0.26)")
+                              : (dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)")}`,
+                          borderRadius: 18,
+                          padding: "14px 6px 12px",
+                          cursor: !hasSelectedNationality || isComingSoon ? "not-allowed" : "pointer",
                           display: "flex",
                           flexDirection: "column",
                           alignItems: "center",
                           justifyContent: "center",
-                          gap: 7,
-                          boxShadow: "none",
-                          minHeight: 0,
-                          transition: "transform .18s ease, box-shadow .18s ease, border-color .18s ease",
+                          gap: 9,
+                          boxShadow: isSelected
+                            ? (dark ? "0 4px 18px rgba(99,102,241,0.30)" : "0 4px 18px rgba(79,70,229,0.18)")
+                            : (isComingSoon
+                              ? (dark ? "inset 0 1px 0 rgba(255,255,255,0.06)" : "0 2px 10px rgba(148,163,184,0.12)")
+                              : (dark ? "none" : "0 2px 10px rgba(0,0,0,0.05)")),
+                          transition: "all 0.2s ease",
                           outline: "none",
-                          opacity: !hasSelectedNationality ? 0.58 : 1,
-                          filter: !hasSelectedNationality ? "grayscale(0.25)" : "none",
+                          opacity: !hasSelectedNationality ? 0.55 : (isComingSoon ? 0.92 : 1),
+                          position: "relative",
+                          overflow: "hidden",
                         }}
                       >
-                        <div
-                          className="inner-country-square"
-                          style={{
-                          width: "auto",
-                          height: "auto",
-                          borderRadius: 0,
-                          background: "transparent",
-                          border: "none",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          boxShadow: "none",
-                        }}>
-                          <img
-                            src={country.flagImg}
-                            alt={country.name}
-                            className="country-flag-img"
+                        {isComingSoon && (
+                          <div style={{
+                            position: "absolute",
+                            top: 8,
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            padding: "2px 8px",
+                            borderRadius: 999,
+                            background: dark ? "rgba(15,23,42,0.74)" : "rgba(255,255,255,0.92)",
+                            border: `1px solid ${dark ? "rgba(255,255,255,0.10)" : "rgba(148,163,184,0.25)"}`,
+                            color: dark ? "#cbd5e1" : "#64748b",
+                            fontSize: 9,
+                            fontWeight: 900,
+                            fontFamily: "'Cairo',sans-serif",
+                            lineHeight: 1.1,
+                            boxShadow: dark ? "0 6px 14px rgba(0,0,0,0.16)" : "0 4px 10px rgba(148,163,184,0.14)",
+                            zIndex: 1,
+                          }}>
+                            {lang === "ar" ? "قريبًا" : "Soon"}
+                          </div>
+                        )}
+                        {/* Checkmark badge */}
+                        {isSelected && (
+                          <div style={{
+                            position: "absolute", top: 7, [lang === "ar" ? "left" : "right"]: 7,
+                            width: 20, height: 20, borderRadius: "50%",
+                            background: dark ? "#6366f1" : "#4f46e5",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            boxShadow: "0 2px 8px rgba(79,70,229,0.40)",
+                          }}>
+                            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                              <polyline points="2,6 5,9 10,3" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </div>
+                        )}
+                        {isComingSoon ? (
+                          <div
+                            aria-hidden="true"
                             style={{
-                              width: 44.1,
-                              height: 44.1,
+                              width: 68,
+                              height: 68,
+                              borderRadius: "50%",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              background: dark
+                                ? "linear-gradient(145deg, rgba(148,163,184,0.28), rgba(71,85,105,0.18))"
+                                : "linear-gradient(145deg, rgba(226,232,240,0.96), rgba(203,213,225,0.92))",
+                              boxShadow: dark
+                                ? "inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 14px rgba(0,0,0,0.16)"
+                                : "0 4px 14px rgba(148,163,184,0.18)",
+                            }}
+                          >
+                            <span style={{
+                              fontSize: 30,
+                              filter: "blur(2.4px)",
+                              opacity: dark ? 0.68 : 0.56,
+                            }}>
+                              {c.icon}
+                            </span>
+                          </div>
+                        ) : (
+                          <img
+                            src={c.flagImg}
+                            alt={c.name}
+                            style={{
+                              width: 68,
+                              height: 68,
                               borderRadius: "50%",
                               objectFit: "cover",
+                              boxShadow: "0 4px 14px rgba(0,0,0,0.18)",
                             }}
                           />
-                        </div>
-                        <span style={{ fontSize: 11.6, fontWeight: 700, color: t.text, textAlign: "center", lineHeight: 1.45, fontFamily: "'Cairo',sans-serif" }}>
-                          {lang === "ar"
-                            ? (country.name === "المملكة العربية السعودية"
-                              ? "السعودية"
-                              : country.name === "الإمارات العربية المتحدة"
-                                ? "الإمارات"
-                                : country.name)
-                            : (countryNamesEn[country.name] || country.name)}
+                        )}
+                        <span style={{ fontSize: 13, fontWeight: isSelected ? 900 : 700, color: isComingSoon ? (dark ? "#cbd5e1" : "#64748b") : (isSelected ? (dark ? "#a5b4fc" : "#4338ca") : t.text), textAlign: "center", lineHeight: 1.3, fontFamily: "'Cairo',sans-serif" }}>
+                          {isComingSoon
+                            ? (lang === "ar" ? c.name : (c.nameEn || "Coming Country"))
+                            : (lang === "ar"
+                              ? (c.name === "المملكة العربية السعودية" ? "السعودية"
+                                : c.name === "الإمارات العربية المتحدة" ? "الإمارات"
+                                : c.name)
+                              : (countryNamesEn[c.name] || c.name))}
                         </span>
                       </button>
-                    ))}
+                      );
+                    })}
                     </div>
                   </div>
                   {!hasSelectedNationality && (
@@ -11206,10 +11155,10 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       {lang === "ar" ? "اختر الجنسية أولًا لتفعيل الدول." : "Choose your nationality first to enable countries."}
                     </div>
                   )}
-                  <div style={{ marginTop: 11, borderRadius: 18, padding: "6px 14px", background: dark ? "linear-gradient(135deg, rgba(22,163,74,0.18), rgba(34,197,94,0.10))" : "linear-gradient(135deg, #f0fdf4, #dcfce7)", border: "1px solid rgba(34,197,94,0.28)", textAlign: "center", boxShadow: dark ? "0 0 24px rgba(34,197,94,0.16), inset 0 1px 0 rgba(255,255,255,0.04)" : "0 0 18px rgba(34,197,94,0.16), 0 10px 24px rgba(34,197,94,0.10)", position: "relative", overflow: "hidden" }}>
+                  <div style={{ marginTop: 11, borderRadius: 22, padding: "8px 18px", background: dark ? "linear-gradient(135deg, rgba(22,163,74,0.18), rgba(34,197,94,0.10))" : "linear-gradient(135deg, #f0fdf4, #dcfce7)", border: "1px solid rgba(34,197,94,0.28)", textAlign: "center", boxShadow: dark ? "0 0 24px rgba(34,197,94,0.16), inset 0 1px 0 rgba(255,255,255,0.04)" : "0 0 18px rgba(34,197,94,0.16), 0 10px 24px rgba(34,197,94,0.10)", position: "relative", overflow: "hidden" }}>
                     <div style={{ position: "absolute", top: -18, left: lang === "ar" ? "auto" : -18, right: lang === "ar" ? -18 : "auto", width: 74, height: 74, borderRadius: "50%", background: "radial-gradient(circle, rgba(74,222,128,0.22), rgba(74,222,128,0))" }} />
-                    <div style={{ fontSize: 9, fontWeight: 800, color: "#15803d", lineHeight: 1.35, fontFamily: "'Cairo',sans-serif", position: "relative", textShadow: dark ? "0 0 10px rgba(74,222,128,0.18)" : "0 1px 0 rgba(255,255,255,0.45)" }}>
-                      {lang === "ar" ? "ملحوظة: جميع المستخدمين يمكنهم الدخول إلى أي دولة وطلب الخدمة بكل سهولة." : "Note: All users can enter any country page and request the service easily."}
+                    <div style={{ fontSize: 11.25, fontWeight: 800, color: "#15803d", lineHeight: 1.35, fontFamily: "'Cairo',sans-serif", position: "relative", textShadow: dark ? "0 0 10px rgba(74,222,128,0.18)" : "0 1px 0 rgba(255,255,255,0.45)" }}>
+                      {lang === "ar" ? "جميع المستخدمين يمكنهم الدخول إلى أي دولة وطلب الخدمة بكل سهولة." : "All users can enter any country page and request the service easily."}
                     </div>
                   </div>
 
@@ -11227,16 +11176,16 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     };
                     return (
                     <div style={{ marginTop: 10.4, borderRadius: 20, padding: "7.6px 10px 8.4px", background: dark ? "rgba(255,255,255,0.04)" : "#ffffff", border: `1px solid ${dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.07)"}`, boxShadow: dark ? "none" : "0 4px 20px rgba(0,0,0,0.06)" }}>
-                      <div style={{ textAlign: "center", fontSize: 9.6, color: dark ? "#94a3b8" : "#475569", fontWeight: 800, marginBottom: 6, fontFamily: "'Cairo',sans-serif" }}>
+                      <div style={{ textAlign: "center", fontSize: 12, color: dark ? "#94a3b8" : "#475569", fontWeight: 800, marginBottom: 6, fontFamily: "'Cairo',sans-serif" }}>
                         {lang === "ar" ? "روابط مهمة" : "Important Links"}
                       </div>
                       <div className="landing-links-row">
                         {[
-                          { key: "passport-book", icon: "📖", labelAr: "كتاب المرور", labelEn: "Passport Book", href: "https://drive.google.com/file/d/1IRen7Ud-lVEoMM1n97Tul6hYhVJrLPNg/view?usp=sharing", accent: "#2563eb", bg: "linear-gradient(145deg, #93c5fd, #3b82f6)", shadow: "rgba(59,130,246,0.45)" },
-                          { key: "qiwa", icon: "🧭", labelAr: "منصة قوي", labelEn: "Qiwa", href: "https://www.qiwa.sa/", accent: "#16a34a", bg: "linear-gradient(145deg, #86efac, #22c55e)", shadow: "rgba(34,197,94,0.45)" },
-                          { key: "gosi", icon: "🛡️", labelAr: "التأمينات", labelEn: "GOSI", href: "https://www.gosi.gov.sa/", accent: "#0891b2", bg: "linear-gradient(145deg, #67e8f9, #06b6d4)", shadow: "rgba(6,182,212,0.45)" },
-                          { key: "labor-law", icon: "⚖️", labelAr: "قانون العمل", labelEn: "Labor Law", href: "https://www.hrsd.gov.sa/knowledge-centre/decisions-and-regulations/regulation-and-procedures/%D9%86%D8%B8%D8%A7%D9%85-%D8%A7%D9%84%D8%B9%D9%85%D9%84", accent: "#d97706", bg: "linear-gradient(145deg, #fde68a, #f59e0b)", shadow: "rgba(245,158,11,0.45)" },
-                          { key: "end-service", icon: "🧮", labelAr: "نهاية الخدمة", labelEn: "End Service", href: "https://www.hrsd.gov.sa/ministry-services/services/end-service-benefit-calculator", accent: "#e11d48", bg: "linear-gradient(145deg, #fca5a5, #f43f5e)", shadow: "rgba(244,63,94,0.45)" },
+                          { key: "passport-book", icon: "📖", labelAr: "كتاب المرور", labelEn: "Passport Book", accent: "#2563eb", href: "https://drive.google.com/file/d/1Ed-vYy2NWPwg373eTMtuFszl5UigUY-L/view?usp=sharing" },
+                          { key: "qiwa", icon: "🧭", labelAr: "منصة قوي", labelEn: "Qiwa", accent: "#16a34a", href: "https://www.qiwa.sa/" },
+                          { key: "gosi", icon: "🛡️", labelAr: "التأمينات", labelEn: "GOSI", accent: "#0891b2", href: "https://www.gosi.gov.sa/" },
+                          { key: "labor-law", icon: "⚖️", labelAr: "قانون العمل", labelEn: "Labor Law", accent: "#d97706", href: "https://www.hrsd.gov.sa/knowledge-centre/decisions-and-regulations/regulation-and-procedures/%D9%86%D8%B8%D8%A7%D9%85-%D8%A7%D9%84%D8%B9%D9%85%D9%84" },
+                          { key: "end-service", icon: "🧮", labelAr: "نهاية الخدمة", labelEn: "End Service", accent: "#e11d48", href: "https://www.hrsd.gov.sa/ministry-services/services/end-service-benefit-calculator" },
                         ].map((item, idx) => (
                           <a
                             key={item.key}
@@ -11245,10 +11194,12 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                             rel={isLockedLinks ? undefined : "noreferrer"}
                             onClick={(e) => handleLinkClick(e, item.href)}
                             className="landing-link-tile"
-                            style={{ animationDelay: `${idx * 0.08}s`, cursor: "pointer" }}
+                            style={{ animationDelay: `${idx * 0.08}s`, cursor: "pointer", ["--link-accent"]: item.accent }}
                           >
-                            <div className="landing-link-orb" style={{ background: item.bg, boxShadow: `0 6px 18px ${item.shadow}` }}>
-                              {item.icon}
+                            <div className="landing-link-orb">
+                              <div className="landing-link-orb-core">
+                                {item.icon}
+                              </div>
                             </div>
                             <span className="landing-link-label" style={{ color: dark ? "#e2e8f0" : "#0f172a" }}>
                               {lang === "ar" ? item.labelAr : item.labelEn}
@@ -11266,14 +11217,14 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       borderRadius: 16,
                       minHeight: showMainBannerAd ? 0 : 190,
                       padding: showMainBannerAd ? 0 : "12px 12px",
-                      border: `1px dashed ${dark ? "rgba(148,163,184,0.42)" : "rgba(100,116,139,0.34)"}`,
+                      border: showMainBannerAd ? "none" : `1px dashed ${dark ? "rgba(148,163,184,0.42)" : "rgba(100,116,139,0.34)"}`,
                       background: showMainBannerAd ? "transparent" : (dark
                         ? "linear-gradient(135deg, rgba(30,41,59,0.42), rgba(15,23,42,0.30))"
                         : "linear-gradient(135deg, #f8fafc, #f1f5f9)"),
                       position: "relative",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
+                      display: showMainBannerAd ? "block" : "flex",
+                      alignItems: showMainBannerAd ? undefined : "center",
+                      justifyContent: showMainBannerAd ? undefined : "center",
                       textAlign: "center",
                       overflow: "hidden",
                     }}
@@ -11313,7 +11264,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                           <img
                             src={mainBannerAd.imageUrl}
                             alt={mainBannerAd.title || "ad"}
-                            style={{ width: "100%", height: "auto", display: "block", borderRadius: 14 }}
+                            style={{ width: "100%", height: "auto", display: "block", borderRadius: 14, maxWidth: "100%" }}
                           />
                         </a>
                       ) : (
@@ -11321,7 +11272,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                           src={mainBannerAd.imageUrl}
                           alt={mainBannerAd.title || "ad"}
                           title={mainBannerAd.title || ""}
-                          style={{ width: "100%", height: "auto", display: "block", borderRadius: 14 }}
+                          style={{ width: "100%", height: "auto", display: "block", borderRadius: 14, maxWidth: "100%" }}
                         />
                       )
                     ) : (
@@ -11460,41 +11411,43 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                         style={{
                           ...styles.govCard,
                           background: dark
-                            ? "linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03))"
-                            : "linear-gradient(145deg, #ffffff, #f8faff)",
-                          border: `1px solid ${count > 0 ? (dark ? "rgba(130,160,220,0.18)" : "rgba(30,64,175,0.1)") : t.border}`,
+                            ? "linear-gradient(145deg, rgba(17,37,84,0.96), rgba(10,26,62,0.94) 58%, rgba(37,99,235,0.20))"
+                            : "linear-gradient(145deg, #ffffff, #fcfdff 60%, #f8fafc)",
+                          border: `1px solid ${count > 0
+                            ? (dark ? "rgba(96,165,250,0.34)" : "rgba(148,163,184,0.22)")
+                            : t.border}`,
                           boxShadow: dark
-                            ? "0 4px 16px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.05)"
-                            : "0 2px 12px rgba(15,27,58,0.07), inset 0 1px 0 rgba(255,255,255,0.9)",
+                            ? "0 14px 28px rgba(2,6,23,0.34), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 0 1px rgba(96,165,250,0.08)"
+                            : "0 10px 24px rgba(15,23,42,0.06), inset 0 1px 0 rgba(255,255,255,0.96)",
                           backdropFilter: dark ? "blur(10px)" : "none",
                           opacity: count === 0 ? 0.45 : 1,
                           cursor: count === 0 ? "default" : "pointer",
                           display: "flex",
                           alignItems: "center",
-                          gap: 8,
+                          gap: 12,
                           textAlign: "left",
-                          minHeight: 80,
-                          padding: "10px 8px",
+                          minHeight: 94,
+                          padding: "12px 12px",
                           direction: "ltr",
                         }}>
                         <div style={{
-                          width: 34,
-                          height: 34,
-                          borderRadius: 12,
+                          width: 44,
+                          height: 44,
+                          borderRadius: 14,
                           background: dark
-                            ? `linear-gradient(145deg, ${t.gold}28, ${t.gold}12)`
-                            : `linear-gradient(145deg, ${t.gold}20, ${t.gold}08)`,
-                          color: t.gold,
+                            ? "linear-gradient(145deg, rgba(96,165,250,0.24), rgba(59,130,246,0.10))"
+                            : "linear-gradient(145deg, rgba(219,234,254,0.95), rgba(191,219,254,0.82))",
+                          color: dark ? "#93c5fd" : "#2563eb",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          fontSize: 20,
+                          fontSize: 24,
                           flexShrink: 0,
-                          boxShadow: `0 0 10px ${t.gold}25`,
+                          boxShadow: dark ? "0 0 20px rgba(59,130,246,0.18)" : "0 8px 18px rgba(59,130,246,0.16)",
                         }}>{gov.icon}</div>
                         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: lang === "ar" ? "flex-end" : "flex-start", textAlign: lang === "ar" ? "right" : "left", justifyContent: "center", lineHeight: 1.25 }}>
-                          <div style={{ fontSize: lang === "en" ? 9.1 : 10.5, fontWeight: 800, color: t.text, marginBottom: 3, lineHeight: 1.3 }}>{lang === "en" ? gov.nameEn : gov.name}</div>
-                          <div style={{ fontSize: 9.8, fontWeight: 700, color: count > 0 ? t.gold : t.subText, lineHeight: 1.2 }}>{count > 0 ? `${guestVisibleCount} ${lang === "en" ? "offices" : "مكتب"}` : tx.comingSoon}</div>
+                          <div style={{ fontSize: lang === "en" ? 14.25 : 16.5, fontWeight: 900, color: dark ? "#f8fbff" : "#0f172a", marginBottom: 5, lineHeight: 1.3 }}>{lang === "en" ? gov.nameEn : gov.name}</div>
+                          <div style={{ fontSize: 15.3, fontWeight: 800, color: count > 0 ? (dark ? "#93c5fd" : "#1d4ed8") : t.subText, lineHeight: 1.2 }}>{count > 0 ? (lang === "en" ? `${guestVisibleCount} offices` : `عدد ${guestVisibleCount} مكتب`) : tx.comingSoon}</div>
                           {guestLockedCount > 0 && (
                             <div style={{ fontSize: 9, fontWeight: 800, color: dark ? "#f87171" : "#dc2626", lineHeight: 1.2 }}>
                               {lang === "ar" ? `${guestLockedCount} مكتب مقفول للضيف` : `${guestLockedCount} offices locked for guest`}
@@ -11697,159 +11650,144 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   </h1>
                 </div>
 
-                <div style={{ display: "grid", gap: 10 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+                  {/* ── HERO CARD: المكاتب الموثوقة ── */}
                   <button
                     onClick={() => { setView("countryTrusted"); }}
-                    className="section-card"
+                    className="crystal-card"
                     style={{
-                      width: "100%",
-                      maxWidth: "100%",
-                      boxSizing: "border-box",
+                      width: "100%", border: "none", cursor: "pointer", padding: 0,
+                      borderRadius: 26,
+                      background: "linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%)",
+                      boxShadow: "0 20px 50px rgba(6,78,59,0.38), 0 6px 16px rgba(4,120,87,0.22)",
+                      overflow: "hidden", position: "relative", minHeight: 155,
+                      display: "flex", alignItems: "flex-end",
                       textAlign: lang === "ar" ? "right" : "left",
-                      background: dark ? "linear-gradient(135deg, rgba(22,163,74,0.24), rgba(34,197,94,0.10))" : "linear-gradient(135deg, #f0fdf4, #ecfdf5)",
-                      border: "1px solid #16a34a33",
-                      borderRadius: 22,
-                      padding: "12px 13px",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 11,
-                      minHeight: 82,
-                      overflow: "hidden",
-                      boxShadow: dark ? "0 0 16px #16a34a16" : "0 10px 22px #16a34a10",
-                      fontFamily: "'Cairo',sans-serif",
+                      fontFamily: "'Cairo',sans-serif", boxSizing: "border-box",
                     }}
                   >
-                    <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #16a34a28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🏙️</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 900, color: "#16a34a", marginBottom: 3 }}>{lang === "ar" ? "المكاتب الموثوقة" : "Trusted Offices"}</div>
-                      <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? "ادخل إلى المحتوى الموثوق الحالي كما هو داخل هذه الدولة." : "Open the trusted verified content inside this country."}</div>
-                    </div>
-                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#16a34a18", color: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
-                  </button>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
-                    <div
-                      className="section-card"
-                      style={{
-                        width: "100%",
-                        maxWidth: "100%",
-                        boxSizing: "border-box",
-                        textAlign: lang === "ar" ? "right" : "left",
-                        background: dark ? "linear-gradient(135deg, rgba(229,62,62,0.12), rgba(229,62,62,0.06))" : "linear-gradient(135deg, #fff5f5, #fffafa)",
-                        border: "1px solid #e53e3e28",
-                        borderRadius: 22,
-                        padding: "12px 12px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 11,
-                        boxShadow: dark ? "0 0 18px #e53e3e14" : "0 10px 22px #e53e3e0d",
-                        fontFamily: "'Cairo',sans-serif",
-                        minHeight: 82,
-                        overflow: "hidden",
-                        opacity: 0.86
-                      }}
-                    >
-                      <div style={{ width: 38, height: 38, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #e53e3e20", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🚫</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                          <div style={{ fontSize: 14, fontWeight: 900, color: "#e53e3e" }}>{lang === "ar" ? "مكاتب محظورة" : "Blocked Offices"}</div>
-                          <span style={{ fontSize: 9, fontWeight: 800, color: "#e53e3e", background: "#e53e3e14", border: "1px solid #e53e3e28", borderRadius: 999, padding: "2px 7px" }}>{lang === "ar" ? "قريبًا" : "Soon"}</span>
-                        </div>
-                        <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? "هذا القسم سيُضاف لاحقًا في هذه الدولة." : "This section will be added later for this country."}</div>
+                    <div style={{ position: "absolute", top: -30, [lang === "ar" ? "left" : "right"]: -30, width: 130, height: 130, borderRadius: "50%", background: "rgba(16,185,129,0.30)", filter: "blur(30px)", pointerEvents: "none" }} />
+                    <div style={{ position: "absolute", top: 6, [lang === "ar" ? "left" : "right"]: 8, fontSize: 66, lineHeight: 1, filter: "drop-shadow(0 8px 18px rgba(0,0,0,0.35))", userSelect: "none", pointerEvents: "none" }}>🌍</div>
+                    <div style={{ position: "absolute", top: 52, [lang === "ar" ? "left" : "right"]: 16, fontSize: 42, lineHeight: 1, filter: "drop-shadow(0 6px 12px rgba(0,0,0,0.3))", userSelect: "none", pointerEvents: "none" }}>🏢</div>
+                    <div style={{ position: "absolute", top: 88, [lang === "ar" ? "left" : "right"]: 54, fontSize: 30, lineHeight: 1, filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.28))", userSelect: "none", pointerEvents: "none" }}>📋</div>
+                    <div style={{ padding: "16px 16px 18px", flex: 1, position: "relative", zIndex: 1, maxWidth: lang === "ar" ? "70%" : "68%" }}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(34,197,94,0.20)", border: "1px solid rgba(34,197,94,0.45)", borderRadius: 999, padding: "3px 10px", marginBottom: 9 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block", flexShrink: 0 }} />
+                        <span style={{ fontSize: 12.5, fontWeight: 800, color: "#4ade80", fontFamily: "'Cairo',sans-serif" }}>{lang === "ar" ? "موثوق" : "Verified"}</span>
+                      </div>
+                      <div style={{ fontSize: 20, fontWeight: 900, color: "#ffffff", marginBottom: 6, lineHeight: 1.35 }}>{lang === "ar" ? "المكاتب الموثوقة" : "Trusted Offices"}</div>
+                      <div style={{ fontSize: 13, color: "rgba(255,255,255,0.68)", lineHeight: 1.65, marginBottom: 14 }}>{lang === "ar" ? `استعرض المكاتب الموثوقة داخل ${country?.name || ""}` : `Browse trusted offices inside ${countryNamesEn[country?.name] || country?.name || ""}`}</div>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)", backdropFilter: "blur(8px)", borderRadius: 999, padding: "7px 15px" }}>
+                        <span style={{ fontSize: 14.5, fontWeight: 800, color: "#ffffff", fontFamily: "'Cairo',sans-serif" }}>{lang === "ar" ? "استكشف الآن" : "Explore Now"}</span>
+                        <span style={{ fontSize: 15, color: "rgba(255,255,255,0.85)" }}>{lang === "ar" ? "←" : "→"}</span>
                       </div>
                     </div>
+                  </button>
+
+                  {/* ── 2×2 GRID (محظورة + مدفوعة) ── */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+
+                    {/* مكاتب محظورة */}
+                    <div
+                      className="crystal-card"
+                      style={{
+                        borderRadius: 22,
+                        background: dark ? "linear-gradient(145deg, rgba(239,68,68,0.20), rgba(220,38,38,0.11))" : "linear-gradient(145deg, #fff1f2, #ffe4e6)",
+                        boxShadow: dark ? "0 10px 28px rgba(239,68,68,0.16)" : "0 10px 28px rgba(239,68,68,0.14)",
+                        minHeight: 126,
+                        display: "flex", flexDirection: "column", justifyContent: "space-between",
+                        padding: "13px",
+                        textAlign: lang === "ar" ? "right" : "left",
+                        fontFamily: "'Cairo',sans-serif", opacity: 0.88, boxSizing: "border-box",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexDirection: lang === "ar" ? "row-reverse" : "row" }}>
+                        <div style={{ width: 54, height: 54, borderRadius: 16, background: dark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.72)", boxShadow: dark ? "0 4px 12px rgba(0,0,0,0.25)" : "0 4px 14px rgba(239,68,68,0.20)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, flexShrink: 0 }}>🚫</div>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: "#ef4444", background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.32)", borderRadius: 999, padding: "3px 9px", alignSelf: "flex-start" }}>{lang === "ar" ? "قريبًا" : "Soon"}</span>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 16, fontWeight: 900, color: dark ? "#f87171" : "#dc2626", marginBottom: 4, lineHeight: 1.3 }}>{lang === "ar" ? "مكاتب محظورة" : "Blocked Offices"}</div>
+                        <div style={{ fontSize: 12, color: dark ? "rgba(255,255,255,0.52)" : "#64748b", lineHeight: 1.55 }}>{lang === "ar" ? "قائمة الشركات الممنوعة" : "Banned companies list"}</div>
+                      </div>
+                    </div>
+
+                    {/* خدمات مدفوعة */}
+                    <button
+                      onClick={() => { setCountryPaidScreen("list"); setView("countryPaid"); }}
+                      className="crystal-card"
+                      style={{
+                        border: "none", cursor: "pointer", borderRadius: 22,
+                        background: dark ? "linear-gradient(145deg, rgba(59,130,246,0.22), rgba(37,99,235,0.12))" : "linear-gradient(145deg, #eff6ff, #dbeafe)",
+                        boxShadow: dark ? "0 10px 28px rgba(59,130,246,0.18)" : "0 10px 28px rgba(59,130,246,0.15)",
+                        minHeight: 126,
+                        display: "flex", flexDirection: "column", justifyContent: "space-between",
+                        padding: "13px",
+                        textAlign: lang === "ar" ? "right" : "left",
+                        fontFamily: "'Cairo',sans-serif", boxSizing: "border-box",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexDirection: lang === "ar" ? "row-reverse" : "row" }}>
+                        <div style={{ width: 54, height: 54, borderRadius: 16, background: dark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.72)", boxShadow: dark ? "0 4px 12px rgba(0,0,0,0.25)" : "0 4px 14px rgba(59,130,246,0.22)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, flexShrink: 0 }}>🛂</div>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: "#3b82f6", background: "rgba(59,130,246,0.13)", border: "1px solid rgba(59,130,246,0.30)", borderRadius: 999, padding: "3px 9px", alignSelf: "flex-start" }}>{lang === "ar" ? "مدفوعة" : "Paid"}</span>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 16, fontWeight: 900, color: dark ? "#93c5fd" : "#1d4ed8", marginBottom: 4, lineHeight: 1.3 }}>{lang === "ar" ? "خدمات مدفوعة" : "Paid Services"}</div>
+                        <div style={{ fontSize: 12, color: dark ? "rgba(255,255,255,0.52)" : "#64748b", lineHeight: 1.55 }}>{lang === "ar" ? `الوزارة والطوارئ في ${country?.name || ""}` : `Ministry & emergency in ${countryNamesEn[country?.name] || country?.name || ""}`}</div>
+                      </div>
+                    </button>
+
                   </div>
 
-                  <button
-                    onClick={() => { setCountryPaidScreen("list"); setView("countryPaid"); }}
-                    className="section-card"
-                    style={{
-                      width: "100%",
-                      maxWidth: "100%",
-                      boxSizing: "border-box",
-                      textAlign: lang === "ar" ? "right" : "left",
-                      background: dark ? "linear-gradient(135deg, rgba(14,116,144,0.24), rgba(6,182,212,0.12))" : "linear-gradient(135deg, #ecfeff, #f0fdfa)",
-                      border: "1px solid #0f766e33",
-                      borderRadius: 22,
-                      padding: "12px 13px",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 11,
-                      minHeight: 82,
-                      overflow: "hidden",
-                      boxShadow: dark ? "0 0 16px #0f766e16" : "0 10px 22px #0f766e10",
-                      fontFamily: "'Cairo',sans-serif",
-                    }}
-                  >
-                    <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid #0f766e28", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🛂</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 900, color: "#0f766e", marginBottom: 3 }}>{lang === "ar" ? "خدمات مدفوعة" : "Paid Services"}</div>
-                      <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? `هنا تجد الخدمات المدفوعة والوزارة والطوارئ في ${country.name}.` : `Here you will find paid services, ministry, and emergency contacts in ${countryNamesEn[country.name] || country.name}.`}</div>
-                    </div>
-                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#0f766e18", color: "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
-                  </button>
-
+                  {/* ── ضيف خدمتك - horizontal ── */}
                   <button
                     onClick={openProviderPortalOrPromptLogin}
-                      className="section-card"
-                      style={{
-                      width: "100%",
-                      maxWidth: "100%",
-                      boxSizing: "border-box",
-                      textAlign: lang === "ar" ? "right" : "left",
-                      background: dark ? "linear-gradient(135deg, rgba(202,138,4,0.24), rgba(245,158,11,0.10))" : "linear-gradient(135deg, #fffbeb, #fef3c7)",
-                      border: "1px solid rgba(202,138,4,0.30)",
+                    className="crystal-card"
+                    style={{
+                      width: "100%", border: "none", cursor: "pointer",
                       borderRadius: 22,
-                      padding: "12px 13px",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 11,
-                      minHeight: 82,
-                      overflow: "hidden",
-                      boxShadow: dark ? "0 0 16px rgba(202,138,4,0.16)" : "0 10px 22px rgba(202,138,4,0.10)",
-                      fontFamily: "'Cairo',sans-serif",
+                      background: dark ? "linear-gradient(135deg, rgba(202,138,4,0.24), rgba(245,158,11,0.13))" : "linear-gradient(135deg, #fffbeb, #fef3c7)",
+                      boxShadow: dark ? "0 10px 28px rgba(202,138,4,0.20)" : "0 10px 28px rgba(202,138,4,0.16)",
+                      minHeight: 84,
+                      display: "flex", alignItems: "center", gap: 14,
+                      padding: "14px 16px",
+                      textAlign: lang === "ar" ? "right" : "left",
+                      flexDirection: lang === "ar" ? "row-reverse" : "row",
+                      fontFamily: "'Cairo',sans-serif", boxSizing: "border-box",
                     }}
                   >
-                    <div style={{ width: 40, height: 40, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(202,138,4,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🧰</div>
+                    <div style={{ width: 56, height: 56, borderRadius: 18, flexShrink: 0, background: dark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.72)", boxShadow: dark ? "0 4px 14px rgba(0,0,0,0.25)" : "0 4px 16px rgba(202,138,4,0.22)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34 }}>🧰</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#fde68a" : "#a16207", marginBottom: 3 }}>{lang === "ar" ? "ضيف خدمتك" : "Add Your Service"}</div>
-                      <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? `سجل خدمتك داخل ${country.name} ليتم مراجعتها واعتمادها.` : `Submit your service in ${countryNamesEn[country.name] || country.name} for admin review and approval.`}</div>
+                      <div style={{ fontSize: 18, fontWeight: 900, color: dark ? "#fcd34d" : "#b45309", marginBottom: 4, lineHeight: 1.3 }}>{lang === "ar" ? "ضيف خدمتك" : "Add Your Service"}</div>
+                      <div style={{ fontSize: 13, color: dark ? "rgba(255,255,255,0.58)" : "#64748b", lineHeight: 1.6 }}>{lang === "ar" ? `سجل خدمتك داخل ${country?.name || ""} ليتم مراجعتها واعتمادها.` : `Submit your service in ${countryNamesEn[country?.name] || country?.name || ""} for admin review.`}</div>
                     </div>
-                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: dark ? "rgba(202,138,4,0.20)" : "rgba(180,83,9,0.10)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: dark ? "#fcd34d" : "#b45309", flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                   </button>
 
+                  {/* ── BOTTOM CARD: تواصل مع سفارتك ── */}
                   {!isOtherNationalitySelected && (
                     <button
                       onClick={() => { setView("countryEmbassies"); }}
-                      className="section-card"
+                      className="crystal-card"
                       style={{
-                        width: "100%",
-                        maxWidth: "100%",
-                        boxSizing: "border-box",
-                        textAlign: lang === "ar" ? "right" : "left",
-                        background: dark ? "linear-gradient(135deg, rgba(8,145,178,0.24), rgba(14,165,233,0.10))" : "linear-gradient(135deg, #ecfeff, #e0f2fe)",
-                        border: "1px solid rgba(14,165,233,0.28)",
+                        width: "100%", border: "none", cursor: "pointer",
                         borderRadius: 22,
-                        padding: "12px 12px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 11,
-                        overflow: "hidden",
-                        boxShadow: dark ? "0 0 16px rgba(14,165,233,0.16)" : "0 10px 22px rgba(14,165,233,0.10)",
-                        fontFamily: "'Cairo',sans-serif",
-                        minHeight: 82
+                        background: dark ? "linear-gradient(135deg, rgba(8,145,178,0.24), rgba(14,165,233,0.13))" : "linear-gradient(135deg, #f0f9ff, #e0f2fe)",
+                        boxShadow: dark ? "0 10px 28px rgba(8,145,178,0.20)" : "0 10px 28px rgba(8,145,178,0.14)",
+                        minHeight: 84,
+                        display: "flex", alignItems: "center", gap: 14,
+                        padding: "14px 16px",
+                        textAlign: lang === "ar" ? "right" : "left",
+                        flexDirection: lang === "ar" ? "row-reverse" : "row",
+                        fontFamily: "'Cairo',sans-serif", boxSizing: "border-box",
                       }}
                     >
-                      <div style={{ width: 38, height: 38, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(14,165,233,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🏛️</div>
+                      <div style={{ width: 56, height: 56, borderRadius: 18, flexShrink: 0, background: dark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.72)", boxShadow: dark ? "0 4px 14px rgba(0,0,0,0.25)" : "0 4px 16px rgba(8,145,178,0.22)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34 }}>🏛️</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#67e8f9" : "#0f766e", marginBottom: 3 }}>{lang === "ar" ? "تواصل مع سفارتك" : "Contact Your Embassy"}</div>
-                        <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? `الوصول السريع إلى سفارتك داخل ${country.name}${selectedNationality ? ` - الجنسية الحالية: ${selectedNationality}` : ""}` : `Quick access to your embassy inside ${countryNamesEn[country.name] || country.name}${selectedNationality ? ` - current nationality: ${countryNamesEn[selectedNationality] || selectedNationality}` : ""}`}</div>
+                        <div style={{ fontSize: 18, fontWeight: 900, color: dark ? "#67e8f9" : "#0369a1", marginBottom: 4, lineHeight: 1.3 }}>{lang === "ar" ? "تواصل مع سفارتك" : "Contact Your Embassy"}</div>
+                        <div style={{ fontSize: 13, color: dark ? "rgba(255,255,255,0.58)" : "#475569", lineHeight: 1.6 }}>{lang === "ar" ? `الوصول السريع إلى سفارتك داخل ${country?.name || ""}${selectedNationality ? ` · ${selectedNationality}` : ""}` : `Quick access to your embassy inside ${countryNamesEn[country?.name] || country?.name || ""}${selectedNationality ? ` · ${countryNamesEn[selectedNationality] || selectedNationality}` : ""}`}</div>
                       </div>
-                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(14,165,233,0.16)", color: dark ? "#67e8f9" : "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                      <div style={{ width: 30, height: 30, borderRadius: "50%", background: dark ? "rgba(14,165,233,0.20)" : "rgba(3,105,161,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: dark ? "#67e8f9" : "#0369a1", flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
                     </button>
                   )}
 
@@ -11952,16 +11890,17 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       const cityVisibleOffices = isGuestUser && (selectedCountry === "المملكة العربية السعودية")
                         ? Math.min(3, cityTotalOffices)
                         : cityTotalOffices;
+                      const nonEgyptCityFontScale = selectedCountry === "مصر" ? 1 : 1.25;
 
                       return (
                       <button key={city} onClick={() => cityTotalOffices > 0 ? handleGovSelect(city) : openCityModal(lang === "en" ? (cityNamesEn[city] || city) : city)}
                         style={{ background: t.cardBg, border: `1px solid ${t.border}`, borderRadius: 12, padding: "12px 6px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, transition: "all 0.2s", fontFamily: "'Cairo',sans-serif" }}>
                         <span style={{ fontSize: 28 }}>{selectedCountry === "المملكة العربية السعودية" ? (saudiCityIcons[city] || "🏙️") : (cityIcons[city] || "🏙️")}</span>
-                        <span style={{ fontSize: 10, color: t.text, fontWeight: 600, textAlign: "center" }}>{lang === "en" ? (cityNamesEn[city] || city) : city}</span>
-                        <span style={{ fontSize: 9, color: t.subText, textAlign: "center", lineHeight: 1.3 }}>
+                        <span style={{ fontSize: 10 * nonEgyptCityFontScale, color: t.text, fontWeight: 600, textAlign: "center" }}>{lang === "en" ? (cityNamesEn[city] || city) : city}</span>
+                        <span style={{ fontSize: 9 * nonEgyptCityFontScale, color: t.subText, textAlign: "center", lineHeight: 1.3 }}>
                           {selectedCountry === "المملكة العربية السعودية" && isGuestUser
                             ? (lang === "ar" ? `${cityVisibleOffices}/${cityTotalOffices} متاح للضيف` : `${cityVisibleOffices}/${cityTotalOffices} guest visible`)
-                            : (lang === "ar" ? `${cityTotalOffices} مكتب` : `${cityTotalOffices} offices`)}
+                            : (lang === "ar" ? `عدد ${cityTotalOffices} مكتب` : `${cityTotalOffices} offices`)}
                         </span>
                       </button>
                     );
@@ -12612,32 +12551,34 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
                   {visibleFilteredOffices.length === 0 ? (
                     <div style={{ textAlign: "center", color: t.subText, padding: "40px 0", fontSize: 15, gridColumn: "1 / -1" }}>{tx.noResults}</div>
-                  ) : paginatedOffices.map((office, i) => (
+                  ) : paginatedOffices.map((office, i) => {
+                    const egyptOfficeFontScale = selectedCountry === "مصر" ? 1.25 : 1;
+                    return (
                     <button key={office.id} onClick={() => openOfficeDetails(office)}
                       style={{ ...styles.officeCard, background: t.cardBg, border: `1px solid ${t.border}`, animationDelay: `${i * 30}ms`, padding: "13px 8px", display: "flex", flexDirection: "column", gap: 9, borderRadius: 14, cursor: "pointer", textAlign: "center", width: "100%", minHeight: 174 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 10, background: `${t.gold}22`, color: t.gold, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, flexShrink: 0, margin: "0 auto" }}>{((officePage - 1) * officesPerPage) + i + 1}</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: t.text, textAlign: "center", lineHeight: 1.3 }}>{getOfficeLabel(office.name)}</div>
-                      <div style={{ display: "inline-block", alignSelf:"center", borderRadius: 999, padding: "5px 13px", fontSize: 12, fontWeight: 700, background: `${t.gold}15`, color: t.gold, textAlign: "center" }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: `${t.gold}22`, color: t.gold, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 * egyptOfficeFontScale, fontWeight: 700, flexShrink: 0, margin: "0 auto" }}>{((officePage - 1) * officesPerPage) + i + 1}</div>
+                      <div style={{ fontSize: 14 * egyptOfficeFontScale, fontWeight: 700, color: t.text, textAlign: "center", lineHeight: 1.3 }}>{getOfficeLabel(office.name)}</div>
+                      <div style={{ display: "inline-block", alignSelf:"center", borderRadius: 999, padding: "5px 13px", fontSize: 12 * egyptOfficeFontScale, fontWeight: 700, background: `${t.gold}15`, color: t.gold, textAlign: "center" }}>
                         {selectedCountry === "مصر" ? `${tx.licenseNo} ${office.license}` : `${lang === "ar" ? "نوع الجهة" : "Office type"} ${office.type || "—"}`}
                       </div>
                       {selectedCountry === "المملكة العربية السعودية" && (
                         <>
-                          <div style={{ fontSize: 10, color: t.subText, lineHeight: 1.5 }}>
+                          <div style={{ fontSize: 10 * egyptOfficeFontScale, color: t.subText, lineHeight: 1.5 }}>
                             {office.phone ? `${lang === "ar" ? "هاتف" : "Phone"}: ${office.phone}` : (lang === "ar" ? "لا يوجد هاتف" : "No phone")}
                           </div>
-                          <div style={{ fontSize: 10, color: t.subText, lineHeight: 1.5, wordBreak: "break-all" }}>
+                          <div style={{ fontSize: 10 * egyptOfficeFontScale, color: t.subText, lineHeight: 1.5, wordBreak: "break-all" }}>
                             {office.website ? `${lang === "ar" ? "الموقع" : "Website"}: ${office.website}` : (lang === "ar" ? "لا يوجد موقع" : "No website")}
                           </div>
                         </>
                       )}
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2, marginTop: "auto" }}>
                           {[1,2,3,4,5].map(s => (
-                            <span key={s} style={{ fontSize: 16, color: (officeRatings[office.id]?.avg || 0) >= s ? "#f59e0b" : t.border }}>★</span>
+                            <span key={s} style={{ fontSize: 16 * egyptOfficeFontScale, color: (officeRatings[office.id]?.avg || 0) >= s ? "#f59e0b" : t.border }}>★</span>
                           ))}
-                        {officeRatings[office.id] && <span style={{ fontSize: 13, color: t.subText }}>({officeRatings[office.id].count})</span>}
+                        {officeRatings[office.id] && <span style={{ fontSize: 13 * egyptOfficeFontScale, color: t.subText }}>({officeRatings[office.id].count})</span>}
                         </div>
                     </button>
-                  ))}
+                  )})}
                   {isGuestUser && guestLockedOfficesCount > 0 && Array.from({ length: Math.min(guestLockedOfficesCount, 6) }).map((_, idx) => (
                     <button
                       key={`guest-lock-${idx}`}
@@ -13004,15 +12945,35 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
           const cvFontScale = 0.84;
           const cvScaleFont = (size) => Number((size * cvFontScale).toFixed(2));
           const cvPackageLayout = {
+            job_apply: { desktopMinHeight: 460, desktopStatsOffset: 0 },
             elite: { desktopMinHeight: 440, desktopStatsOffset: 0 },
             premium: { desktopMinHeight: 400, desktopStatsOffset: 0 },
             builder: { desktopMinHeight: 360, desktopStatsOffset: 0 },
           };
           const cvPackages = [
             {
+              key: "job_apply",
+              icon: "🎯",
+              title: lang==="ar" ? "باقة الوصول" : "Access Package",
+              price: "$70",
+              oldPrice: "$100",
+              summary: lang==="ar" ? "32 وظيفة + سي في + كوفر ليتر + متابعة كاملة" : "32 Jobs + CV + Cover Letter + Full Follow-up",
+              desc: lang==="ar"
+                ? "نعمل لك سي في احترافي بالعربي والإنجليزي + كوفر ليتر + نقدم عليك على الوظائف المناسبة لتخصصك مع متابعة كاملة طول الباقة."
+                : "We prepare your CV in Arabic & English + Cover Letter + apply to suitable jobs for your specialty with full follow-up throughout the package.",
+              cta: lang==="ar" ? "اشترك الآن" : "Subscribe Now",
+              accent: "#db2777",
+              cardBg: dark ? "linear-gradient(145deg,#7f1d4b,#9d174d 56%,#be185d)" : "linear-gradient(145deg,#be185d,#db2777 56%,#ec4899)",
+              titleColor: "#fff0f7",
+              textColor: "#fce7f3",
+              chipBg: "rgba(255,255,255,0.24)",
+              ctaBg: "linear-gradient(135deg,#db2777,#f472b6)",
+              ctaColor: "#fff",
+            },
+            {
               key: "elite",
               icon: "🚀",
-              title: lang==="ar" ? "باقة البحث والتوظيف" : "Job Search Package",
+              title: lang==="ar" ? "باقة التميّز" : "Excellence Package",
               price: "$35",
               oldPrice: "$70",
               summary: lang==="ar" ? "عدد 32 فرصة + سيرة ذاتية ممتازة" : "32 Opportunities + Premium CV",
@@ -13029,7 +12990,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
             {
               key: "premium",
               icon: "👑",
-              title: lang==="ar" ? "مستخدم بريميوم" : "Premium User",
+              title: lang==="ar" ? "باقة الانطلاق" : "Launch Package",
               price: "$20",
               oldPrice: "$40",
               summary: lang==="ar" ? "عدد 16 فرصة + سيرة ذاتية ممتازة" : "16 Opportunities + Premium CV",
@@ -13046,7 +13007,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
             {
               key: "builder",
               icon: "📄",
-              title: lang==="ar" ? "مستخدم عادي" : "Regular User",
+              title: lang==="ar" ? "ابدأ مجاناً" : "Start Free",
               price: lang==="ar" ? "مجاناً" : "Free",
               oldPrice: null,
               summary: lang==="ar" ? "تصدير مجاني" : "Free Export",
@@ -13062,20 +13023,51 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
             }
           ];
           const cvPackageBadges = {
+            job_apply: lang === "ar" ? "باقة التقديم الكاملة" : "Full Application Package",
             elite: lang === "ar" ? "الأكثر شمولاً" : "Most Complete",
             premium: lang === "ar" ? "الأفضل توازناً" : "Best Value",
             builder: lang === "ar" ? "الأكثر اقتصادية" : "Most Affordable",
           };
           const cvPackageFeatureRows = {
+            job_apply: lang === "ar" ? ["32 وظيفة", "سي في + كوفر ليتر", "متابعة كاملة"] : ["32 Jobs", "CV + Cover Letter", "Full Follow-up"],
             elite: lang === "ar" ? ["32 فرصة", "سيرة ذاتية ممتازة", "دعم واستشارات"] : ["32 Jobs", "Premium CV", "Support"],
             premium: lang === "ar" ? ["16 فرصة", "سيرة ذاتية ممتازة", "دعم واستشارات"] : ["16 Jobs", "Premium CV", "Support"],
             builder: lang === "ar" ? ["تصدير مجاني", "سريع", "سهل"] : ["Free Export", "Fast", "Simple"],
           };
+          const getCvPackageDiscountLabel = (price, oldPrice) => {
+            const current = Number(String(price ?? "").replace(/[^\d.]/g, ""));
+            const original = Number(String(oldPrice ?? "").replace(/[^\d.]/g, ""));
+            if (!current || !original || original <= current) return null;
+            return `${Math.round(((original - current) / original) * 100)}%`;
+          };
           const cvPaidServices = [
+            {
+              key: "job_apply",
+              icon: "🎯",
+              label: lang==="ar" ? "باقة الوصول" : "Access Package",
+              subtitle: lang==="ar" ? "32 وظيفة + سي في عربي وإنجليزي + كوفر ليتر + متابعة كاملة" : "32 Jobs + Arabic & English CV + Cover Letter + Full Follow-up",
+              price: 70,
+              originalPrice: null,
+              billingLabel: lang==="ar" ? "اشتراك شهري" : "Monthly subscription",
+              features: lang==="ar"
+                ? [
+                    "سي في احترافي بالعربي والإنجليزي",
+                    "Cover Letter احترافي مخصص لكل وظيفة",
+                    "تقديم على 32 وظيفة مناسبة لتخصصك",
+                    "متابعة كاملة طوال مدة الباقة (شهر كامل)",
+                  ]
+                : [
+                    "Professional CV in Arabic & English",
+                    "Custom Cover Letter for each application",
+                    "Apply to 32 jobs matching your specialty",
+                    "Full follow-up for the entire package duration (1 month)",
+                  ],
+              customerSupport: true,
+            },
             {
               key: "premium",
               icon: "👑",
-              label: lang==="ar" ? "باقة بريميوم" : "Premium Package",
+              label: lang==="ar" ? "باقة الانطلاق" : "Launch Package",
               subtitle: lang==="ar" ? "عدد 16 فرصة + سيرة ذاتية ممتازة" : "16 Opportunities + Premium CV",
               price: 20,
               originalPrice: 40,
@@ -13088,7 +13080,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
             {
               key: "elite",
               icon: "🚀",
-              label: lang==="ar" ? "باقة البحث والتوظيف المتقدمة" : "Advanced Job Search Package",
+              label: lang==="ar" ? "باقة التميّز" : "Excellence Package",
               subtitle: lang==="ar" ? "عدد 32 فرصة + سيرة ذاتية ممتازة" : "32 Opportunities + Premium CV",
               price: 35,
               originalPrice: 70,
@@ -13100,25 +13092,32 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
             }
           ];
           const selectedCvService = cvPaidServices.find(service => service.key === selectedCvPackage) || null;
-          const selectedCvPackageIntro = selectedCvPackage === "premium"
+          const selectedCvPackageIntro = selectedCvPackage === "job_apply"
             ? {
-                title: lang==="ar" ? "ملاحظة مهمة — باقة بريميوم 👑" : "Important Note — Premium Package 👑",
+                title: lang==="ar" ? "ملاحظة مهمة — باقة الوصول 🎯" : "Important Note — Access Package 🎯",
                 body: lang==="ar"
-                  ? "تشمل الباقة: سيرة ذاتية احترافية + 16 فرصة توظيف مناسبة لتخصصك تُرسل إلى واتسابك مباشرة + Cover Letter بالعربي والإنجليزي.\n\nمدة الخدمة شهر كامل أو لحين اكتمال إرسال 16 فرصة.\n\n⚠️ لا تتضمن هذه الباقة دعم عملاء بعد الدفع. للتواصل المباشر يُنصح بالترقية إلى باقة البحث والتوظيف."
-                  : "Package includes: Professional CV + 16 role-matched opportunities sent to your WhatsApp + Cover Letter in Arabic & English.\n\nService duration: 1 month or until all 16 opportunities are delivered.\n\n⚠️ This package does not include post-payment customer support. For direct support, consider upgrading to the Job Search Package."
+                  ? "تشمل الباقة: سي في احترافي بالعربي والإنجليزي + Cover Letter مخصص + تقديم فعلي على 32 وظيفة مناسبة لتخصصك + متابعة كاملة طوال الشهر.\n\nمدة الباقة: شهر كامل.\nعدد الوظائف: 32 وظيفة.\n\n✅ تتضمن هذه الباقة دعم عملاء مباشر ومتابعة مستمرة عبر واتساب طوال فترة الاشتراك."
+                  : "Package includes: Professional CV in Arabic & English + Custom Cover Letter + actual application to 32 jobs matching your specialty + full follow-up throughout the month.\n\nDuration: 1 full month.\nJob count: 32 jobs.\n\n✅ This package includes direct customer support and continuous follow-up via WhatsApp throughout the subscription."
+              }
+            : selectedCvPackage === "premium"
+            ? {
+                title: lang==="ar" ? "ملاحظة مهمة — باقة الانطلاق 👑" : "Important Note — Launch Package 👑",
+                body: lang==="ar"
+                  ? "تشمل الباقة: سيرة ذاتية احترافية + 16 فرصة توظيف مناسبة لتخصصك تُرسل إلى واتسابك مباشرة + Cover Letter بالعربي والإنجليزي.\n\nمدة الخدمة شهر كامل أو لحين اكتمال إرسال 16 فرصة.\n\n⚠️ لا تتضمن هذه الباقة دعم عملاء بعد الدفع. للتواصل المباشر يُنصح بالترقية إلى باقة التميّز."
+                  : "Package includes: Professional CV + 16 role-matched opportunities sent to your WhatsApp + Cover Letter in Arabic & English.\n\nService duration: 1 month or until all 16 opportunities are delivered.\n\n⚠️ This package does not include post-payment customer support. For direct support, consider upgrading to the Excellence Package."
               }
             : selectedCvPackage === "elite"
               ? {
-                  title: lang==="ar" ? "ملاحظة مهمة — باقة البحث والتوظيف 🚀" : "Important Note — Job Search Package 🚀",
+                  title: lang==="ar" ? "ملاحظة مهمة — باقة التميّز 🚀" : "Important Note — Excellence Package 🚀",
                   body: lang==="ar"
                     ? "تشمل الباقة: سيرة ذاتية احترافية بالعربي والإنجليزي + 32 فرصة توظيف مستهدفة فعلياً من مجالك + بحث حقيقي عن وظائف مناسبة.\n\nمدة الخدمة شهر كامل أو لحين اكتمال إرسال 32 فرصة.\n\n✅ تتضمن هذه الباقة دعم عملاء مباشر بعد الدفع عبر واتساب."
                     : "Package includes: Professional Arabic & English CV + 32 real targeted job opportunities from your field + active job search on your behalf.\n\nService duration: 1 month or until all 32 opportunities are delivered.\n\n✅ This package includes direct post-payment customer support via WhatsApp."
                 }
               : null;
-          const selectedCvRefundPolicy = ["premium", "elite"].includes(String(selectedCvPackage || ""))
+          const selectedCvRefundPolicy = ["premium", "elite", "job_apply"].includes(String(selectedCvPackage || ""))
             ? (lang === "ar"
-                ? "سياسة الاسترداد: في حالة عدم تنفيذ المتفق عليه (عدد الوظائف والمتابعة) يحق للمستخدم طلب استرداد كامل للمبلغ بعد خصم 7 دولار فقط تكلفة المصاريف الإدارية وإعداد السيرة الذاتية."
-                : "Refund policy: If the agreed scope is not delivered (job count and follow-up), the user can request a full refund minus only a $7 fee for administrative processing and CV preparation.")
+                ? "1. في حال طلب العميل استرداد المبلغ قبل البدء في إرسال الوظائف المتفق عليها، يحق له طلب استرداد المبلغ بعد خصم 7 دولار فقط مقابل المصاريف الإدارية وإعداد السيرة الذاتية.\n\n2. إذا تم البدء في الخدمة وإرسال الوظائف، ثم طلب العميل الإلغاء، يتم احتساب الوظائف المنفذة وخصمها من المبلغ المدفوع بمعدل 1.5 دولار لكل وظيفة قبل رد المبلغ المتبقي.\n\nأمثلة:\nإذا كان المتفق عليه 16 وظيفة وتم إرسال 8 وظائف فقط، ثم طلب العميل الإلغاء، يتم خصم قيمة 8 وظائف من المبلغ المدفوع وفق هذا المعدل."
+                : "1. If the client requests a refund before the agreed job applications have started being sent, they may request a refund after deducting only a $7 fee for administrative processing and CV preparation.\n\n2. If the service has started and jobs have already been sent, then the client requests cancellation, completed job applications will be deducted from the paid amount at a rate of $1.5 per job before refunding the remaining balance.\n\nExamples:\nIf 16 jobs were agreed upon and 8 jobs were already delivered, then the client requests cancellation, the value of those 8 jobs will be deducted from the paid amount using this rate.")
             : "";
           const cvJobSites = [
             { key:"linkedin", name:"LinkedIn", short:"in", color:"#0A66C2", url:"https://www.linkedin.com/jobs/" },
@@ -13144,7 +13143,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   {lang==="ar" ? "روابط سريعة تساعدك تبدأ التقديم" : "Quick links to start applying"}
                 </div>
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(0, 1fr))", gap:10 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(3, minmax(0, 1fr))", gap:12 }}>
                 {cvJobSites.map(site => (
                   <a
                     key={site.key}
@@ -13152,26 +13151,26 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     target="_blank"
                     rel="noreferrer"
                     className="job-site-link"
-                    style={{ textDecoration:"none", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, padding:"6px 4px", minHeight:39, borderRadius:12, border:"none", background:"transparent" }}
+                    style={{ textDecoration:"none", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:6, padding:"8px 4px", minHeight:48, borderRadius:12, border:"none", background:"transparent" }}
                   >
-                    <div className="job-site-icon" style={{ width:42, height:42, borderRadius:8, background:site.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:15.8, fontWeight:900, fontFamily:"sans-serif" }}>
+                    <div className="job-site-icon" style={{ width:55, height:55, borderRadius:10, background:site.color, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20.5, fontWeight:900, fontFamily:"sans-serif" }}>
                       {site.short}
                     </div>
-                    <div style={{ fontSize:14.3, color:t.text, textAlign:"center", lineHeight:1.2, fontFamily:"'Cairo',sans-serif" }}>
+                    <div style={{ fontSize:17.9, color:t.text, textAlign:"center", lineHeight:1.2, fontFamily:"'Cairo',sans-serif" }}>
                       {site.name}
                     </div>
                   </a>
                 ))}
               </div>
               {!cvMode && (
-                <div style={{ fontSize:13, color:t.subText, textAlign:"center", lineHeight:1.6, marginTop:11, fontFamily:"'Cairo',sans-serif" }}>
+                <div style={{ fontSize:16.25, color:t.subText, textAlign:"center", lineHeight:1.6, marginTop:11, fontFamily:"'Cairo',sans-serif" }}>
                   {lang==="ar" ? "اختر نوع الخدمة من البطاقات بالأعلى، أو تصفح هذه المواقع لحين تحديد المسار المناسب." : "Choose a package above, or browse these job sites while deciding your path."}
                 </div>
               )}
             </div>
           );
           const cvJobSitesAdCard = (
-            <div style={{ ...cardStyle, padding:showJobsBannerAd ? "0" : "12px", border:`1px solid ${t.border}`, background:showJobsBannerAd ? "transparent" : (dark ? "rgba(255,255,255,0.03)" : "#fbfcff"), overflow:"hidden" }}>
+            <div style={{ ...cardStyle, padding:showJobsBannerAd ? "0" : "12px", border: showJobsBannerAd ? "none" : `1px solid ${t.border}`, background:showJobsBannerAd ? "transparent" : (dark ? "rgba(255,255,255,0.03)" : "#fbfcff"), overflow:"hidden" }}>
               {showJobsBannerAd ? (
                 jobsBannerAd.linkUrl ? (
                   <a
@@ -13185,7 +13184,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     <img
                       src={jobsBannerAd.imageUrl}
                       alt={jobsBannerAd.title || "ad"}
-                      style={{ width:"100%", height:"auto", display:"block" }}
+                      style={{ width:"100%", maxWidth:"100%", height:"auto", display:"block", borderRadius:14 }}
                     />
                   </a>
                 ) : (
@@ -13193,7 +13192,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     src={jobsBannerAd.imageUrl}
                     alt={jobsBannerAd.title || "ad"}
                     title={jobsBannerAd.title || ""}
-                    style={{ width:"100%", height:"auto", display:"block" }}
+                    style={{ width:"100%", maxWidth:"100%", height:"auto", display:"block", borderRadius:14 }}
                   />
                 )
               ) : (
@@ -13263,17 +13262,18 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               <div style={{ ...cardStyle, padding:isCompactPhone ? "11px" : "16px", margin:"6px auto 0", width:"100%", background: dark ? "linear-gradient(135deg, rgba(15,23,42,0.97), rgba(30,41,59,0.92), rgba(14,116,144,0.22))" : "linear-gradient(135deg, #f8f4ea, #edf5ff, #d8f3ef)", border:`1px solid ${t.gold}3f`, boxShadow: dark ? "0 18px 38px rgba(0,0,0,0.24)" : "0 18px 38px rgba(15,23,42,0.09)", borderRadius:24 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, marginBottom:isCompactPhone ? 5 : 6, flexWrap:"wrap" }}>
                   <span style={{ ...tagStyle, background:"#e53e3e18", color:"#e53e3e" }}>🔥 {lang==="ar" ? "خصم 50٪ لفترة محدودة" : "50% OFF for a limited time"}</span>
-                  <span style={{ fontSize:cvScaleFont(11), color:t.subText, fontFamily:"'Cairo',sans-serif" }}>{lang==="ar" ? `ينتهي العرض في ${cvOfferEndsText}` : `Offer ends on ${cvOfferEndsText}`}</span>
+                  <span style={{ fontSize:cvScaleFont(13.75), color:t.subText, fontFamily:"'Cairo',sans-serif" }}>{lang==="ar" ? "عرض لمدة أسبوع واحد فقط" : "Offer valid for one week only"}</span>
                 </div>
-                <div style={{ fontSize:cvScaleFont(isCompactPhone ? 17.5 : 22), fontWeight:900, color:t.text, lineHeight:isCompactPhone ? 1.16 : 1.24, marginBottom:isCompactPhone ? 3 : 4, fontFamily:"'Cairo',sans-serif" }}>
+                <div style={{ fontSize:cvScaleFont(isCompactPhone ? 21.9 : 27.5), fontWeight:900, color:t.text, lineHeight:isCompactPhone ? 1.16 : 1.24, marginBottom:isCompactPhone ? 3 : 4, fontFamily:"'Cairo',sans-serif" }}>
                   {lang==="ar" ? "امتلك السيرة الذاتية التي تضمن لك المقابلات وتحقق لك الوظيفة التي تستحقها" : "Own the CV that gets interviews and lands your ideal role"}
                 </div>
-                <div style={{ fontSize:cvScaleFont(isCompactPhone ? 10.5 : 12), color:t.subText, lineHeight:isCompactPhone ? 1.52 : 1.62, marginBottom:isCompactPhone ? 6 : 8, fontFamily:"'Cairo',sans-serif" }}>
+                <div style={{ fontSize:cvScaleFont(isCompactPhone ? 13.1 : 15), color:t.subText, lineHeight:isCompactPhone ? 1.52 : 1.62, marginBottom:isCompactPhone ? 6 : 8, fontFamily:"'Cairo',sans-serif" }}>
                   {lang==="ar" ? "اختر مسارك المهني من بين خياراتنا المتكاملة للنجاح." : "Choose your career path from our complete success options."}
                 </div>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:12, alignItems:"stretch" }}>
                   {cvPackages.map(pkg => {
                     const isActive = (pkg.key === "builder" && cvMode === "builder") || (pkg.key !== "builder" && cvMode === "services" && selectedCvPackage === pkg.key);
+                    const discountLabel = getCvPackageDiscountLabel(pkg.price, pkg.oldPrice);
                     return (
                       <div
                         key={pkg.key}
@@ -13328,8 +13328,8 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                             <span style={{ fontSize:13, fontWeight:900, color:pkg.titleColor, background:"rgba(255,255,255,0.16)", border:"1px solid rgba(255,255,255,0.34)", borderRadius:999, padding:"6px 13px", lineHeight:1.1 }}>
                               {cvPackageBadges[pkg.key]}
                             </span>
-                            {pkg.oldPrice
-                              ? <span style={{ fontSize:12.5, color:dark ? "#fff0f0" : "#7f1d1d", background:dark ? "rgba(127,29,29,0.45)" : "#fee2e2", borderRadius:999, padding:"5px 10px", fontWeight:900 }}>50%</span>
+                            {discountLabel
+                              ? <span style={{ fontSize:12.5, color:dark ? "#fff0f0" : "#7f1d1d", background:dark ? "rgba(127,29,29,0.45)" : "#fee2e2", borderRadius:999, padding:"5px 10px", fontWeight:900 }}>{discountLabel}</span>
                               : <span style={{ width:1, height:1 }} />}
                           </div>
 
@@ -13421,7 +13421,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     <span>{lang==="ar" ? "الباقات" : "Packages"}</span>
                   </button>
                   <span style={{ fontSize:13, fontWeight:900, color:t.text, lineHeight:1.3 }}>
-                    {cvMode==="builder" ? (lang==="ar"?"مستخدم عادي":"Regular User") : selectedCvPackage==="premium" ? (lang==="ar"?"باقة بريميم":"Premium Package") : (lang==="ar"?"باقة البحث والتوظيف":"Job Search Package")}
+                    {cvMode==="builder" ? (lang==="ar"?"ابدأ مجاناً":"Start Free") : selectedCvPackage==="premium" ? (lang==="ar"?"باقة الانطلاق":"Launch Package") : selectedCvPackage==="job_apply" ? (lang==="ar"?"باقة الوصول":"Access Package") : (lang==="ar"?"باقة التميّز":"Excellence Package")}
                   </span>
                 </div>
               )}
@@ -13436,7 +13436,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   <div style={{ display:"grid", gap:14, marginTop:16 }}>
                     <div style={{ ...cardStyle, textAlign:"center", background:"linear-gradient(135deg,#fff8e6,#fffdf7)", border:`1px solid ${t.gold}44` }}>
                       <div style={{ fontSize:15, fontWeight:900, color:t.gold, fontFamily:"'Cairo',sans-serif", marginBottom:8 }}>
-                        {lang==="ar" ? "مستخدم عادي" : "Regular User"}
+                        {lang==="ar" ? "ابدأ مجاناً" : "Start Free"}
                       </div>
                       <div style={{ fontSize:12, color:t.subText, lineHeight:1.8, fontFamily:"'Cairo',sans-serif", marginBottom:12 }}>
                         {lang==="ar"
@@ -14509,7 +14509,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                             <div style={{ fontSize:14.2, fontWeight:900, color:selectedCvService.price === 20 ? "#9a7306" : "#6b21a8", marginBottom:6, fontFamily:"'Cairo',sans-serif" }}>
                               {lang === "ar" ? "سياسة الاسترداد" : "Refund Policy"}
                             </div>
-                            <div style={{ fontSize:13.6, color:t.text, lineHeight:1.9, fontFamily:"'Cairo',sans-serif" }}>
+                            <div style={{ fontSize:13.6, color:t.text, lineHeight:1.9, fontFamily:"'Cairo',sans-serif", whiteSpace:"pre-line" }}>
                               {selectedCvRefundPolicy}
                             </div>
                           </div>
@@ -14587,240 +14587,418 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
 
         {/* ══ SETTINGS TAB ══════════════════════════════════════════════════ */}
         {mainTab === "settings" && (
-          <div style={{ padding: "20px 0" }}>
-            <h2 style={{ fontSize: 18, fontWeight: 900, color: t.text, fontFamily: "'Cairo',sans-serif", marginBottom: 20 }}>⚙️ {tx.settingsTitle}</h2>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-              {/* Language */}
-              <div style={{ ...styles.sectionCard, background: t.cardBg, border: `1px solid ${t.border}`, marginBottom: 0, padding: "8px 10px", minHeight: 76, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: t.subText, fontFamily: "'Cairo',sans-serif", marginBottom: 6, textAlign: dir === "rtl" ? "right" : "left" }}>🌐 {tx.settingsLang}</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {["ar", "en"].map(l => (
-                    <button key={l} onClick={() => setLang(l)}
-                      style={{ flex: 1, height: 32, padding: "0 10px", borderRadius: 12, border: `2px solid ${t.border}`, background: "transparent", color: t.text, boxShadow: "none", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "'Cairo',sans-serif", transition: "all 0.2s", display: "inline-flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}>
-                      {l === "ar" ? tx.settingsLangAr : tx.settingsLangEn}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Theme */}
-              <div style={{ ...styles.sectionCard, background: t.cardBg, border: `1px solid ${t.border}`, marginBottom: 0, padding: "8px 10px", minHeight: 76, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: t.subText, fontFamily: "'Cairo',sans-serif", marginBottom: 6, textAlign: dir === "rtl" ? "right" : "left" }}>🎨 {tx.settingsTheme}</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {[false, true].map(isDark => (
-                    <button key={String(isDark)} onClick={() => setDark(isDark)}
-                      style={{ flex: 1, height: 32, padding: "0 10px", borderRadius: 12, border: `2px solid ${t.border}`, background: "transparent", color: t.text, boxShadow: "none", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "'Cairo',sans-serif", transition: "all 0.2s", display: "inline-flex", alignItems: "center", justifyContent: "center", whiteSpace: "nowrap" }}>
-                      {isDark ? `🌙 ${tx.settingsThemeDark}` : `☀️ ${tx.settingsThemeLight}`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Settings items */}
-            <div style={{ display: "grid", gridTemplateColumns: isCompactPhone ? "1fr 1fr" : "1fr 1fr", gap: 10, marginBottom: 10 }}>
-              {[
-                { icon: "🔄", label: tx.settingsUpdate, desc: tx.settingsUpdateDesc, href: PLAY_STORE_URL },
-                { icon: "⭐", label: tx.settingsRate, desc: tx.settingsRateDesc, href: PLAY_STORE_URL },
-                { icon: "📧", label: tx.settingsSupport, desc: tx.settingsSupportDesc, href: "mailto:walidghazal46@gmail.com?subject=دعم فني - تطبيق مكاتب السفريات الموثوقة" },
-                { icon: "🔒", label: tx.settingsPrivacy, desc: tx.settingsPrivacyDesc, href: "/privacy-policy.html" },
-              ].map((item, i) => {
-                const inner = (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 3 }}>
-                    <div style={{ width: 22, height: 22, borderRadius: 8, flexShrink: 0, background: t.inputBg, border: `1px solid ${t.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>{item.icon}</div>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: t.text, fontFamily: "'Cairo',sans-serif", lineHeight: 1.25 }}>{item.label}</div>
-                    <div style={{ fontSize: 9, color: t.subText, fontFamily: "'Cairo',sans-serif", lineHeight: 1.25 }}>{item.desc}</div>
-                  </div>
-                );
-                const cs = { display: "block", textDecoration: "none", padding: "5px 4px", borderRadius: 12, background: t.cardBg, border: `1px solid ${t.border}`, cursor: "pointer", width: "100%", textAlign: "center", minHeight: 38 };
-                if (item.href) return <a key={i} href={item.href} target="_blank" rel="noreferrer" style={cs}>{inner}</a>;
-                return <button key={i} onClick={item.action} style={cs}>{inner}</button>;
-              })}
-            </div>
-
-            {/* ── سوشيال ميديا ── */}
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <a href={YOUTUBE} target="_blank" rel="noreferrer"
-                  style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, padding: "9px 5px", borderRadius: 14, background: dark ? t.cardBg : "#ffffff", border: "none", textDecoration: "none" }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 10, background: "#ff0000", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M23.495 6.205a3.007 3.007 0 00-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 00.527 6.205a31.247 31.247 0 00-.522 5.805 31.247 31.247 0 00.522 5.783 3.007 3.007 0 002.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 002.088-2.088 31.247 31.247 0 00.5-5.783 31.247 31.247 0 00-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
-                  </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#ff0000", fontFamily: "sans-serif" }}>YouTube</span>
-                </a>
-                <a href={LINKEDIN} target="_blank" rel="noreferrer"
-                  style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, padding: "9px 5px", borderRadius: 14, background: dark ? t.cardBg : "#ffffff", border: "none", textDecoration: "none" }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 10, background: "#0077b6", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-                  </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#0077b6", fontFamily: "sans-serif" }}>LinkedIn</span>
-                </a>
-              </div>
-            </div>
-
-            {!!authPreviewUser ? (
-              /* ── مسجّل: مربعات بنفس مواصفات الدعم الفني ── */
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-                {[
-                  {
-                    icon: "📖",
-                    label: lang === "ar" ? "شرح الاستخدام" : "How to use",
-                    desc: lang === "ar" ? "دليل سريع" : "Quick guide",
-                    action: () => setUsageGuideOpen(true),
-                  },
-                  {
-                    icon: "👤",
-                    label: lang === "ar" ? "الحساب" : "Account",
-                    desc: lang === "ar" ? "إدارة البيانات" : "Manage profile",
-                    action: () => {
-                      setAccountProfileError("");
-                      setAccountProfileSuccess("");
-                      setAccountDeleteConfirm(false);
-                      setAccountPanelOpen(true);
+          <div style={{ padding: "72px 0 20px" }}>
+            {(() => {
+              const settingsShell = {
+                background: "linear-gradient(145deg, #17356d 0%, #0b2453 56%, #081b43 100%)",
+                border: "1px solid rgba(116,169,255,0.22)",
+                boxShadow: "0 14px 28px rgba(6,24,64,0.22), inset 0 1px 0 rgba(255,255,255,0.10)",
+                borderRadius: 18,
+                padding: isCompactPhone ? "10px 10px" : "12px 14px",
+                minHeight: 70,
+                position: "relative",
+                overflow: "hidden",
+              };
+              const settingsShellAfter = {
+                position: "absolute",
+                inset: 0,
+                borderRadius: 18,
+                background: "linear-gradient(135deg, rgba(255,255,255,0.08), transparent 38%, transparent 65%, rgba(255,255,255,0.03))",
+                pointerEvents: "none",
+              };
+              const sectionTitle = {
+                fontSize: isCompactPhone ? 10 : 11,
+                fontWeight: 900,
+                color: "#ffffff",
+                fontFamily: "'Cairo',sans-serif",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 8,
+                position: "relative",
+                zIndex: 1,
+              };
+              const toggleButton = (active) => ({
+                flex: 1,
+                minHeight: 34,
+                borderRadius: 10,
+                border: active ? "1.5px solid #68a6ff" : "1px solid rgba(255,255,255,0.08)",
+                background: active
+                  ? "linear-gradient(145deg, rgba(17,50,114,0.96), rgba(14,43,98,0.92))"
+                  : "linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
+                color: "#ffffff",
+                fontWeight: 800,
+                fontSize: isCompactPhone ? 10 : 11,
+                fontFamily: "'Cairo',sans-serif",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                cursor: "pointer",
+                position: "relative",
+                boxShadow: active ? "0 0 0 2px rgba(104,166,255,0.12), inset 0 1px 0 rgba(255,255,255,0.12)" : "inset 0 1px 0 rgba(255,255,255,0.05)",
+              });
+              const tileStyle = {
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                width: "100%",
+                minHeight: isCompactPhone ? 80 : 95,
+                borderRadius: 18,
+                padding: "10px 8px",
+                border: "1px solid rgba(116,169,255,0.18)",
+                background: "linear-gradient(145deg, #17356d 0%, #0b2453 56%, #081b43 100%)",
+                boxShadow: "0 8px 18px rgba(6,24,64,0.16), inset 0 1px 0 rgba(255,255,255,0.08)",
+                textDecoration: "none",
+                cursor: "pointer",
+                textAlign: "center",
+                position: "relative",
+                overflow: "hidden",
+              };
+              const tileIconWrap = (bg) => ({
+                width: 34,
+                height: 34,
+                borderRadius: 10,
+                background: bg,
+                border: "1px solid rgba(255,255,255,0.10)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 3px 10px rgba(0,0,0,0.18)",
+              });
+              const settingsActionTiles = [
+                { icon: "⭐", iconBg: "linear-gradient(145deg,#29467f,#1b3265)", label: tx.settingsRate, desc: "", href: PLAY_STORE_URL },
+                { icon: "🔄", iconBg: "linear-gradient(145deg,#29467f,#1b3265)", label: tx.settingsUpdate, desc: "", href: PLAY_STORE_URL },
+                { icon: "🔒", iconBg: "linear-gradient(145deg,#29467f,#1b3265)", label: tx.settingsPrivacy, desc: "", action: () => setPrivacyPolicyOpen(true) },
+                { icon: "📧", iconBg: "linear-gradient(145deg,#29467f,#1b3265)", label: tx.settingsSupport, desc: "", href: "mailto:walidghazal46@gmail.com?subject=دعم فني - تطبيق مكاتب السفريات الموثوقة" },
+                { icon: "in", iconBg: "linear-gradient(145deg,#1e6db9,#0d4d96)", label: "LinkedIn", desc: "", href: LINKEDIN, iconStyle: { fontFamily: "sans-serif", fontWeight: 900, fontSize: 16 } },
+                { icon: "▶", iconBg: "linear-gradient(145deg,#ff3b30,#c81512)", label: "YouTube", desc: "", href: YOUTUBE, iconStyle: { fontSize: 16 } },
+              ];
+              const accountTiles = !!authPreviewUser
+                ? [
+                    {
+                      icon: "👤",
+                      iconBg: "linear-gradient(145deg,#29467f,#1b3265)",
+                      label: lang === "ar" ? "الحساب" : "Account",
+                      desc: "",
+                      action: () => {
+                        setAccountProfileError("");
+                        setAccountProfileSuccess("");
+                        setAccountDeleteConfirm(false);
+                        setAccountPanelOpen(true);
+                      },
                     },
-                  },
-                  {
-                    icon: "🚪",
-                    label: lang === "ar" ? "تسجيل الخروج" : "Sign Out",
-                    desc: lang === "ar" ? "إنهاء الجلسة" : "End session",
-                    action: () => setSignOutConfirmOpen(true),
-                  },
-                  ...(isAdminUser
-                    ? [{
-                        icon: "👑",
-                        label: lang === "ar" ? "حساب الأدمن" : "Admin Account",
-                        desc: lang === "ar" ? "أمان وصلاحيات" : "Security & access",
-                        action: openAdminSecurityModal,
-                      }]
-                    : []),
-                ].map((item, i) => (
-                  <button
-                    key={i}
-                    onClick={item.action}
-                    style={{
-                      display: "block",
-                      textDecoration: "none",
-                      padding: "5px 4px",
-                      borderRadius: 12,
-                      background: t.cardBg,
-                      border: `1px solid ${t.border}`,
-                      cursor: "pointer",
-                      width: "100%",
-                      textAlign: "center",
-                      minHeight: 38,
-                    }}
-                  >
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 3 }}>
-                      <div style={{ width: 22, height: 22, borderRadius: 8, flexShrink: 0, background: t.inputBg, border: `1px solid ${t.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>
-                        {item.icon}
-                      </div>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: t.text, fontFamily: "'Cairo',sans-serif", lineHeight: 1.25 }}>
+                    {
+                      icon: "📖",
+                      iconBg: "linear-gradient(145deg,#29467f,#1b3265)",
+                      label: lang === "ar" ? "شرح الاستخدام" : "How to use",
+                      desc: "",
+                      action: () => setUsageGuideOpen(true),
+                    },
+                  ]
+                : [
+                    {
+                      icon: "📖",
+                      iconBg: "linear-gradient(145deg,#29467f,#1b3265)",
+                      label: lang === "ar" ? "شرح الاستخدام" : "How to use",
+                      desc: "",
+                      action: () => setUsageGuideOpen(true),
+                    },
+                    ...(isGuestUser ? [{
+                      icon: "🔐",
+                      iconBg: "linear-gradient(145deg,#5b2232,#7f1d1d)",
+                      label: lang === "ar" ? "الحساب" : "Account",
+                      desc: "",
+                      action: () => {
+                        setGuestMode(false);
+                        setAuthPreviewMode("login");
+                        setAuthPreviewOpen(true);
+                        setAuthPreviewError("");
+                        setAuthPreviewSuccess("");
+                      },
+                    }] : []),
+                  ];
+              const settingsTailTiles = !!authPreviewUser
+                ? [
+                    ...(isAdminUser ? [{
+                      icon: "👑",
+                      iconBg: "linear-gradient(145deg,#29467f,#1b3265)",
+                      label: lang === "ar" ? "حساب الأدمن" : "Admin Account",
+                      desc: "",
+                      action: openAdminSecurityModal,
+                    }] : []),
+                    {
+                      icon: "↪",
+                      iconBg: "linear-gradient(145deg,#29467f,#1b3265)",
+                      label: lang === "ar" ? "تسجيل الخروج" : "Sign Out",
+                      desc: "",
+                      action: () => setSignOutConfirmOpen(true),
+                    },
+                  ]
+                : [];
+              const renderBigTile = (item, idx) => {
+                const content = (
+                  <div style={tileStyle}>
+                    <div style={{ position: "absolute", inset: 0, borderRadius: 18, background: "linear-gradient(135deg, rgba(255,255,255,0.06), transparent 44%, transparent 66%, rgba(255,255,255,0.025))", pointerEvents: "none" }} />
+                    <div style={{ ...tileIconWrap(item.iconBg), position: "relative", zIndex: 1 }}>
+                      <span style={{ color: "#ffffff", ...((item.iconStyle) || { fontSize: 16 }) }}>{item.icon}</span>
+                    </div>
+                    <div style={{ minWidth: 0, position: "relative", zIndex: 1 }}>
+                      <div style={{ fontSize: isCompactPhone ? 10.5 : 11.5, fontWeight: 900, color: "#ffffff", fontFamily: "'Cairo',sans-serif", lineHeight: 1.2 }}>
                         {item.label}
                       </div>
-                      <div style={{ fontSize: 9, color: t.subText, fontFamily: "'Cairo',sans-serif", lineHeight: 1.25 }}>
-                        {item.desc}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div style={{ display: "grid", gridTemplateColumns: isGuestUser ? "1fr 1fr" : "1fr", gap: 10, marginBottom: 12 }}>
-                <button
-                  onClick={() => setUsageGuideOpen(true)}
-                  style={{
-                    width: "100%",
-                    padding: "5px 4px",
-                    minHeight: 38,
-                    borderRadius: 12,
-                    border: `1px solid ${t.border}`,
-                    background: t.cardBg,
-                    color: dark ? "#f5d77b" : "#7c5100",
-                    fontSize: 11,
-                    fontWeight: 800,
-                    fontFamily: "'Cairo',sans-serif",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    textAlign: "center",
-                  }}
-                >
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 3 }}>
-                    <div style={{ width: 22, height: 22, borderRadius: 8, flexShrink: 0, background: t.inputBg, border: `1px solid ${t.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>
-                      📖
-                    </div>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: t.text, fontFamily: "'Cairo',sans-serif", lineHeight: 1.25 }}>
-                      {lang === "ar" ? "شرح الاستخدام" : "How to use"}
-                    </div>
-                    <div style={{ fontSize: 9, color: t.subText, fontFamily: "'Cairo',sans-serif", lineHeight: 1.25, visibility: "hidden" }}>
-                      {lang === "ar" ? "-" : "-"}
                     </div>
                   </div>
-                </button>
+                );
+                if (item.href) {
+                  return <a key={idx} href={item.href} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>{content}</a>;
+                }
+                return <button key={idx} onClick={item.action} style={{ background: "transparent", border: "none", padding: 0 }}>{content}</button>;
+              };
+              const privacyPolicySections = lang === "ar"
+                ? [
+                    {
+                      icon: "🗂️",
+                      title: "البيانات التي قد نجمعها",
+                      points: [
+                        "بيانات تدخلها بنفسك مثل الاسم ووسائل التواصل عند طلب خدمة.",
+                        "بيانات تقنية أساسية لتحسين الخدمة مثل نوع الجهاز ومعلومات التصفح.",
+                      ],
+                    },
+                    {
+                      icon: "⚙️",
+                      title: "استخدام البيانات",
+                      points: [
+                        "تقديم الخدمة المطلوبة ومتابعة الطلبات.",
+                        "تحسين جودة المحتوى وتجربة الاستخدام.",
+                        "الحماية من إساءة الاستخدام والطلبات المخالفة.",
+                      ],
+                    },
+                    {
+                      icon: "📢",
+                      title: "الإعلانات",
+                      points: [
+                        "قد يستخدم التطبيق خدمات Google AdMob وGoogle AdSense لعرض الإعلانات.",
+                        "قد تعتمد هذه الخدمات على معرّفات الجهاز الإعلانية أو تقنيات مشابهة لقياس الأداء وتخصيص الإعلانات.",
+                        "لا نقوم ببيع بياناتك الشخصية لطرف ثالث.",
+                      ],
+                    },
+                    {
+                      icon: "🤝",
+                      title: "مشاركة البيانات وحقوقك",
+                      points: [
+                        "لا يتم بيع بياناتك الشخصية، وقد تتم مشاركة الحد الأدنى اللازم فقط مع مزودي الخدمات التقنية.",
+                        "يمكنك طلب الوصول إلى بياناتك أو تصحيحها أو حذفها ضمن الحدود المسموح بها تقنيًا وقانونيًا.",
+                      ],
+                    },
+                  ]
+                : [
+                    {
+                      icon: "🗂️",
+                      title: "Data We May Collect",
+                      points: [
+                        "Information you provide such as your name and contact details when requesting a service.",
+                        "Basic technical information to improve the service, such as device type and browsing data.",
+                      ],
+                    },
+                    {
+                      icon: "⚙️",
+                      title: "How We Use Data",
+                      points: [
+                        "To deliver requested services and follow up on requests.",
+                        "To improve content quality and user experience.",
+                        "To prevent misuse and non-compliant requests.",
+                      ],
+                    },
+                    {
+                      icon: "📢",
+                      title: "Advertising",
+                      points: [
+                        "The app may use Google AdMob and Google AdSense to display ads.",
+                        "These services may rely on advertising identifiers or similar technologies to measure performance and personalize ads when available.",
+                        "We do not sell your personal data to third parties.",
+                      ],
+                    },
+                    {
+                      icon: "🤝",
+                      title: "Sharing And Your Rights",
+                      points: [
+                        "Your personal data is not sold, and only the minimum necessary may be shared with technical service providers.",
+                        "You may request access, correction, or deletion of your data within legal and technical limits.",
+                      ],
+                    },
+                  ];
 
-                {isGuestUser && (
-                  <button
-                    onClick={() => {
-                      setGuestMode(false);
-                      setAuthPreviewMode("login");
-                      setAuthPreviewOpen(true);
-                      setAuthPreviewError("");
-                      setAuthPreviewSuccess("");
-                    }}
-                    style={{
-                      width: "100%",
-                      padding: "5px 4px",
-                      minHeight: 38,
-                      borderRadius: 12,
-                        border: "1px solid rgba(248,113,113,0.34)",
-                        background: dark
-                          ? "linear-gradient(145deg, rgba(127,29,29,0.30) 0%, rgba(185,28,28,0.18) 58%, rgba(255,255,255,0.10) 100%)"
-                          : "linear-gradient(145deg, rgba(255,246,246,0.98) 0%, rgba(255,233,233,0.97) 58%, rgba(255,255,255,0.94) 100%)",
-                        color: dark ? "#fecaca" : "#7f1d1d",
-                      fontSize: 11,
-                      fontWeight: 800,
-                      fontFamily: "'Cairo',sans-serif",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      textAlign: "center",
-                        boxShadow: dark
-                          ? "0 0 12px rgba(248,113,113,0.24), inset 0 1px 0 rgba(255,255,255,0.32), inset 0 -10px 14px rgba(255,255,255,0.08)"
-                          : "0 0 14px rgba(248,113,113,0.20), inset 0 1px 0 rgba(255,255,255,0.86), inset 0 -10px 14px rgba(255,255,255,0.42)",
-                    }}
-                  >
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 3 }}>
-                        <div style={{ width: 22, height: 22, borderRadius: 8, flexShrink: 0, background: dark ? "linear-gradient(150deg, rgba(127,29,29,0.42), rgba(185,28,28,0.28))" : "linear-gradient(150deg, rgba(254,226,226,0.98), rgba(255,245,245,0.95))", border: "1px solid rgba(248,113,113,0.30)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, boxShadow: dark ? "0 0 8px rgba(248,113,113,0.22), inset 0 1px 0 rgba(255,255,255,0.25)" : "0 0 8px rgba(248,113,113,0.16), inset 0 1px 0 rgba(255,255,255,0.75)" }}>
-                        🔐
+              return (
+                <>
+                  {privacyPolicyOpen ? (
+                    <div style={{ display: "grid", gap: 12 }}>
+                      <button
+                        type="button"
+                        onClick={() => setPrivacyPolicyOpen(false)}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 8,
+                          justifyContent: "center",
+                          width: "fit-content",
+                          padding: "10px 18px",
+                          borderRadius: 999,
+                          border: "1px solid rgba(116,169,255,0.24)",
+                          background: "linear-gradient(145deg, #17356d 0%, #0b2453 56%, #081b43 100%)",
+                          color: "#ffffff",
+                          fontSize: 12,
+                          fontWeight: 900,
+                          fontFamily: "'Cairo',sans-serif",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <span>{lang === "ar" ? "←" : "→"}</span>
+                        <span>{lang === "ar" ? "الرجوع إلى الإعدادات" : "Back To Settings"}</span>
+                      </button>
+
+                      <div style={{ ...settingsShell, minHeight: "auto", padding: "18px 16px" }}>
+                        <div style={settingsShellAfter} />
+                        <div style={{ position: "relative", zIndex: 1 }}>
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, borderRadius: 999, padding: "5px 11px", marginBottom: 10, background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.12)", color: "#bfdbfe", fontSize: 11, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+                            <span>🔒</span>
+                            <span>{tx.settingsPrivacy}</span>
+                          </div>
+                          <div style={{ fontSize: 22, fontWeight: 900, color: "#ffffff", lineHeight: 1.4, marginBottom: 8, fontFamily: "'Cairo',sans-serif" }}>
+                            {lang === "ar" ? "سياسة الخصوصية داخل التطبيق" : "In-App Privacy Policy"}
+                          </div>
+                          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.82)", lineHeight: 1.8, fontFamily: "'Cairo',sans-serif", marginBottom: 10 }}>
+                            {lang === "ar"
+                              ? "نعرض لك هنا نسخة مرتبة ومبسطة من سياسة الخصوصية الخاصة بتطبيق مكاتب السفريات الموثوقة."
+                              : "Here is a polished in-app version of the Trusted Travel Offices privacy policy."}
+                          </div>
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: 7, borderRadius: 999, padding: "4px 10px", background: "rgba(34,197,94,0.16)", border: "1px solid rgba(74,222,128,0.28)", color: "#bbf7d0", fontSize: 10.5, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+                            <span>🕒</span>
+                            <span>{lang === "ar" ? "آخر تحديث: 2026-04-17" : "Last updated: 2026-04-17"}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: t.text, fontFamily: "'Cairo',sans-serif", lineHeight: 1.25 }}>
-                        {lang === "ar" ? "تسجيل الدخول بحساب" : "Sign In With Account"}
+
+                      <div style={{ display: "grid", gap: 10 }}>
+                        {privacyPolicySections.map((section) => (
+                          <div
+                            key={section.title}
+                            style={{
+                              borderRadius: 20,
+                              border: "1px solid rgba(116,169,255,0.18)",
+                              background: "linear-gradient(145deg, rgba(255,255,255,0.96), rgba(241,245,249,0.98))",
+                              padding: "14px 14px 12px",
+                              boxShadow: "0 12px 24px rgba(15,23,42,0.08)",
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                              <div style={{ width: 36, height: 36, borderRadius: 12, background: "linear-gradient(145deg,#dbeafe,#bfdbfe)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+                                {section.icon}
+                              </div>
+                              <div style={{ fontSize: 14, fontWeight: 900, color: "#0f172a", fontFamily: "'Cairo',sans-serif" }}>
+                                {section.title}
+                              </div>
+                            </div>
+                            <div style={{ display: "grid", gap: 7 }}>
+                              {section.points.map((point) => (
+                                <div key={point} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 11.5, color: "#334155", lineHeight: 1.85, fontFamily: "'Cairo',sans-serif" }}>
+                                  <span style={{ color: "#2563eb", fontWeight: 900 }}>•</span>
+                                  <span>{point}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <div style={{ fontSize: 9, color: t.subText, fontFamily: "'Cairo',sans-serif", lineHeight: 1.25, visibility: "hidden" }}>
-                        {lang === "ar" ? "-" : "-"}
+
+                      <div style={{ ...settingsShell, minHeight: "auto", padding: "14px 16px" }}>
+                        <div style={settingsShellAfter} />
+                        <div style={{ position: "relative", zIndex: 1, display: "grid", gap: 10 }}>
+                          <div style={{ fontSize: 14, fontWeight: 900, color: "#ffffff", fontFamily: "'Cairo',sans-serif" }}>
+                            {lang === "ar" ? "التواصل والنسخة الكاملة" : "Contact And Full Version"}
+                          </div>
+                          <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.82)", lineHeight: 1.8, fontFamily: "'Cairo',sans-serif" }}>
+                            {lang === "ar"
+                              ? "إذا كان لديك أي استفسار بخصوص الخصوصية يمكنك التواصل مباشرة عبر الدعم."
+                              : "If you have any privacy-related questions, you can contact support directly."}
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
+                            <a href="mailto:walidghazal46@gmail.com" style={{ textDecoration: "none" }}>
+                              <div style={{ borderRadius: 14, padding: "10px 12px", textAlign: "center", border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.08)", color: "#ffffff", fontSize: 11, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+                                {lang === "ar" ? "مراسلة الدعم" : "Email Support"}
+                              </div>
+                            </a>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </button>
-                )}
-              </div>
-            )}
+                  ) : (
+                  <>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10, marginBottom: 10 }}>
+                    <div style={settingsShell}>
+                      <div style={settingsShellAfter} />
+                      <div style={sectionTitle}>
+                        <span>{tx.settingsTheme}</span>
+                        <span style={{ fontSize: 14 }}>🎨</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, position: "relative", zIndex: 1 }}>
+                        {[true, false].map((isDark) => {
+                          const active = dark === isDark;
+                          return (
+                            <button key={String(isDark)} onClick={() => setDark(isDark)} style={toggleButton(active)}>
+                              <span style={{ fontSize: 10 }}>{isDark ? `🌙 ${tx.settingsThemeDark}` : `☀️ ${tx.settingsThemeLight}`}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-            <div style={{ textAlign: "center", marginTop: 16, color: t.subText, fontSize: 11, fontFamily: "'Cairo',sans-serif" }}>v1.0.0.26 — مكاتب السفريات الموثوقة</div>
+                    <div style={settingsShell}>
+                      <div style={settingsShellAfter} />
+                      <div style={sectionTitle}>
+                        <span>{tx.settingsLang}</span>
+                        <span style={{ fontSize: 14 }}>🌐</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, position: "relative", zIndex: 1 }}>
+                        {["ar", "en"].map((l) => {
+                          const active = lang === l;
+                          return (
+                            <button key={l} onClick={() => setLang(l)} style={toggleButton(active)}>
+                              <span style={{ fontSize: 10 }}>{l === "ar" ? tx.settingsLangAr : tx.settingsLangEn}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginBottom: 10 }}>
+                    {accountTiles.map(renderBigTile)}
+                    {settingsActionTiles.map(renderBigTile)}
+                    {settingsTailTiles.map(renderBigTile)}
+                  </div>
+                  </>
+                  )}
+                </>
+              );
+            })()}
+
+            <div style={{ textAlign: "center", marginTop: 16, color: t.subText, fontSize: 14.3, fontFamily: "'Cairo',sans-serif" }}>v1.0.0.26 — مكاتب السفريات الموثوقة</div>
 
             {/* ── إشعار هام ── */}
-            <div style={{ marginTop: 16, borderRadius: 14, border: `1px solid ${t.gold}30`, background: dark ? `${t.gold}08` : `${t.gold}0a`, padding: "14px 16px" }}>
+            <div style={{ marginTop: 16, borderRadius: 24, border: "1px solid rgba(116,169,255,0.18)", background: "linear-gradient(145deg, #17356d 0%, #0b2453 56%, #081b43 100%)", boxShadow: "0 18px 36px rgba(6,24,64,0.22), inset 0 1px 0 rgba(255,255,255,0.08)", padding: "14px 16px" }}>
               <button
                 type="button"
                 onClick={() => setDiscNoticeOpen((prev) => !prev)}
                 style={{
                   width: "100%",
-                  borderRadius: 10,
-                  border: `1px solid ${t.gold}2b`,
-                  background: dark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.82)",
-                  color: t.gold,
+                  borderRadius: 18,
+                  border: "1px solid rgba(116,169,255,0.18)",
+                  background: "linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04))",
+                  color: "#ffffff",
                   padding: "10px 11px",
                   display: "flex",
                   alignItems: "center",
@@ -14833,17 +15011,17 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               >
                 <span>⚠️ {tx.discTitle}</span>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800 }}>{discNoticeOpen ? tx.discCollapse : tx.discExpand}</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: "#ffffff" }}>{discNoticeOpen ? tx.discCollapse : tx.discExpand}</span>
                   <span style={{ fontSize: 14, lineHeight: 1 }}>{discNoticeOpen ? "▴" : "▾"}</span>
                 </span>
               </button>
 
               {discNoticeOpen && (
                 <>
-                  <div style={{ fontSize: 12, color: t.text, lineHeight: 1.8, fontFamily: "'Cairo',sans-serif", marginTop: 8, marginBottom: 4 }}>{tx.discBody}</div>
-                  <div style={{ fontSize: 11, color: t.text, lineHeight: 1.8, fontFamily: "'Cairo',sans-serif", marginBottom: 6 }}>{tx.discSub}</div>
-                  <div style={{ fontSize: 10, color: t.subText, fontFamily: "sans-serif", lineHeight: 1.6 }}>{tx.discEn}</div>
-                  <div style={{ marginTop: 10, fontSize: 11, fontWeight: 800, color: t.gold, fontFamily: "'Cairo',sans-serif" }}>{tx.discSourcesTitle}</div>
+                  <div style={{ fontSize: 12, color: "#ffffff", lineHeight: 1.8, fontFamily: "'Cairo',sans-serif", marginTop: 8, marginBottom: 4 }}>{tx.discBody}</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.92)", lineHeight: 1.8, fontFamily: "'Cairo',sans-serif", marginBottom: 6 }}>{tx.discSub}</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.82)", fontFamily: "sans-serif", lineHeight: 1.6 }}>{tx.discEn}</div>
+                  <div style={{ marginTop: 10, fontSize: 11, fontWeight: 800, color: "#ffffff", fontFamily: "'Cairo',sans-serif" }}>{tx.discSourcesTitle}</div>
                   <button
                     type="button"
                     onClick={() => setDiscSourcesOpen((prev) => !prev)}
@@ -15051,7 +15229,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
           {
             key: "home", label: tx.navHome,
             icon: (active) => (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? t.gold : (dark ? "rgba(255,255,255,0.45)" : "rgba(30,64,175,0.4)")} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? "#ffffff" : (dark ? "rgba(255,255,255,0.45)" : "rgba(30,64,175,0.4)")} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5z"/>
                 <path d="M9 21V12h6v9"/>
               </svg>
@@ -15060,7 +15238,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
           {
             key: "study", label: tx.navStudy,
             icon: (active) => (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? t.gold : (dark ? "rgba(255,255,255,0.45)" : "rgba(30,64,175,0.4)")} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? "#ffffff" : (dark ? "rgba(255,255,255,0.45)" : "rgba(30,64,175,0.4)")} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 4 3 8.5 12 13l9-4.5L12 4Z"/>
                 <path d="M7 11.2V15.5C7 16.7 9.2 18 12 18s5-1.3 5-2.5v-4.3"/>
                 <path d="M21 9v6"/>
@@ -15071,7 +15249,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
           {
             key: "cv", label: tx.navCV,
             icon: (active) => (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? t.gold : (dark ? "rgba(255,255,255,0.45)" : "rgba(30,64,175,0.4)")} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? "#ffffff" : (dark ? "rgba(255,255,255,0.45)" : "rgba(30,64,175,0.4)")} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="4" y="2" width="16" height="20" rx="2"/>
                 <line x1="8" y1="8" x2="16" y2="8"/>
                 <line x1="8" y1="12" x2="16" y2="12"/>
@@ -15082,7 +15260,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
           {
             key: "settings", label: tx.navSettings,
             icon: (active) => (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? t.gold : (dark ? "rgba(255,255,255,0.45)" : "rgba(30,64,175,0.4)")} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? "#ffffff" : (dark ? "rgba(255,255,255,0.45)" : "rgba(30,64,175,0.4)")} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="3"/>
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
               </svg>
@@ -15144,8 +15322,8 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     width: "56%",
                     height: 3,
                     borderRadius: "0 0 6px 6px",
-                    background: `linear-gradient(90deg, ${t.gold}, ${dark ? "#f0c040" : "#c8960a"})`,
-                    boxShadow: `0 0 10px ${t.gold}80`,
+                    background: "linear-gradient(90deg, #1e3a8a, #0d1b52)",
+                    boxShadow: "0 0 10px rgba(13,27,82,0.6)",
                   }}
                 />
               )}
@@ -15155,16 +15333,15 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   position: "absolute",
                   inset: "4px 8px",
                   borderRadius: 12,
-                  background: dark
-                    ? "rgba(212,175,55,0.08)"
-                    : "rgba(184,134,11,0.06)",
+                  background: "linear-gradient(145deg, #0d1b52, #0a1640)",
+                  boxShadow: "0 4px 16px rgba(10,22,70,0.35)",
                   pointerEvents: "none",
                 }} />
               )}
               {/* Icon with glow when active */}
               <span style={{
                 lineHeight: 1,
-                filter: active ? `drop-shadow(0 0 6px ${t.gold}90)` : "none",
+                filter: active ? "drop-shadow(0 0 6px rgba(255,255,255,0.5))" : "none",
                 transition: "filter 0.25s ease",
                 position: "relative",
                 zIndex: 1,
@@ -15175,7 +15352,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               <span style={{
                 fontSize: 10,
                 fontWeight: active ? 800 : 500,
-                color: active ? t.gold : t.subText,
+                color: active ? "#ffffff" : t.subText,
                 transition: "color 0.25s ease, font-weight 0.25s ease",
                 letterSpacing: active ? 0.2 : 0,
                 position: "relative",

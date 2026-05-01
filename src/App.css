@@ -202,6 +202,78 @@
   transform: translateY(-2px) scale(0.995) !important;
 }
 
+/* ── Crystal Card (glass shimmer on hover) ────────────────────────────────── */
+.crystal-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 280ms cubic-bezier(0.4, 0, 0.2, 1),
+    filter 280ms ease;
+  will-change: transform, box-shadow;
+}
+
+/* Static top-left glass highlight */
+.crystal-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(255,255,255,0.28) 0%,
+    rgba(255,255,255,0.08) 35%,
+    transparent 65%
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 280ms ease;
+  z-index: 10;
+}
+
+/* Sweeping crystal stripe */
+.crystal-card::after {
+  content: '';
+  position: absolute;
+  top: -100%;
+  left: -120%;
+  width: 90%;
+  height: 300%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.0) 15%,
+    rgba(255,255,255,0.18) 35%,
+    rgba(255,255,255,0.72) 50%,
+    rgba(255,255,255,0.18) 65%,
+    rgba(255,255,255,0.0) 85%,
+    transparent 100%
+  );
+  transform: rotate(16deg);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 11;
+}
+
+.crystal-card:hover {
+  transform: translateY(-5px) scale(1.018) !important;
+  filter: brightness(1.05) saturate(1.08);
+}
+
+.crystal-card:hover::before {
+  opacity: 1;
+}
+
+.crystal-card:hover::after {
+  animation: crystalSweep 1.4s ease forwards;
+}
+
+.crystal-card:active {
+  transform: translateY(-2px) scale(1.004) !important;
+  transition-duration: 100ms;
+}
+
 /* ── CV Pricing Cards ─────────────────────────────────────────────────────── */
 .cv-pricing-card {
   transition: transform var(--transition-smooth), box-shadow var(--transition-smooth), border-color var(--transition-smooth) !important;
@@ -560,14 +632,16 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
   text-decoration: none;
-  transition: transform var(--transition-smooth);
+  transition: transform var(--transition-smooth), filter var(--transition-smooth);
   animation: cardEntrance 0.4s ease both;
+  flex: 1 1 0;
 }
 
 .landing-link-tile:hover {
-  transform: translateY(-4px) scale(1.06);
+  transform: translateY(-4px) scale(1.03);
+  filter: saturate(1.05);
 }
 
 .landing-link-tile:active {
@@ -575,38 +649,67 @@
 }
 
 .landing-link-orb {
-  width: 44px;
-  height: 44px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 19px;
-  transition: box-shadow var(--transition-smooth), transform var(--transition-smooth);
+  transition: box-shadow var(--transition-smooth), transform var(--transition-smooth), border-color var(--transition-smooth);
   position: relative;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.98), rgba(255,255,255,0.9) 58%, rgba(241,245,249,0.95) 100%);
+  border: 2px solid rgba(255,255,255,0.92);
+  box-shadow:
+    0 10px 18px rgba(15,23,42,0.14),
+    0 0 0 5px color-mix(in srgb, var(--link-accent) 18%, transparent);
+  overflow: hidden;
 }
 
 .landing-link-orb::after {
   content: '';
   position: absolute;
-  inset: -3px;
+  inset: 0;
   border-radius: 50%;
-  border: 1.5px solid rgba(255,255,255,0.2);
-  opacity: 0;
-  transition: opacity var(--transition-smooth);
+  background: linear-gradient(145deg, rgba(255,255,255,0.72), rgba(255,255,255,0.04) 58%, transparent 72%);
+  pointer-events: none;
+}
+
+.landing-link-orb-core {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 25px;
+  color: #fff;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--link-accent) 62%, white), var(--link-accent));
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,0.35),
+    0 7px 14px color-mix(in srgb, var(--link-accent) 34%, transparent);
+  position: relative;
+}
+
+.landing-link-orb-core::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.24);
+  pointer-events: none;
 }
 
 .landing-link-tile:hover .landing-link-orb {
-  transform: scale(1.1);
-}
-
-.landing-link-tile:hover .landing-link-orb::after {
-  opacity: 1;
+  transform: translateY(-2px) scale(1.04);
+  box-shadow:
+    0 14px 26px rgba(15,23,42,0.18),
+    0 0 0 6px color-mix(in srgb, var(--link-accent) 24%, transparent);
 }
 
 .landing-link-label {
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 900;
   text-align: center;
   line-height: 1.3;
   font-family: 'Cairo', sans-serif;
@@ -617,7 +720,7 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 4px;
+  gap: 8px;
 }
 
 /* ── Premium Glass Card Base ──────────────────────────────────────────────── */
@@ -956,4 +1059,167 @@
 .delay-2 { animation-delay: 0.16s; }
 .delay-3 { animation-delay: 0.24s; }
 .delay-4 { animation-delay: 0.32s; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LARGE SCREEN & FOLDABLE SUPPORT — Android 17 / Tablet / Foldable
+   Targets: Android tablets, foldables (Galaxy Fold, Pixel Fold), Chromebooks
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Safe Area Insets (notch, punch-hole, foldable hinge) ─────────────────── */
+:root {
+  --safe-top:    env(safe-area-inset-top,    0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left,   0px);
+  --safe-right:  env(safe-area-inset-right,  0px);
+}
+
+body {
+  padding-top:    var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  padding-left:   var(--safe-left);
+  padding-right:  var(--safe-right);
+}
+
+/* ── Tablet Layout (768px+) ───────────────────────────────────────────────── */
+@media (min-width: 768px) {
+  /* Constrain app width and center on wide screens */
+  #root,
+  [id="root"] {
+    max-width: 900px;
+    margin-inline: auto;
+  }
+
+  /* Larger touch targets for tablet fingers */
+  button,
+  [role="button"],
+  a {
+    min-height: 44px;
+  }
+
+  /* Bottom navigation bar: wider padding on tablets */
+  .bottom-nav,
+  [class*="bottom-nav"],
+  [class*="bottomNav"] {
+    padding-bottom: max(12px, var(--safe-bottom));
+    padding-inline: 24px;
+  }
+
+  /* Floating action buttons: reposition away from edge */
+  .wa-float-btn,
+  [class*="float-btn"],
+  [class*="floatBtn"] {
+    bottom: max(80px, calc(60px + var(--safe-bottom)));
+    inset-inline-end: 20px;
+  }
+
+  /* Card grid: 2-column on tablets */
+  .offices-grid,
+  [class*="offices-grid"],
+  [class*="officesGrid"],
+  [class*="card-grid"],
+  [class*="cardGrid"] {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  /* Modals: wider and centered */
+  [class*="modal"],
+  [class*="Modal"],
+  [class*="panel"],
+  [class*="Panel"] {
+    max-width: 680px;
+    margin-inline: auto;
+    border-radius: var(--radius-xl);
+  }
+
+  /* Font scaling for comfort on large screens */
+  body { font-size: 17px; }
+}
+
+/* ── Large Screen / Foldable Unfolded (1024px+) ───────────────────────────── */
+@media (min-width: 1024px) {
+  #root,
+  [id="root"] {
+    max-width: 1100px;
+  }
+
+  /* 3-column card grid on desktop-size screens */
+  .offices-grid,
+  [class*="offices-grid"],
+  [class*="officesGrid"] {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  /* Side-by-side layout for content + sidebar when screen allows */
+  [class*="main-content"],
+  [class*="mainContent"] {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* Modals even wider */
+  [class*="modal"],
+  [class*="Modal"] {
+    max-width: 820px;
+  }
+
+  body { font-size: 16px; }
+}
+
+/* ── Foldable: Folded state (narrow tall, ~360px or less width) ────────────── */
+@media (max-width: 360px) {
+  /* Single-column, compact spacing for folded foldable */
+  .offices-grid,
+  [class*="offices-grid"],
+  [class*="officesGrid"] {
+    grid-template-columns: 1fr;
+  }
+
+  body { font-size: 14px; }
+}
+
+/* ── Multi-window / Split Screen support ──────────────────────────────────── */
+@media (max-height: 400px) and (orientation: landscape) {
+  /* Compact vertical layout when in split-screen landscape */
+  .bottom-nav,
+  [class*="bottom-nav"],
+  [class*="bottomNav"] {
+    display: none;
+  }
+
+  /* Show a compact top nav instead in landscape split-screen */
+  [class*="header"],
+  [class*="Header"] {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+}
+
+/* ── Hover states (mice / trackpads on tablets/Chromebooks) ───────────────── */
+@media (hover: hover) and (pointer: fine) {
+  .section-card:hover {
+    transform: translateY(-4px) scale(1.01) !important;
+  }
+
+  button:hover,
+  [role="button"]:hover {
+    opacity: 0.88;
+  }
+}
+
+/* ── Reduce motion for accessibility (respects Android Accessibility settings) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 .delay-5 { animation-delay: 0.40s; }

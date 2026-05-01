@@ -1,7 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android 17 (API 37) compatible network security config.
+    - Certificate Transparency is enforced by default on Android 17+.
+    - Cleartext (HTTP) is only allowed for localhost dev connections.
+    - All production traffic uses HTTPS with CT enforcement.
+-->
 <network-security-config>
+    <!-- Allow HTTP only for local dev server (Capacitor live reload) -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">localhost</domain>
         <domain includeSubdomains="true">127.0.0.1</domain>
     </domain-config>
+
+    <!-- All other traffic: HTTPS only, CT enforced (Android 17 default) -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
 </network-security-config>
