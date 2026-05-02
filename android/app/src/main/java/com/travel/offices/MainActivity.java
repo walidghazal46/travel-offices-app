@@ -23,6 +23,7 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(ScreenSecurityPlugin.class);
         registerPlugin(DeviceIdentityPlugin.class);
+        registerPlugin(NativeInlineAdPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Hide ActionBar if somehow still visible

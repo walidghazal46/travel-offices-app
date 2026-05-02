@@ -2,7 +2,9 @@ import { App as CapApp } from "@capacitor/app";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
+import { AdMob } from "@capacitor-community/admob";
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { hideNativeInlineAdSlot, showNativeInlineAdSlot } from "./plugins/nativeInlineAd";
 import {
   confirmNativePhoneCodeAndSync,
   createAccountPhoneRecaptcha,
@@ -90,7 +92,10 @@ const YOUTUBE = "http://www.youtube.com/@WalidGhazal";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.travel.offices";
 const TRAVEL_AD_DEFAULT_CLICK_URL = "https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D8%B5%D9%81%D8%AD%D8%A9%20%D9%85%D9%83%D8%A7%D8%AA%D8%A8%20%D8%A7%D9%84%D8%B3%D9%81%D8%B1%D9%8A%D8%A7%D8%AA";
 const JOBS_AD_DEFAULT_CLICK_URL = "https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D9%82%D8%B3%D9%85%20%D8%A7%D9%84%D8%AA%D9%88%D8%B8%D9%8A%D9%81";
-const STUDY_AD_DEFAULT_CLICK_URL = "https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D8%B5%D9%81%D8%AD%D8%A9%20%D9%85%D9%83%D8%A7%D8%AA%D8%A8%20%D8%A7%D9%84%D8%AF%D8%B1%D8%A7%D8%B3%D8%A9";
+const ADMOB_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-6810176545596111/2997466527";
+const ADMOB_NATIVE_INLINE_AD_UNIT_ID = "ca-app-pub-6810176545596111/7235034949";
+const INTERSTITIAL_MIN_INTERVAL_MS = 3 * 60 * 1000;
+const STUDY_AD_DEFAULT_CLICK_URL ="https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D8%B5%D9%81%D8%AD%D8%A9%20%D9%85%D9%83%D8%A7%D8%AA%D8%A8%20%D8%A7%D9%84%D8%AF%D8%B1%D8%A7%D8%B3%D8%A9";
 
 const sanitizeNationalityValue = (value) => {
   const trimmed = String(value || "").trim();
@@ -936,6 +941,119 @@ class PaidFlowErrorBoundary extends React.Component {
   }
 }
 
+function AdSenseUnit() {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!ref.current) return;
+    try {
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch { /* silent */ }
+  }, []);
+  return (
+    <div style={{ overflow: "hidden", margin: "10px 0" }}>
+      <ins
+        ref={ref}
+        className="adsbygoogle"
+        style={{ display: "block" }}
+        data-ad-client="ca-pub-6810176545596111"
+        data-ad-slot="2882839892"
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+      />
+    </div>
+  );
+}
+
+function NativeInlineAdSlot({ slotId, lang, dark, height = 196 }) {
+  const ref = React.useRef(null);
+
+  const syncSlot = useCallback(() => {
+    if (Capacitor.getPlatform() !== "android" || !ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const isVisible =
+      rect.width >= 40 &&
+      rect.height >= 40 &&
+      rect.bottom > 0 &&
+      rect.top < window.innerHeight;
+
+    if (!isVisible) {
+      hideNativeInlineAdSlot(slotId).catch(() => {});
+      return;
+    }
+
+    showNativeInlineAdSlot({
+      slotId,
+      adUnitId: ADMOB_NATIVE_INLINE_AD_UNIT_ID,
+      x: rect.left,
+      y: rect.top,
+      width: rect.width,
+      height: rect.height,
+      pixelRatio: window.devicePixelRatio || 1,
+      lang,
+    }).catch(() => {});
+  }, [lang, slotId]);
+
+  useEffect(() => {
+    if (Capacitor.getPlatform() !== "android") return undefined;
+
+    let frame = 0;
+    let observer;
+
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(syncSlot);
+    };
+
+    schedule();
+    window.addEventListener("resize", schedule);
+    window.addEventListener("orientationchange", schedule);
+    window.addEventListener("scroll", schedule, true);
+
+    if (typeof ResizeObserver !== "undefined" && ref.current) {
+      observer = new ResizeObserver(schedule);
+      observer.observe(ref.current);
+    }
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("orientationchange", schedule);
+      window.removeEventListener("scroll", schedule, true);
+      if (observer) observer.disconnect();
+      hideNativeInlineAdSlot(slotId).catch(() => {});
+    };
+  }, [slotId, syncSlot]);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        minHeight: height,
+        width: "100%",
+        borderRadius: 20,
+        overflow: "hidden",
+        background: dark ? "linear-gradient(145deg, rgba(15,23,42,0.94), rgba(30,41,59,0.92))" : "linear-gradient(145deg, #f8fafc, #e2e8f0)",
+        border: `1px solid ${dark ? "rgba(148,163,184,0.2)" : "rgba(148,163,184,0.28)"}`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center",
+        padding: 14,
+        boxSizing: "border-box",
+      }}
+    >
+      <div style={{ fontFamily: "'Cairo',sans-serif", display: "grid", gap: 6 }}>
+        <div style={{ fontSize: 11, fontWeight: 900, color: dark ? "#f8fafc" : "#0f172a" }}>
+          {lang === "ar" ? "إعلان ممول" : "Sponsored Ad"}
+        </div>
+        <div style={{ fontSize: 10, lineHeight: 1.7, color: dark ? "#94a3b8" : "#64748b" }}>
+          {lang === "ar" ? "يتم تحميل إعلان AdMob داخل التطبيق..." : "Loading an in-app AdMob placement..."}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const createInitialCvData = () => ({
     fullName: "", jobTitle: "", country: "", location: "", phone: "", whatsapp: "", email: "",
@@ -1367,6 +1485,29 @@ export default function App() {
   const cvRemoveLang = (i) => cvUpdate("languages", cvData.languages.filter((_, idx) => idx !== i));
 
   const isNativePlatform = Capacitor.getPlatform() !== "web";
+  const isAndroidPlatform = Capacitor.getPlatform() === "android";
+  const admobInitializedRef = useRef(false);
+  const interstitialReadyRef = useRef(false);
+  const lastInterstitialTimeRef = useRef(0);
+
+  const showInterstitialAd = useCallback(async () => {
+    if (!isNativePlatform || !admobInitializedRef.current) return;
+    const now = Date.now();
+    if (now - lastInterstitialTimeRef.current < INTERSTITIAL_MIN_INTERVAL_MS) return;
+    try {
+      if (!interstitialReadyRef.current) {
+        await AdMob.prepareInterstitial({ adId: ADMOB_INTERSTITIAL_AD_UNIT_ID });
+        interstitialReadyRef.current = true;
+      }
+      await AdMob.showInterstitial();
+      lastInterstitialTimeRef.current = Date.now();
+      interstitialReadyRef.current = false;
+      AdMob.prepareInterstitial({ adId: ADMOB_INTERSTITIAL_AD_UNIT_ID })
+        .then(() => { interstitialReadyRef.current = true; })
+        .catch(() => {});
+    } catch { /* silent */ }
+  }, [isNativePlatform]);
+
   const currentCvBuilderReviewMeta = selectedCvBuilderOrder?.review || null;
   const cvBuilderDaysPassed = cvBuilderReviewSavedAt
     ? Math.max(0, Math.floor((Date.now() - new Date(cvBuilderReviewSavedAt).getTime()) / (1000 * 60 * 60 * 24)))
@@ -4089,6 +4230,7 @@ export default function App() {
   }, [lang]);
 
   const openStudyTabRoot = useCallback(() => {
+    showInterstitialAd();
     setMainTab("study");
     setStudyTabResetToken((prev) => prev + 1);
 
@@ -4121,7 +4263,7 @@ export default function App() {
         }
       });
     }
-  }, []);
+  }, [showInterstitialAd]);
 
   const promptStudyReviewsAuth = useCallback((mode = "login") => {
     setShowExitConfirm(false);
@@ -5187,6 +5329,17 @@ export default function App() {
   }, []);
 
   const showJobsBannerAd = isMainBannerAdActive(jobsBannerAd);
+
+  useEffect(() => {
+    if (!isNativePlatform) return;
+    AdMob.initialize()
+      .then(() => {
+        admobInitializedRef.current = true;
+        return AdMob.prepareInterstitial({ adId: ADMOB_INTERSTITIAL_AD_UNIT_ID });
+      })
+      .then(() => { interstitialReadyRef.current = true; })
+      .catch(() => {});
+  }, [isNativePlatform]);
 
   const cvOfferDeadline = useMemo(() => {
     const d = new Date();
@@ -9477,9 +9630,9 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
       {/* Nav */}
       <nav style={{ padding: "16px 10px", flex: 1 }}>
         {[
-          { key: "home",     icon: "🏠", label: tx.navHome,     action: () => goToCountryLanding() },
+          { key: "home",     icon: "🏠", label: tx.navHome,     action: () => { showInterstitialAd(); goToCountryLanding(); } },
           { key: "study",    icon: "🎓", label: tx.navStudy,    action: openStudyTabRoot },
-          { key: "cv",       icon: "📄", label: tx.navCV,       action: () => { setMainTab("cv"); setCvMode(null); setSelectedCvPackage(null); setCvBuilderScreen("menu"); setSelectedCvBuilderOrder(null); setCvStep(0); setCvUnlocked(false); } },
+          { key: "cv",       icon: "📄", label: tx.navCV,       action: () => { showInterstitialAd(); setMainTab("cv"); setCvMode(null); setSelectedCvPackage(null); setCvBuilderScreen("menu"); setSelectedCvBuilderOrder(null); setCvStep(0); setCvUnlocked(false); scrollAppToTop(); if (typeof window !== "undefined") { window.requestAnimationFrame(() => { scrollAppToTop(); }); } } },
           { key: "settings", icon: "⚙️", label: tx.navSettings, action: () => setMainTab("settings") },
         ].map(tab => {
           const active = mainTab === tab.key;
@@ -11359,6 +11512,13 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     </p>
                   </div>
 
+                  {!isNativePlatform && <AdSenseUnit />}
+                  {isAndroidPlatform && (
+                    <div style={{ marginTop: 10 }}>
+                      <NativeInlineAdSlot slotId="travel-country-selector" lang={lang} dark={dark} height={184} />
+                    </div>
+                  )}
+
                 </div>
               </div>
             )}
@@ -11371,6 +11531,17 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   <h1 style={{ ...styles.heroTitle, color: t.text, textAlign: lang === "ar" ? "right" : "left", margin: "6px 0" }}>{tx.chooseGov}</h1>
                   <p style={{ ...styles.heroSub, color: t.subText, textAlign: "center" }}>{tx.heroSub}</p>
                 </div>
+
+                {!isNativePlatform && (
+                  <div style={{ padding: "0 4px 4px" }}>
+                    <AdSenseUnit />
+                  </div>
+                )}
+                {isAndroidPlatform && (
+                  <div style={{ padding: "0 4px 4px" }}>
+                    <NativeInlineAdSlot slotId="travel-egypt-governorates" lang={lang} dark={dark} height={184} />
+                  </div>
+                )}
 
                 {isAdminUser && (
                   <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
@@ -13195,7 +13366,9 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     style={{ width:"100%", maxWidth:"100%", height:"auto", display:"block", borderRadius:14 }}
                   />
                 )
-              ) : (
+              ) : isAndroidPlatform ? (
+                <NativeInlineAdSlot slotId="jobs-inline-slot" lang={lang} dark={dark} height={204} />
+              ) : isNativePlatform ? (
                 <div style={{ display:"grid", gap:8, textAlign:"center", fontFamily:"'Cairo',sans-serif" }}>
                   <div style={{ fontSize:11, fontWeight:800, color:t.gold }}>
                     {lang==="ar" ? "مساحة إعلانية داخل قسم التوظيف" : "Ad Space Inside Job Section"}
@@ -13203,38 +13376,9 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   <div style={{ fontSize:11, fontWeight:900, color:t.text }}>
                     {lang==="ar" ? "هل تريد الإعلان في هذا القسم؟" : "Want to advertise in this section?"}
                   </div>
-                  <a
-                    href={`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
-                      lang === "ar"
-                        ? "مرحبًا، أرغب في حجز إعلان داخل قسم التوظيف في التطبيق."
-                        : "Hello, I want to book an ad inside the job section in the app."
-                    )}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="ads-contact-link"
-                    style={{
-                      display:"inline-flex",
-                      alignItems:"center",
-                      justifyContent:"center",
-                      gap:8,
-                      minHeight:38,
-                      padding:"8px 14px",
-                      borderRadius:12,
-                      textDecoration:"none",
-                      fontSize:11,
-                      fontWeight:900,
-                      color:"#0f172a",
-                      background:"transparent",
-                      margin:"0 auto",
-                    }}
-                  >
-                    <span style={{ fontSize:16, lineHeight:1 }}>📱</span>
-                    <span>{lang==="ar" ? "تواصل للإعلان عبر واتساب" : "Contact via WhatsApp for Ads"}</span>
-                  </a>
-                  <div style={{ fontSize:9, color:t.subText, lineHeight:1.6 }}>
-                    {lang==="ar" ? "مقاس مقترح: 1280×330 بكسل ليظهر بشكل متناسق." : "Suggested size: 1280x330 px for a balanced fit."}
-                  </div>
                 </div>
+              ) : (
+                <AdSenseUnit />
               )}
             </div>
           );
@@ -14572,6 +14716,16 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
         {/* ══ STUDY ABROAD TAB ═════════════════════════════════════════════ */}        
         {mainTab === "study" && (
           <div style={{ padding: "62px 0 0" }}>
+            {!isNativePlatform && (
+              <div style={{ padding: "0 12px 8px" }}>
+                <AdSenseUnit />
+              </div>
+            )}
+            {isAndroidPlatform && (
+              <div style={{ padding: "0 12px 8px" }}>
+                <NativeInlineAdSlot slotId="study-inline-slot" lang={lang} dark={dark} height={188} />
+              </div>
+            )}
             <StudyAbroadDirectory
               lang={lang}
               dark={dark}
@@ -14986,7 +15140,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               );
             })()}
 
-            <div style={{ textAlign: "center", marginTop: 16, color: t.subText, fontSize: 14.3, fontFamily: "'Cairo',sans-serif" }}>v1.0.0.26 — مكاتب السفريات الموثوقة</div>
+        <div style={{ textAlign: "center", marginTop: 16, color: t.subText, fontSize: 14.3, fontFamily: "'Cairo',sans-serif" }}>v1.0.0.25 — مكاتب السفريات الموثوقة</div>
 
             {/* ── إشعار هام ── */}
             <div style={{ marginTop: 16, borderRadius: 24, border: "1px solid rgba(116,169,255,0.18)", background: "linear-gradient(145deg, #17356d 0%, #0b2453 56%, #081b43 100%)", boxShadow: "0 18px 36px rgba(6,24,64,0.22), inset 0 1px 0 rgba(255,255,255,0.08)", padding: "14px 16px" }}>
@@ -15274,6 +15428,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               className="nav-tab-item"
               onClick={() => {
                 if (tab.key === "home") {
+                  showInterstitialAd();
                   goToCountryLanding();
                   scrollAppToTop();
                   if (typeof window !== "undefined") {
@@ -15282,6 +15437,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     });
                   }
                 } else if (tab.key === "cv") {
+                  showInterstitialAd();
                   setMainTab("cv");
                   setCvMode(null);
                   setSelectedCvPackage(null);
@@ -15289,6 +15445,12 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   setSelectedCvBuilderOrder(null);
                   setCvStep(0);
                   setCvUnlocked(false);
+                  scrollAppToTop();
+                  if (typeof window !== "undefined") {
+                    window.requestAnimationFrame(() => {
+                      scrollAppToTop();
+                    });
+                  }
                 } else if (tab.key === "study") {
                   openStudyTabRoot();
                 } else {
