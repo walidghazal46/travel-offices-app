@@ -32,6 +32,33 @@ function generateStudyAccessOrderSerial() {
   return `STUDY-${ts}-${rand}`;
 }
 
+function StudyAdSenseSlot() {
+  const ref = React.useRef(null);
+
+  useEffect(() => {
+    if (!ref.current || typeof window === "undefined") return;
+    try {
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch {
+      // Keep silent if the ad network skips the request in local/dev environments.
+    }
+  }, []);
+
+  return (
+    <div style={{ margin: "0 16px 12px", overflow: "hidden" }}>
+      <ins
+        ref={ref}
+        className="adsbygoogle"
+        style={{ display: "block" }}
+        data-ad-client="ca-pub-6810176545596111"
+        data-ad-slot="2882839892"
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+      />
+    </div>
+  );
+}
+
 const COPY = {
   ar: {
     title: "مكاتب الدراسة بالخارج",
@@ -720,6 +747,8 @@ export default function StudyAbroadDirectory({
             <span className={styles.warningIcon}>⚠️</span>
             <p>{copy.warning}</p>
           </div>
+
+          <StudyAdSenseSlot />
         </>
       ) : null}
 
@@ -882,4 +911,3 @@ export default function StudyAbroadDirectory({
     </div>
   );
 }
-

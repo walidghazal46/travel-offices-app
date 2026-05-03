@@ -949,6 +949,7 @@ function AdSenseUnit() {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch { /* silent */ }
   }, []);
+
   return (
     <div style={{ overflow: "hidden", margin: "10px 0" }}>
       <ins
@@ -5254,6 +5255,10 @@ export default function App() {
   const tx = lang === "ar" ? T.ar : T.en;
   const disclaimerSources = OFFICIAL_SOURCE_GROUPS[lang] || OFFICIAL_SOURCE_GROUPS.ar;
   const isCompactPhone = typeof window !== "undefined" && window.innerWidth <= 430;
+  const mobileGovFontScale = isCompactPhone ? 0.85 : 1;
+  const mobileOfficeCardWidth = isCompactPhone ? "90%" : "100%";
+  const officeGridTemplateColumns = isCompactPhone ? "repeat(3, minmax(0, 1fr))" : "repeat(3, minmax(0, 1fr))";
+  const officeGridGap = isCompactPhone ? 6 : 8;
   const landingAdConfig = {
     enabled: false,
     web: { client: "ca-pub-xxxxxxxxxxxxxxxx", slot: "1234567890" },
@@ -10591,6 +10596,17 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 </div>
               </div>
 
+              {!isNativePlatform && (
+                <div style={{ marginBottom: 10 }}>
+                  <AdSenseUnit />
+                </div>
+              )}
+              {isAndroidPlatform && (
+                <div style={{ marginBottom: 10 }}>
+                  <NativeInlineAdSlot slotId={`office-detail-review-${off.id}`} lang={lang} dark={dark} height={184} />
+                </div>
+              )}
+
               {/* التعليقات */}
               {offReviews.length > 0 && (
                 <div style={{ background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", borderRadius: 16, border: `1px solid ${t.border}`, padding: "10px", boxShadow: dark ? "none" : "0 2px 14px rgba(0,0,0,0.05)" }}>
@@ -11100,6 +11116,17 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     </button>
                   )}
 
+                  {!isOtherNationalitySelected && !isNativePlatform && (
+                    <div style={{ marginTop: 2 }}>
+                      <AdSenseUnit />
+                    </div>
+                  )}
+                  {!isOtherNationalitySelected && isAndroidPlatform && (
+                    <div style={{ marginTop: 2 }}>
+                      <NativeInlineAdSlot slotId="egypt-menu-embassy-bottom" lang={lang} dark={dark} height={184} />
+                    </div>
+                  )}
+
                 </div>
 
                 <a
@@ -11332,11 +11359,19 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       <div style={{ textAlign: "center", fontSize: 12, color: dark ? "#94a3b8" : "#475569", fontWeight: 800, marginBottom: 6, fontFamily: "'Cairo',sans-serif" }}>
                         {lang === "ar" ? "روابط مهمة" : "Important Links"}
                       </div>
-                      <div className="landing-links-row">
+                      <div
+                        className="landing-links-row"
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: isCompactPhone ? "repeat(2, minmax(0, 1fr))" : "repeat(3, minmax(0, 1fr))",
+                          gap: isCompactPhone ? 10 : 8,
+                        }}
+                      >
                         {[
                           { key: "passport-book", icon: "📖", labelAr: "كتاب المرور", labelEn: "Passport Book", accent: "#2563eb", href: "https://drive.google.com/file/d/1Ed-vYy2NWPwg373eTMtuFszl5UigUY-L/view?usp=sharing" },
                           { key: "qiwa", icon: "🧭", labelAr: "منصة قوي", labelEn: "Qiwa", accent: "#16a34a", href: "https://www.qiwa.sa/" },
                           { key: "gosi", icon: "🛡️", labelAr: "التأمينات", labelEn: "GOSI", accent: "#0891b2", href: "https://www.gosi.gov.sa/" },
+                          { key: "absher", icon: "🪪", labelAr: "منصة أبشر", labelEn: "Absher", accent: "#0f766e", href: "https://www.absher.sa/" },
                           { key: "labor-law", icon: "⚖️", labelAr: "قانون العمل", labelEn: "Labor Law", accent: "#d97706", href: "https://www.hrsd.gov.sa/knowledge-centre/decisions-and-regulations/regulation-and-procedures/%D9%86%D8%B8%D8%A7%D9%85-%D8%A7%D9%84%D8%B9%D9%85%D9%84" },
                           { key: "end-service", icon: "🧮", labelAr: "نهاية الخدمة", labelEn: "End Service", accent: "#e11d48", href: "https://www.hrsd.gov.sa/ministry-services/services/end-service-benefit-calculator" },
                         ].map((item, idx) => (
@@ -11488,6 +11523,13 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     )}
                   </div>
 
+                  {!isNativePlatform && <AdSenseUnit />}
+                  {isAndroidPlatform && (
+                    <div style={{ marginTop: 10 }}>
+                      <NativeInlineAdSlot slotId="travel-country-selector" lang={lang} dark={dark} height={184} />
+                    </div>
+                  )}
+
                   {/* ── Site info box below ad ── */}
                   <div
                     dir="rtl"
@@ -11511,13 +11553,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       <a href="/contact.html" style={{ color: dark ? "#7dd3fc" : "#0369a1", fontSize: 11 }}>اتصل بنا</a>
                     </p>
                   </div>
-
-                  {!isNativePlatform && <AdSenseUnit />}
-                  {isAndroidPlatform && (
-                    <div style={{ marginTop: 10 }}>
-                      <NativeInlineAdSlot slotId="travel-country-selector" lang={lang} dark={dark} height={184} />
-                    </div>
-                  )}
 
                 </div>
               </div>
@@ -11617,10 +11652,10 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                           boxShadow: dark ? "0 0 20px rgba(59,130,246,0.18)" : "0 8px 18px rgba(59,130,246,0.16)",
                         }}>{gov.icon}</div>
                         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: lang === "ar" ? "flex-end" : "flex-start", textAlign: lang === "ar" ? "right" : "left", justifyContent: "center", lineHeight: 1.25 }}>
-                          <div style={{ fontSize: lang === "en" ? 14.25 : 16.5, fontWeight: 900, color: dark ? "#f8fbff" : "#0f172a", marginBottom: 5, lineHeight: 1.3 }}>{lang === "en" ? gov.nameEn : gov.name}</div>
-                          <div style={{ fontSize: 15.3, fontWeight: 800, color: count > 0 ? (dark ? "#93c5fd" : "#1d4ed8") : t.subText, lineHeight: 1.2 }}>{count > 0 ? (lang === "en" ? `${guestVisibleCount} offices` : `عدد ${guestVisibleCount} مكتب`) : tx.comingSoon}</div>
+                          <div style={{ fontSize: (lang === "en" ? 14.25 : 16.5) * mobileGovFontScale, fontWeight: 900, color: dark ? "#f8fbff" : "#0f172a", marginBottom: 5, lineHeight: 1.3 }}>{lang === "en" ? gov.nameEn : gov.name}</div>
+                          <div style={{ fontSize: 15.3 * mobileGovFontScale, fontWeight: 800, color: count > 0 ? (dark ? "#93c5fd" : "#1d4ed8") : t.subText, lineHeight: 1.2 }}>{count > 0 ? (lang === "en" ? `${guestVisibleCount} offices` : `عدد ${guestVisibleCount} مكتب`) : tx.comingSoon}</div>
                           {guestLockedCount > 0 && (
-                            <div style={{ fontSize: 9, fontWeight: 800, color: dark ? "#f87171" : "#dc2626", lineHeight: 1.2 }}>
+                            <div style={{ fontSize: 9 * mobileGovFontScale, fontWeight: 800, color: dark ? "#f87171" : "#dc2626", lineHeight: 1.2 }}>
                               {lang === "ar" ? `${guestLockedCount} مكتب مقفول للضيف` : `${guestLockedCount} offices locked for guest`}
                             </div>
                           )}
@@ -11629,6 +11664,17 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     );
                   })}
                 </div>
+
+                {!isNativePlatform && (
+                  <div style={{ padding: "10px 4px 4px" }}>
+                    <AdSenseUnit />
+                  </div>
+                )}
+                {isAndroidPlatform && (
+                  <div style={{ padding: "10px 4px 4px" }}>
+                    <NativeInlineAdSlot slotId="travel-egypt-governorates-bottom" lang={lang} dark={dark} height={184} />
+                  </div>
+                )}
 
               </div>
             )}
@@ -12719,14 +12765,14 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   <span style={{ fontSize: 14 }}>🔍</span>
                   <input type="text" placeholder={tx.searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...styles.searchInput, background: "transparent", color: t.text }} />
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                <div style={{ display: "grid", gridTemplateColumns: officeGridTemplateColumns, gap: officeGridGap, width: "100%", minWidth: 0, overflowX: "hidden" }}>
                   {visibleFilteredOffices.length === 0 ? (
                     <div style={{ textAlign: "center", color: t.subText, padding: "40px 0", fontSize: 15, gridColumn: "1 / -1" }}>{tx.noResults}</div>
                   ) : paginatedOffices.map((office, i) => {
                     const egyptOfficeFontScale = selectedCountry === "مصر" ? 1.25 : 1;
                     return (
                     <button key={office.id} onClick={() => openOfficeDetails(office)}
-                      style={{ ...styles.officeCard, background: t.cardBg, border: `1px solid ${t.border}`, animationDelay: `${i * 30}ms`, padding: "13px 8px", display: "flex", flexDirection: "column", gap: 9, borderRadius: 14, cursor: "pointer", textAlign: "center", width: "100%", minHeight: 174 }}>
+                      style={{ ...styles.officeCard, background: t.cardBg, border: `1px solid ${t.border}`, animationDelay: `${i * 30}ms`, padding: "13px 8px", display: "flex", flexDirection: "column", gap: 9, borderRadius: 14, cursor: "pointer", textAlign: "center", width: mobileOfficeCardWidth, maxWidth: "100%", minWidth: 0, justifySelf: "center", marginInline: "auto", minHeight: 174, boxSizing: "border-box" }}>
                       <div style={{ width: 36, height: 36, borderRadius: 10, background: `${t.gold}22`, color: t.gold, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 * egyptOfficeFontScale, fontWeight: 700, flexShrink: 0, margin: "0 auto" }}>{((officePage - 1) * officesPerPage) + i + 1}</div>
                       <div style={{ fontSize: 14 * egyptOfficeFontScale, fontWeight: 700, color: t.text, textAlign: "center", lineHeight: 1.3 }}>{getOfficeLabel(office.name)}</div>
                       <div style={{ display: "inline-block", alignSelf:"center", borderRadius: 999, padding: "5px 13px", fontSize: 12 * egyptOfficeFontScale, fontWeight: 700, background: `${t.gold}15`, color: t.gold, textAlign: "center" }}>
@@ -12755,7 +12801,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       key={`guest-lock-${idx}`}
                       type="button"
                       onClick={openGuestLockedOfficeNotice}
-                      style={{ ...styles.officeCard, background: dark ? "rgba(127,29,29,0.22)" : "rgba(254,226,226,0.82)", border: "1px dashed rgba(239,68,68,0.45)", padding: "13px 8px", display: "flex", flexDirection: "column", gap: 9, borderRadius: 14, textAlign: "center", width: "100%", minHeight: 174, opacity: 0.92, cursor: "pointer" }}
+                      style={{ ...styles.officeCard, background: dark ? "rgba(127,29,29,0.22)" : "rgba(254,226,226,0.82)", border: "1px dashed rgba(239,68,68,0.45)", padding: "13px 8px", display: "flex", flexDirection: "column", gap: 9, borderRadius: 14, textAlign: "center", width: mobileOfficeCardWidth, maxWidth: "100%", minWidth: 0, justifySelf: "center", marginInline: "auto", minHeight: 174, opacity: 0.92, cursor: "pointer", boxSizing: "border-box" }}
                     >
                       <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(239,68,68,0.22)", color: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 900, flexShrink: 0, margin: "0 auto" }}>🔒</div>
                       <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fecaca" : "#991b1b", textAlign: "center", lineHeight: 1.45 }}>
@@ -12767,6 +12813,16 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     </button>
                   ))}
                 </div>
+                {!isNativePlatform && (
+                  <div style={{ paddingTop: 10 }}>
+                    <AdSenseUnit />
+                  </div>
+                )}
+                {isAndroidPlatform && (
+                  <div style={{ paddingTop: 10 }}>
+                    <NativeInlineAdSlot slotId={`office-list-grid-${selectedCountry}-${selectedGov || "all"}-${officePage}`} lang={lang} dark={dark} height={184} />
+                  </div>
+                )}
                 {visibleFilteredOffices.length > officesPerPage && (
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, flexWrap:"wrap", marginTop:14 }}>
                     <button
@@ -13574,6 +13630,10 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 <div style={{ display:"grid", gap:10, marginTop: 12 }}>
                   {cvJobSitesCard}
                   {cvJobSitesAdCard}
+                  {!isNativePlatform && <AdSenseUnit />}
+                  {isAndroidPlatform && (
+                    <NativeInlineAdSlot slotId="jobs-inline-slot-bottom" lang={lang} dark={dark} height={184} />
+                  )}
                 </div>
               ) : cvMode === "builder" ? (
                 cvBuilderScreen === "menu" ? (
@@ -14716,11 +14776,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
         {/* ══ STUDY ABROAD TAB ═════════════════════════════════════════════ */}        
         {mainTab === "study" && (
           <div style={{ padding: "62px 0 0" }}>
-            {!isNativePlatform && (
-              <div style={{ padding: "0 12px 8px" }}>
-                <AdSenseUnit />
-              </div>
-            )}
             {isAndroidPlatform && (
               <div style={{ padding: "0 12px 8px" }}>
                 <NativeInlineAdSlot slotId="study-inline-slot" lang={lang} dark={dark} height={188} />
@@ -14736,6 +14791,11 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               onRequestAccessAuth={promptStudyAccessAuth}
               resetSignal={studyTabResetToken}
             />
+            {!isNativePlatform && (
+              <div style={{ padding: "8px 12px 20px" }}>
+                <AdSenseUnit />
+              </div>
+            )}
           </div>
         )}
 

@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Window;
 
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.ActionBar;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -24,6 +25,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(ScreenSecurityPlugin.class);
         registerPlugin(DeviceIdentityPlugin.class);
         registerPlugin(NativeInlineAdPlugin.class);
+        EdgeToEdge.enable(this);
         super.onCreate(savedInstanceState);
 
         // Hide ActionBar if somehow still visible
