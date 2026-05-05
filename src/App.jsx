@@ -11056,11 +11056,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       <AdSenseUnit />
                     </div>
                   )}
-                  {!isOtherNationalitySelected && isAndroidPlatform && (
-                    <div style={{ marginTop: 2 }}>
-                      <NativeInlineAdSlot slotId="egypt-menu-embassy-bottom" lang={lang} dark={dark} height={184} />
-                    </div>
-                  )}
+                  {/* الإعلان يظهر بعد اختيار الدولة وليس في الصفحة الأولى */}
 
                 </div>
 
