@@ -5268,13 +5268,27 @@ export default function App() {
   };
 
   useEffect(() => {
-    const shouldBlockScreenshots = mainTab === "study";
-    setAndroidSecureScreen(shouldBlockScreenshots);
+    // الأدمن دايمًا يقدر ياخد سكرين شوت
+    if (isAdminUser) {
+      setAndroidSecureScreen(false);
+      return;
+    }
+
+    // المستخدم اللي عنده طلب approved يقدر ياخد سكرين شوت في أي صفحة
+    const paidOrders = (() => { try { return JSON.parse(localStorage.getItem("paidOrders") || "[]"); } catch { return []; } })();
+    const hasApprovedOrder = paidOrders.some(o => String(o?.status || "").toLowerCase() === "approved");
+    if (hasApprovedOrder) {
+      setAndroidSecureScreen(false);
+      return;
+    }
+
+    // باقي المستخدمين: بلوك فقط في تاب الدراسة
+    setAndroidSecureScreen(mainTab === "study");
 
     return () => {
       setAndroidSecureScreen(false);
     };
-  }, [mainTab]);
+  }, [mainTab, isAdminUser]);
 
   useEffect(() => {
     if (!discNoticeOpen && discSourcesOpen) {
