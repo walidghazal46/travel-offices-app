@@ -5343,6 +5343,12 @@ export default function App() {
   const showMainBannerAd = isMainBannerAdActive(mainBannerAd);
 
   useEffect(() => {
+    if (showMainBannerAd && isAndroidPlatform) {
+      hideNativeInlineAdSlot("travel-country-selector").catch(() => {});
+    }
+  }, [showMainBannerAd]);
+
+  useEffect(() => {
     const unsubscribe = subscribeJobsBannerAdFromFirebase((nextAd) => {
       setJobsBannerAd(nextAd);
     });
@@ -5351,6 +5357,13 @@ export default function App() {
   }, []);
 
   const showJobsBannerAd = isMainBannerAdActive(jobsBannerAd);
+
+  useEffect(() => {
+    if (showJobsBannerAd && isAndroidPlatform) {
+      hideNativeInlineAdSlot("jobs-inline-slot").catch(() => {});
+      hideNativeInlineAdSlot("jobs-inline-slot-bottom").catch(() => {});
+    }
+  }, [showJobsBannerAd]);
 
   useEffect(() => {
     if (!isNativePlatform) return;
