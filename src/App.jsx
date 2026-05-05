@@ -14712,8 +14712,21 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
         {mainTab === "study" && (
           <div style={{ padding: "62px 0 0" }}>
             {isAndroidPlatform && (
-              <div style={{ padding: "0 12px 8px" }}>
-                <NativeInlineAdSlot slotId="study-inline-slot" lang={lang} dark={dark} height={188} adUnitId={ADMOB_NATIVE_INLINE_AD_UNIT_ID_2} />
+              <div style={{
+                position: "sticky",
+                top: 62,
+                zIndex: 90,
+                background: dark ? "#0f172a" : "#f8fafc",
+                padding: "0 12px 8px",
+              }}>
+                <div style={{
+                  borderRadius: 16,
+                  overflow: "hidden",
+                  border: `1px solid ${dark ? "rgba(130,160,220,0.12)" : "rgba(30,64,175,0.08)"}`,
+                  boxShadow: dark ? "0 2px 12px rgba(0,0,0,0.18)" : "0 2px 12px rgba(15,27,58,0.07)",
+                }}>
+                  <NativeInlineAdSlot slotId="study-inline-slot" lang={lang} dark={dark} height={188} adUnitId={ADMOB_NATIVE_INLINE_AD_UNIT_ID_2} />
+                </div>
               </div>
             )}
             <StudyAbroadDirectory
