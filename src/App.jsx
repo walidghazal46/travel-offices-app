@@ -92,8 +92,9 @@ const YOUTUBE = "http://www.youtube.com/@WalidGhazal";
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.travel.offices";
 const TRAVEL_AD_DEFAULT_CLICK_URL = "https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D8%B5%D9%81%D8%AD%D8%A9%20%D9%85%D9%83%D8%A7%D8%AA%D8%A8%20%D8%A7%D9%84%D8%B3%D9%81%D8%B1%D9%8A%D8%A7%D8%AA";
 const JOBS_AD_DEFAULT_CLICK_URL = "https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D9%82%D8%B3%D9%85%20%D8%A7%D9%84%D8%AA%D9%88%D8%B8%D9%8A%D9%81";
-const ADMOB_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-6810176545596111/2997466527";
-const ADMOB_NATIVE_INLINE_AD_UNIT_ID = "ca-app-pub-6810176545596111/7235034949";
+const ADMOB_INTERSTITIAL_AD_UNIT_ID        = "ca-app-pub-6810176545596111/2997466527"; // ADS-001 بيني
+const ADMOB_NATIVE_INLINE_AD_UNIT_ID       = "ca-app-pub-6810176545596111/7235034949"; // ADS-002 Native داخل المحتوى
+const ADMOB_NATIVE_INLINE_AD_UNIT_ID_2     = "ca-app-pub-6810176545596111/4863489641"; // ADS-003 Native (مكاتب الدراسة)
 const INTERSTITIAL_MIN_INTERVAL_MS = 3 * 60 * 1000;
 const STUDY_AD_DEFAULT_CLICK_URL ="https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D8%B5%D9%81%D8%AD%D8%A9%20%D9%85%D9%83%D8%A7%D8%AA%D8%A8%20%D8%A7%D9%84%D8%AF%D8%B1%D8%A7%D8%B3%D8%A9";
 
@@ -965,7 +966,7 @@ function AdSenseUnit() {
   );
 }
 
-function NativeInlineAdSlot({ slotId, lang, dark, height = 196 }) {
+function NativeInlineAdSlot({ slotId, lang, dark, height = 196, adUnitId = ADMOB_NATIVE_INLINE_AD_UNIT_ID }) {
   const ref = React.useRef(null);
 
   const syncSlot = useCallback(() => {
@@ -984,7 +985,7 @@ function NativeInlineAdSlot({ slotId, lang, dark, height = 196 }) {
 
     showNativeInlineAdSlot({
       slotId,
-      adUnitId: ADMOB_NATIVE_INLINE_AD_UNIT_ID,
+      adUnitId,
       x: rect.left,
       y: rect.top,
       width: rect.width,
@@ -11457,8 +11458,8 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     )}
                   </div>
 
-                  {!isNativePlatform && <AdSenseUnit />}
-                  {isAndroidPlatform && (
+                  {!isNativePlatform && !showMainBannerAd && <AdSenseUnit />}
+                  {isAndroidPlatform && !showMainBannerAd && (
                     <div style={{ marginTop: 10 }}>
                       <NativeInlineAdSlot slotId="travel-country-selector" lang={lang} dark={dark} height={184} />
                     </div>
@@ -11599,16 +11600,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   })}
                 </div>
 
-                {!isNativePlatform && (
-                  <div style={{ padding: "10px 4px 4px" }}>
-                    <AdSenseUnit />
-                  </div>
-                )}
-                {isAndroidPlatform && (
-                  <div style={{ padding: "10px 4px 4px" }}>
-                    <NativeInlineAdSlot slotId="travel-egypt-governorates-bottom" lang={lang} dark={dark} height={184} />
-                  </div>
-                )}
 
               </div>
             )}
@@ -13564,8 +13555,8 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 <div style={{ display:"grid", gap:10, marginTop: 12 }}>
                   {cvJobSitesCard}
                   {cvJobSitesAdCard}
-                  {!isNativePlatform && <AdSenseUnit />}
-                  {isAndroidPlatform && (
+                  {!isNativePlatform && !jobsBannerAd?.active && <AdSenseUnit />}
+                  {isAndroidPlatform && !jobsBannerAd?.active && (
                     <NativeInlineAdSlot slotId="jobs-inline-slot-bottom" lang={lang} dark={dark} height={184} />
                   )}
                 </div>
@@ -14712,7 +14703,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
           <div style={{ padding: "62px 0 0" }}>
             {isAndroidPlatform && (
               <div style={{ padding: "0 12px 8px" }}>
-                <NativeInlineAdSlot slotId="study-inline-slot" lang={lang} dark={dark} height={188} />
+                <NativeInlineAdSlot slotId="study-inline-slot" lang={lang} dark={dark} height={188} adUnitId={ADMOB_NATIVE_INLINE_AD_UNIT_ID_2} />
               </div>
             )}
             <StudyAbroadDirectory
