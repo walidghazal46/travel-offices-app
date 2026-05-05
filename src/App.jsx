@@ -5342,11 +5342,6 @@ export default function App() {
 
   const showMainBannerAd = isMainBannerAdActive(mainBannerAd);
 
-  useEffect(() => {
-    if (showMainBannerAd && isAndroidPlatform) {
-      hideNativeInlineAdSlot("travel-country-selector").catch(() => {});
-    }
-  }, [showMainBannerAd]);
 
   useEffect(() => {
     const unsubscribe = subscribeJobsBannerAdFromFirebase((nextAd) => {
@@ -11467,9 +11462,15 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     )}
                   </div>
 
-                  {!isNativePlatform && !showMainBannerAd && <AdSenseUnit />}
-                  {isAndroidPlatform && !showMainBannerAd && (
-                    <div style={{ marginTop: 10 }}>
+                  {!isNativePlatform && <AdSenseUnit />}
+                  {isAndroidPlatform && (
+                    <div style={{
+                      marginTop: 10,
+                      borderRadius: 16,
+                      overflow: "hidden",
+                      border: `1px solid ${dark ? "rgba(130,160,220,0.12)" : "rgba(30,64,175,0.08)"}`,
+                      boxShadow: dark ? "0 2px 12px rgba(0,0,0,0.18)" : "0 2px 12px rgba(15,27,58,0.07)",
+                    }}>
                       <NativeInlineAdSlot slotId="travel-country-selector" lang={lang} dark={dark} height={184} />
                     </div>
                   )}
