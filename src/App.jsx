@@ -12014,40 +12014,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   <div style={{ fontSize: 16, fontWeight: 700, color: t.text }}>{country.flag} <span style={{ color: t.gold }}>{lang === "ar" ? (country.name === "المملكة العربية السعودية" ? "السعودية" : country.name === "الإمارات العربية المتحدة" ? "الإمارات" : country.name) : (countryNamesEn[country.name] || country.name)}</span></div>
                 </div>
                 <div style={{ padding: "14px 0 4px", position: "relative", zIndex: 0 }}>
-                  {selectedCountry !== "مصر" && (
-                    <button
-                      onClick={openOfficePortalOrPromptLogin}
-                      style={{
-                        width: "100%",
-                        textAlign: lang === "ar" ? "right" : "left",
-                        background: dark ? "linear-gradient(135deg, rgba(22,163,74,0.24), rgba(34,197,94,0.10))" : "linear-gradient(135deg, #ecfdf5, #dcfce7)",
-                        border: "1px solid rgba(34,197,94,0.32)",
-                        borderRadius: 20,
-                        padding: "10px 14px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        boxShadow: dark ? "0 0 18px rgba(34,197,94,0.18)" : "0 10px 22px rgba(34,197,94,0.12)",
-                        fontFamily: "'Cairo',sans-serif",
-                        marginBottom: 10,
-                      }}
-                    >
-                      <div style={{ width: 42, height: 42, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(34,197,94,0.28)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 21, flexShrink: 0 }}>🏢</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                          <div style={{ fontSize: 13, fontWeight: 900, color: "#16a34a" }}>{lang === "ar" ? "ضيف مكتبك" : "Add Your Office"}</div>
-                          {String(providerApprovalSnapshot?.status || "").trim().toLowerCase() === "approved" && (
-                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 10px #22c55e", flexShrink: 0 }} />
-                          )}
-                        </div>
-                        <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>
-                          {lang === "ar" ? "قدّم بيانات مكتبك كاملة للمراجعة والاعتماد." : "Submit full office data for review and approval."}
-                        </div>
-                      </div>
-                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#16a34a18", color: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
-                    </button>
-                  )}
                   <div style={{ color: t.subText, fontSize: 11, marginBottom: 10 }}>
                     {selectedCountry === "المملكة العربية السعودية"
                       ? (lang === "ar" ? "اختر المدينة لعرض المكاتب الموثوقة المتاحة" : "Choose a city to browse available trusted offices")
