@@ -57,13 +57,24 @@ apply from: 'capacitor.build.gradle'
 task buildWebAssets(type: Exec) {
     description 'Run npm build then copy web assets into Android assets folder'
     workingDir file('../../')
+
     def isWindows = System.properties['os.name'].toLowerCase().contains('windows')
+
     if (isWindows) {
+        // Android Studio JVM doesn't inherit the user PATH, so we add Node.js
+        // locations manually so npm/npx are found regardless of IDE settings.
+        def appData   = System.getenv('APPDATA') ?: ''
+        def extraPath = "${appData}\\npm;C:\\Program Files\\nodejs;C:\\Program Files (x86)\\nodejs"
+        environment 'PATH', "${extraPath};${System.getenv('PATH') ?: ''}"
         commandLine 'cmd', '/c', 'npm run build && npx cap copy android'
     } else {
+        def home      = System.getenv('HOME') ?: ''
+        def extraPath = "/usr/local/bin:/usr/bin:${home}/.nvm/current/bin:${home}/.volta/bin"
+        environment 'PATH', "${extraPath}:${System.getenv('PATH') ?: ''}"
         commandLine 'sh', '-c', 'npm run build && npx cap copy android'
     }
-    // Skip task if source files haven't changed (faster incremental builds)
+
+    // Gradle up-to-date check — skips rebuild if src hasn't changed
     inputs.files(fileTree('../../src'), file('../../package.json'), file('../../capacitor.config.ts'))
     outputs.dir('src/main/assets/public')
 }
