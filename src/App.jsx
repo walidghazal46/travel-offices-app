@@ -1917,7 +1917,6 @@ export default function App() {
     setAuthPreviewMode("login");
     setAuthPreviewBusy(false);
     resetAuthPreviewForm();
-    setView(v => v === "landing" ? "egyptMenu" : v);
   }, [resetAuthPreviewForm]);
 
   const handleAuthPreviewGuestMode = useCallback(() => {
@@ -12030,7 +12029,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
 
             {view === "countryTrusted" && country && (
               <div>
-                <div style={{ ...styles.listHeader, background: t.cardBg, borderBottom: `1px solid ${t.border}` }}>
+                <div style={{ ...styles.listHeader, background: dark ? "rgba(10,22,40,0.97)" : "rgba(255,255,255,0.97)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: `1px solid ${t.border}` }}>
                   <div style={{ fontSize: 16, fontWeight: 700, color: t.text }}>{country.flag} <span style={{ color: t.gold }}>{lang === "ar" ? (country.name === "المملكة العربية السعودية" ? "السعودية" : country.name === "الإمارات العربية المتحدة" ? "الإمارات" : country.name) : (countryNamesEn[country.name] || country.name)}</span></div>
                 </div>
                 <div style={{ padding: "14px 0 4px" }}>
@@ -12617,7 +12616,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
             {/* ── LIST VIEW ──────────────────────────────────────────────── */}
             {view === "list" && (
               <div>
-                <div style={{ ...styles.listHeader, background: t.cardBg, borderBottom: `1px solid ${t.border}` }}>
+                <div style={{ ...styles.listHeader, background: dark ? "rgba(10,22,40,0.97)" : "rgba(255,255,255,0.97)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: `1px solid ${t.border}` }}>
                   <button
                     onClick={handleAppBackNavigation}
                     style={{
@@ -12831,7 +12830,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
             {/* ── COUNTRY VIEW ───────────────────────────────────────────── */}
             {view === "country" && country && (
               <div>
-                <div style={{ ...styles.listHeader, background: t.cardBg, borderBottom: `1px solid ${t.border}` }}>
+                <div style={{ ...styles.listHeader, background: dark ? "rgba(10,22,40,0.97)" : "rgba(255,255,255,0.97)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: `1px solid ${t.border}` }}>
                   <div style={{ fontSize: 16, fontWeight: 700, color: t.text }}>{country.flag} <span style={{ color: t.gold }}>{country.name}</span></div>
                 </div>
                 <div style={{ padding: "14px 0 4px" }}>
