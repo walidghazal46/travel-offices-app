@@ -10725,11 +10725,9 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
 
       {/* ── HEADER (مخفي — النسخة الاحتياطية في .claude/backups/header_backup.jsx) ── */}
 
-      {/* ── COUNTRY BAR — home tab only ──────────────────────────────────── */}
-      {mainTab === "home" && view !== "landing" && (() => {
-        // الدول الرئيسية تظهر كـ tabs
+      {/* ── COUNTRY BAR — محذوف (إصدار قديم) ── */}
+      {false && mainTab === "home" && view !== "landing" && (() => {
         const mainCountries = ["مصر", "المملكة العربية السعودية", "الإمارات العربية المتحدة"];
-        // باقي الدول تظهر في القائمة المنسدلة "دول أخر"
         const otherCountries = countriesData.filter(c => !mainCountries.includes(c.name));
         const isOther = !mainCountries.includes(selectedCountry);
 
