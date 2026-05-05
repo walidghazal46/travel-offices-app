@@ -587,7 +587,7 @@ export default function StudyAbroadDirectory({
   }, [authUid, authUser?.email, copy.requiredField, copy.submitFailed, lang, paymentBusy, paymentForm.email, paymentForm.name, paymentForm.phone, paymentForm.whatsapp]);
 
   const renderStudyInlineAdCard = (cardClassName) => (
-    <article className={cardClassName} style={studyInlineAdImageUrl ? { padding: 0, overflow: "hidden" } : undefined}>
+    <article className={cardClassName} style={studyInlineAdImageUrl ? { padding: 0, overflow: "hidden", borderRadius: 14 } : undefined}>
       {studyInlineAdImageUrl ? (
         <a
           href={studyInlineAdLinkUrl}
@@ -597,9 +597,7 @@ export default function StudyAbroadDirectory({
             display: "block",
             width: "100%",
             lineHeight: 0,
-            borderRadius: 12,
             overflow: "hidden",
-            border: "1px solid rgba(30,58,138,0.14)",
           }}
         >
           <img
