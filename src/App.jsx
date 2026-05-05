@@ -1036,8 +1036,7 @@ function NativeInlineAdSlot({ slotId, lang, dark, height = 196, adUnitId = ADMOB
         width: "100%",
         borderRadius: 20,
         overflow: "hidden",
-        background: dark ? "linear-gradient(145deg, rgba(15,23,42,0.94), rgba(30,41,59,0.92))" : "linear-gradient(145deg, #f8fafc, #e2e8f0)",
-        border: `1px solid ${dark ? "rgba(148,163,184,0.2)" : "rgba(148,163,184,0.28)"}`,
+        background: "transparent",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -1046,14 +1045,6 @@ function NativeInlineAdSlot({ slotId, lang, dark, height = 196, adUnitId = ADMOB
         boxSizing: "border-box",
       }}
     >
-      <div style={{ fontFamily: "'Cairo',sans-serif", display: "grid", gap: 6 }}>
-        <div style={{ fontSize: 11, fontWeight: 900, color: dark ? "#f8fafc" : "#0f172a" }}>
-          {lang === "ar" ? "إعلان ممول" : "Sponsored Ad"}
-        </div>
-        <div style={{ fontSize: 10, lineHeight: 1.7, color: dark ? "#94a3b8" : "#64748b" }}>
-          {lang === "ar" ? "يتم تحميل إعلان AdMob داخل التطبيق..." : "Loading an in-app AdMob placement..."}
-        </div>
-      </div>
     </div>
   );
 }
@@ -11542,7 +11533,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               </div>
             )}
 
-            {/* ── HOME VIEW (Egypt) ──────────────────────────────────────── */}
+                {/* ── HOME VIEW (Egypt) ──────────────────────────────────────── */}
             {view === "home" && (
               <div>
                 <div style={styles.hero}>
@@ -11551,13 +11542,8 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   <p style={{ ...styles.heroSub, color: t.subText, textAlign: "center" }}>{tx.heroSub}</p>
                 </div>
 
-                {!isNativePlatform && (
-                  <div style={{ padding: "0 4px 4px" }}>
-                    <AdSenseUnit />
-                  </div>
-                )}
                 {isAndroidPlatform && (
-                  <div style={{ padding: "0 4px 4px" }}>
+                  <div style={{ padding: "0 4px 20px" }}>
                     <NativeInlineAdSlot slotId="travel-egypt-governorates" lang={lang} dark={dark} height={184} />
                   </div>
                 )}
@@ -11840,6 +11826,12 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     {lang === "ar" ? "اختر القسم" : "Choose a Section"}
                   </h1>
                 </div>
+
+                {isAndroidPlatform && (
+                  <div style={{ padding: "0 4px 16px" }}>
+                    <NativeInlineAdSlot slotId={`country-menu-inline-${country.name}`} lang={lang} dark={dark} height={184} />
+                  </div>
+                )}
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
@@ -12747,7 +12739,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   {visibleFilteredOffices.length === 0 ? (
                     <div style={{ textAlign: "center", color: t.subText, padding: "40px 0", fontSize: 15, gridColumn: "1 / -1" }}>{tx.noResults}</div>
                   ) : paginatedOffices.map((office, i) => {
-                    const egyptOfficeFontScale = selectedCountry === "مصر" ? 1.25 : 1;
+                    const egyptOfficeFontScale = selectedCountry === "مصر" ? 0.94 : 0.75;
                     return (
                     <button key={office.id} onClick={() => openOfficeDetails(office)}
                       style={{ ...styles.officeCard, background: t.cardBg, border: `1px solid ${t.border}`, animationDelay: `${i * 30}ms`, padding: "13px 8px", display: "flex", flexDirection: "column", gap: 9, borderRadius: 14, cursor: "pointer", textAlign: "center", width: mobileOfficeCardWidth, maxWidth: "100%", minWidth: 0, justifySelf: "center", marginInline: "auto", minHeight: 174, boxSizing: "border-box" }}>
@@ -12794,11 +12786,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 {!isNativePlatform && (
                   <div style={{ paddingTop: 10 }}>
                     <AdSenseUnit />
-                  </div>
-                )}
-                {isAndroidPlatform && (
-                  <div style={{ paddingTop: 10 }}>
-                    <NativeInlineAdSlot slotId={`office-list-grid-${selectedCountry}-${selectedGov || "all"}-${officePage}`} lang={lang} dark={dark} height={184} />
                   </div>
                 )}
                 {visibleFilteredOffices.length > officesPerPage && (
@@ -14772,11 +14759,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               onRequestAccessAuth={promptStudyAccessAuth}
               resetSignal={studyTabResetToken}
             />
-            {isAndroidPlatform && (
-              <div style={{ margin: "12px 12px 0", borderRadius: 16, overflow: "hidden", border: `1px solid ${dark ? "rgba(130,160,220,0.12)" : "rgba(30,64,175,0.08)"}`, boxShadow: dark ? "0 2px 12px rgba(0,0,0,0.18)" : "0 2px 12px rgba(15,27,58,0.07)" }}>
-                <NativeInlineAdSlot slotId="study-inline-slot" lang={lang} dark={dark} height={188} adUnitId={ADMOB_NATIVE_INLINE_AD_UNIT_ID_2} />
-              </div>
-            )}
             {!isNativePlatform && (
               <div style={{ padding: "8px 12px 20px" }}>
                 <AdSenseUnit />
@@ -14788,6 +14770,11 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
         {/* ══ SETTINGS TAB ══════════════════════════════════════════════════ */}
         {mainTab === "settings" && (
           <div style={{ padding: "72px 0 20px" }}>
+            {isAndroidPlatform && (
+              <div style={{ margin: "0 12px 16px", borderRadius: 24, overflow: "hidden" }}>
+                <NativeInlineAdSlot slotId="settings-inline-slot" lang={lang} dark={dark} height={184} />
+              </div>
+            )}
             {(() => {
               const settingsShell = {
                 background: "linear-gradient(145deg, #17356d 0%, #0b2453 56%, #081b43 100%)",
@@ -15290,12 +15277,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 </>
               )}
             </div>
-
-            {isAndroidPlatform && (
-              <div style={{ marginTop: 16, borderRadius: 24, overflow: "hidden", border: "1px solid rgba(116,169,255,0.18)", background: "linear-gradient(145deg, #17356d 0%, #0b2453 56%, #081b43 100%)", boxShadow: "0 18px 36px rgba(6,24,64,0.22)" }}>
-                <NativeInlineAdSlot slotId="settings-inline-slot" lang={lang} dark={dark} height={184} />
-              </div>
-            )}
 
           </div>
         )}
