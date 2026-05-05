@@ -13551,8 +13551,8 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 <div style={{ display:"grid", gap:10, marginTop: 12 }}>
                   {cvJobSitesCard}
                   {cvJobSitesAdCard}
-                  {!isNativePlatform && !jobsBannerAd?.active && <AdSenseUnit />}
-                  {isAndroidPlatform && !jobsBannerAd?.active && (
+                  {!isNativePlatform && !showJobsBannerAd && <AdSenseUnit />}
+                  {isAndroidPlatform && !showJobsBannerAd && (
                     <NativeInlineAdSlot slotId="jobs-inline-slot-bottom" lang={lang} dark={dark} height={184} />
                   )}
                 </div>
