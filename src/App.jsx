@@ -5348,6 +5348,7 @@ export default function App() {
   useEffect(() => {
     if (showJobsBannerAd && isAndroidPlatform) {
       hideNativeInlineAdSlot("jobs-inline-slot").catch(() => {});
+      hideNativeInlineAdSlot("jobs-inline-slot-bottom").catch(() => {});
     }
   }, [showJobsBannerAd]);
 
@@ -13529,11 +13530,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               </div>
               )}
 
-              {!cvMode && isAndroidPlatform && (
-                <div style={{ marginTop: 10, borderRadius: 16, overflow: "hidden", border: `1px solid ${dark ? "rgba(130,160,220,0.12)" : "rgba(30,64,175,0.08)"}`, boxShadow: dark ? "0 2px 12px rgba(0,0,0,0.18)" : "0 2px 12px rgba(15,27,58,0.07)" }}>
-                  <NativeInlineAdSlot slotId="cv-pricing-inline-slot" lang={lang} dark={dark} height={184} />
-                </div>
-              )}
 
               {cvMode && (
                 <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:6, marginBottom:6, fontFamily:"'Cairo',sans-serif" }}>
@@ -13556,11 +13552,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   {cvJobSitesCard}
                   {cvJobSitesAdCard}
                   {!isNativePlatform && !showJobsBannerAd && <AdSenseUnit />}
-                  {isAndroidPlatform && (
-                    <div style={{ borderRadius: 16, overflow: "hidden", border: `1px solid ${dark ? "rgba(130,160,220,0.12)" : "rgba(30,64,175,0.08)"}`, boxShadow: dark ? "0 2px 12px rgba(0,0,0,0.18)" : "0 2px 12px rgba(15,27,58,0.07)" }}>
-                      <NativeInlineAdSlot slotId="jobs-inline-slot-bottom" lang={lang} dark={dark} height={184} />
-                    </div>
-                  )}
                 </div>
               ) : cvMode === "builder" ? (
                 cvBuilderScreen === "menu" ? (
