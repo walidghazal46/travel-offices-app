@@ -53,6 +53,23 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 
+// ── Auto-build web assets before every Android build ──────────────────────
+task buildWebAssets(type: Exec) {
+    description 'Run npm build then copy web assets into Android assets folder'
+    workingDir file('../../')
+    def isWindows = System.properties['os.name'].toLowerCase().contains('windows')
+    if (isWindows) {
+        commandLine 'cmd', '/c', 'npm run build && npx cap copy android'
+    } else {
+        commandLine 'sh', '-c', 'npm run build && npx cap copy android'
+    }
+    // Skip task if source files haven't changed (faster incremental builds)
+    inputs.files(fileTree('../../src'), file('../../package.json'), file('../../capacitor.config.ts'))
+    outputs.dir('src/main/assets/public')
+}
+preBuild.dependsOn buildWebAssets
+// ──────────────────────────────────────────────────────────────────────────
+
 try {
     def servicesJSON = file('google-services.json')
     if (servicesJSON.text) {
