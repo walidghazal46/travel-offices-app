@@ -69,6 +69,8 @@ import {
 import { officesData } from "./data/offices";
 import { officeIdAliases, egyptGovernorates, cityIcons, cityNamesEn, countryNamesEn } from "./data/egyptData";
 import { saudiOfficesData, saudiCityIcons } from "./data/saudiOfficesData";
+import { americaOfficesData, americaCityIcons } from "./data/americaOfficesData";
+import { euOfficesData, euCityIcons } from "./data/euOfficesData";
 import { NATIONALITY_DIAL_CODES } from "./constants/index";
 import { countriesData, egyptEmergency } from "./data/countriesData";
 import { embassyHostCity, nationalityEmbassyFallbacks, egyptHostedEmbassies, hostedEmbassyOverrides, buildFallbackEmbassyRecord, embassyDirectory } from "./data/embassyData";
@@ -5377,11 +5379,8 @@ export default function App() {
     return d;
   }, []);
 
-  const topCountries = useMemo(() => countriesData.slice(0, 10), []);
-  const upcomingCountryCards = useMemo(() => ([
-    { key: "soon-country-1", icon: "🌍", name: "الإتحاد الاوربي", nameEn: "European Union" },
-    { key: "soon-country-2", icon: "🧭", name: "أمريكا", nameEn: "America" },
-  ]), []);
+  const topCountries = useMemo(() => countriesData.slice(0, 12), []);
+  const upcomingCountryCards = useMemo(() => ([]), []);
   const topCountryTiles = useMemo(
     () => [...topCountries, ...upcomingCountryCards],
     [topCountries, upcomingCountryCards]
@@ -5480,6 +5479,48 @@ export default function App() {
       });
   }, [mergedOfficeOverrides]);
 
+  const americaOffices = useMemo(() => {
+    return Object.entries(americaOfficesData || {}).flatMap(([cityName, offices]) =>
+      (offices || []).map((office, index) => ({
+        ...office,
+        id: String(office?.id || `us-office-${cityName}-${index + 1}`),
+        country: "أمريكا",
+        gov: cityName,
+        district: String(office?.district || "").trim(),
+        type: String(office?.type || "").trim(),
+        phone: String(office?.phone || "").trim(),
+        website: String(office?.website || "").trim(),
+        working_hours: String(office?.working_hours || "").trim(),
+        services: Array.isArray(office?.services) ? office.services : [],
+      }))
+    ).map((office) => {
+      const override = mergedOfficeOverrides?.[office.id] || null;
+      if (override?.__deleted) return null;
+      return override ? { ...office, ...override } : office;
+    }).filter(Boolean).sort((a, b) => String(a?.gov || "").localeCompare(String(b?.gov || ""), "ar") || String(a?.name || "").localeCompare(String(b?.name || ""), "ar"));
+  }, [mergedOfficeOverrides]);
+
+  const euOffices = useMemo(() => {
+    return Object.entries(euOfficesData || {}).flatMap(([cityName, offices]) =>
+      (offices || []).map((office, index) => ({
+        ...office,
+        id: String(office?.id || `eu-office-${cityName}-${index + 1}`),
+        country: "الاتحاد الأوروبي",
+        gov: cityName,
+        district: String(office?.district || "").trim(),
+        type: String(office?.type || "").trim(),
+        phone: String(office?.phone || "").trim(),
+        website: String(office?.website || "").trim(),
+        working_hours: String(office?.working_hours || "").trim(),
+        services: Array.isArray(office?.services) ? office.services : [],
+      }))
+    ).map((office) => {
+      const override = mergedOfficeOverrides?.[office.id] || null;
+      if (override?.__deleted) return null;
+      return override ? { ...office, ...override } : office;
+    }).filter(Boolean).sort((a, b) => String(a?.gov || "").localeCompare(String(b?.gov || ""), "ar") || String(a?.name || "").localeCompare(String(b?.name || ""), "ar"));
+  }, [mergedOfficeOverrides]);
+
   useEffect(() => {
     try {
       localStorage.setItem("adminAddedOfficesV1", JSON.stringify(adminAddedOffices || []));
@@ -5513,11 +5554,11 @@ export default function App() {
   const isSameGovernorate = (leftGov, rightGov) => normalizeGovernorateName(leftGov) === normalizeGovernorateName(rightGov);
   const countryOffices = useMemo(() => {
     if (!selectedGov) return [];
-    if (selectedCountry === "المملكة العربية السعودية") {
-      return saudiOffices.filter((office) => isSameGovernorate(office.gov, selectedGov));
-    }
+    if (selectedCountry === "المملكة العربية السعودية") return saudiOffices.filter((o) => isSameGovernorate(o.gov, selectedGov));
+    if (selectedCountry === "أمريكا") return americaOffices.filter((o) => isSameGovernorate(o.gov, selectedGov));
+    if (selectedCountry === "الاتحاد الأوروبي") return euOffices.filter((o) => isSameGovernorate(o.gov, selectedGov));
     return effectiveOffices.filter((office) => isSameGovernorate(office.gov, selectedGov));
-  }, [effectiveOffices, isSameGovernorate, saudiOffices, selectedCountry, selectedGov]);
+  }, [effectiveOffices, isSameGovernorate, saudiOffices, americaOffices, euOffices, selectedCountry, selectedGov]);
   const hasSelectedNationality = Boolean(String(selectedNationality || "").trim());
   const availableSaudiServices = useMemo(() => {
     if (selectedCountry !== "المملكة العربية السعودية" || !selectedGov) return [];
@@ -5541,11 +5582,10 @@ export default function App() {
 
   const filteredOffices = useMemo(() => {
     let list = [];
-    if (selectedCountry === "المملكة العربية السعودية") {
-      list = saudiOffices;
-    } else {
-      list = effectiveOffices;
-    }
+    if (selectedCountry === "المملكة العربية السعودية") list = saudiOffices;
+    else if (selectedCountry === "أمريكا") list = americaOffices;
+    else if (selectedCountry === "الاتحاد الأوروبي") list = euOffices;
+    else list = effectiveOffices;
 
     if (selectedGov) list = list.filter((o) => isSameGovernorate(o.gov, selectedGov));
     if (selectedServiceFilter) {
@@ -5565,7 +5605,7 @@ export default function App() {
       );
     }
     return list;
-  }, [effectiveOffices, isSameGovernorate, saudiOffices, search, selectedCountry, selectedGov, selectedServiceFilter]);
+  }, [effectiveOffices, isSameGovernorate, saudiOffices, americaOffices, euOffices, search, selectedCountry, selectedGov, selectedServiceFilter]);
   const guestOfficeLimit = useMemo(() => {
     if (!isGuestUser || !selectedGov) return 0;
     const totalInSelectedRegion = countryOffices.length;

@@ -99,6 +99,24 @@ export const countriesData = [
     },
     cities: ["الرباط", "الدار البيضاء", "فاس", "مراكش", "طنجة", "أكادير", "مكناس"],
   },
+  {
+    name: "أمريكا", flag: "🇺🇸", flagImg: "https://flagcdn.com/w80/us.png", isEgypt: false,
+    officialContacts: {
+      ministry: { name: "وزارة العمل الأمريكية", nameEn: "U.S. Department of Labor", phone: "+1 866 487 2365", website: "dol.gov", hours: "الاثنين - الجمعة: 8ص - 5م", hoursEn: "Mon–Fri: 8AM–5PM", email: "-" },
+      embassy: { name: "سفارة مصر - واشنطن العاصمة", nameEn: "Egyptian Embassy – Washington DC", address: "3521 International Ct NW, Washington, DC 20008", phone: "+1 202 895 5400", website: "egyptembassy.net", email: "egyptembassy@egyptembassy.net" },
+      emergency: [{ name: "الطوارئ الموحد", number: "911" }, { name: "مكتب الهجرة USCIS", number: "1-800-375-5283" }, { name: "خط مساعدة العمال", number: "1-866-487-2365" }],
+    },
+    cities: ["واشنطن العاصمة", "نيويورك", "لوس أنجلوس", "شيكاغو", "هيوستن"],
+  },
+  {
+    name: "الاتحاد الأوروبي", flag: "🇪🇺", flagImg: "https://flagcdn.com/w80/eu.png", isEgypt: false,
+    officialContacts: {
+      ministry: { name: "الوكالة الأوروبية للعمل - ELA", nameEn: "European Labour Authority", phone: "+421 2 20928 174", website: "ela.europa.eu", hours: "الاثنين - الجمعة: 9ص - 5م", hoursEn: "Mon–Fri: 9AM–5PM", email: "info@ela.europa.eu" },
+      embassy: { name: "سفارة مصر - برلين", nameEn: "Egyptian Embassy – Berlin", address: "Stauffenbergstraße 6-7, 10785 Berlin, Germany", phone: "+49 30 477 5470", website: "egyptembassy.de", email: "-" },
+      emergency: [{ name: "الطوارئ الأوروبي الموحد", number: "112" }, { name: "خط المساعدة القنصلية", number: "+49 30 477 5470" }],
+    },
+    cities: ["برلين", "باريس", "أمستردام", "روما", "مدريد"],
+  },
 ];
 
 export const embassyHostCity = {
