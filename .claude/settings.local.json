@@ -27,7 +27,8 @@
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('homepage','لا يوجد'\\)\\)\")",
       "PowerShell(cd 'c:\\\\Users\\\\admin\\\\test1'; $job = Start-Job { cd 'c:\\\\Users\\\\admin\\\\test1'; npm run dev }; Start-Sleep 8; Receive-Job $job)",
       "PowerShell(cd 'c:\\\\Users\\\\admin\\\\test1'; $job = Start-Job { cd 'c:\\\\Users\\\\admin\\\\test1'; npm run dev 2>&1 }; Start-Sleep 8; Receive-Job $job)",
-      "PowerShell(cd 'c:\\\\Users\\\\admin\\\\test1'; Start-Process powershell -ArgumentList \"-NoExit\", \"-Command\", \"cd 'c:\\\\Users\\\\admin\\\\test1'; npm run dev\")"
+      "PowerShell(cd 'c:\\\\Users\\\\admin\\\\test1'; Start-Process powershell -ArgumentList \"-NoExit\", \"-Command\", \"cd 'c:\\\\Users\\\\admin\\\\test1'; npm run dev\")",
+      "mcp__Claude_Preview__preview_start"
     ]
   }
 }

@@ -5358,7 +5358,6 @@ export default function App() {
   useEffect(() => {
     if (showJobsBannerAd && isAndroidPlatform) {
       hideNativeInlineAdSlot("jobs-inline-slot").catch(() => {});
-      hideNativeInlineAdSlot("jobs-inline-slot-bottom").catch(() => {});
     }
   }, [showJobsBannerAd]);
 
@@ -12078,7 +12077,11 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     {country.cities.map(city => {
                       const cityTotalOffices = selectedCountry === "المملكة العربية السعودية"
                         ? ((saudiOfficesData?.[city] || []).length)
-                        : effectiveOffices.filter((office) => isSameGovernorate(office.gov, city)).length;
+                        : selectedCountry === "أمريكا"
+                          ? ((americaOfficesData?.[city] || []).length)
+                          : selectedCountry === "الاتحاد الأوروبي"
+                            ? ((euOfficesData?.[city] || []).length)
+                            : effectiveOffices.filter((office) => isSameGovernorate(office.gov, city)).length;
                       const cityVisibleOffices = isGuestUser && (selectedCountry === "المملكة العربية السعودية")
                         ? Math.min(3, cityTotalOffices)
                         : cityTotalOffices;
@@ -12765,9 +12768,9 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       )}
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2, marginTop: "auto" }}>
                           {[1,2,3,4,5].map(s => (
-                            <span key={s} style={{ fontSize: 16 * egyptOfficeFontScale, color: (officeRatings[office.id]?.avg || 0) >= s ? "#f59e0b" : t.border }}>★</span>
+                            <span key={s} style={{ fontSize: 12 * egyptOfficeFontScale, color: (officeRatings[office.id]?.avg || 0) >= s ? "#f59e0b" : t.border }}>★</span>
                           ))}
-                        {officeRatings[office.id] && <span style={{ fontSize: 13 * egyptOfficeFontScale, color: t.subText }}>({officeRatings[office.id].count})</span>}
+                        {officeRatings[office.id] && <span style={{ fontSize: 10 * egyptOfficeFontScale, color: t.subText }}>({officeRatings[office.id].count})</span>}
                         </div>
                     </button>
                   )})}
@@ -13585,6 +13588,12 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               </div>
               )}
 
+              {!cvMode && isAndroidPlatform && (
+                <div style={{ marginTop: 10, borderRadius: 16, overflow: "hidden", border: `1px solid ${dark ? "rgba(130,160,220,0.12)" : "rgba(30,64,175,0.08)"}`, boxShadow: dark ? "0 2px 12px rgba(0,0,0,0.18)" : "0 2px 12px rgba(15,27,58,0.07)" }}>
+                  <NativeInlineAdSlot slotId="cv-pricing-inline-slot" lang={lang} dark={dark} height={184} />
+                </div>
+              )}
+
               {cvMode && (
                 <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:6, marginBottom:6, fontFamily:"'Cairo',sans-serif" }}>
                   <button
@@ -13606,8 +13615,10 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   {cvJobSitesCard}
                   {cvJobSitesAdCard}
                   {!isNativePlatform && !showJobsBannerAd && <AdSenseUnit />}
-                  {isAndroidPlatform && !showJobsBannerAd && (
-                    <NativeInlineAdSlot slotId="jobs-inline-slot-bottom" lang={lang} dark={dark} height={184} />
+                  {isAndroidPlatform && (
+                    <div style={{ borderRadius: 16, overflow: "hidden", border: `1px solid ${dark ? "rgba(130,160,220,0.12)" : "rgba(30,64,175,0.08)"}`, boxShadow: dark ? "0 2px 12px rgba(0,0,0,0.18)" : "0 2px 12px rgba(15,27,58,0.07)" }}>
+                      <NativeInlineAdSlot slotId="jobs-inline-slot-bottom" lang={lang} dark={dark} height={184} />
+                    </div>
                   )}
                 </div>
               ) : cvMode === "builder" ? (
@@ -14751,24 +14762,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
         {/* ══ STUDY ABROAD TAB ═════════════════════════════════════════════ */}        
         {mainTab === "study" && (
           <div style={{ padding: "62px 0 0" }}>
-            {isAndroidPlatform && (
-              <div style={{
-                position: "sticky",
-                top: 62,
-                zIndex: 90,
-                background: dark ? "#0f172a" : "#f8fafc",
-                padding: "0 12px 8px",
-              }}>
-                <div style={{
-                  borderRadius: 16,
-                  overflow: "hidden",
-                  border: `1px solid ${dark ? "rgba(130,160,220,0.12)" : "rgba(30,64,175,0.08)"}`,
-                  boxShadow: dark ? "0 2px 12px rgba(0,0,0,0.18)" : "0 2px 12px rgba(15,27,58,0.07)",
-                }}>
-                  <NativeInlineAdSlot slotId="study-inline-slot" lang={lang} dark={dark} height={188} adUnitId={ADMOB_NATIVE_INLINE_AD_UNIT_ID_2} />
-                </div>
-              </div>
-            )}
             <StudyAbroadDirectory
               lang={lang}
               dark={dark}
@@ -14779,6 +14772,11 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               onRequestAccessAuth={promptStudyAccessAuth}
               resetSignal={studyTabResetToken}
             />
+            {isAndroidPlatform && (
+              <div style={{ margin: "12px 12px 0", borderRadius: 16, overflow: "hidden", border: `1px solid ${dark ? "rgba(130,160,220,0.12)" : "rgba(30,64,175,0.08)"}`, boxShadow: dark ? "0 2px 12px rgba(0,0,0,0.18)" : "0 2px 12px rgba(15,27,58,0.07)" }}>
+                <NativeInlineAdSlot slotId="study-inline-slot" lang={lang} dark={dark} height={188} adUnitId={ADMOB_NATIVE_INLINE_AD_UNIT_ID_2} />
+              </div>
+            )}
             {!isNativePlatform && (
               <div style={{ padding: "8px 12px 20px" }}>
                 <AdSenseUnit />
@@ -15188,7 +15186,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               );
             })()}
 
-        <div style={{ textAlign: "center", marginTop: 16, color: t.subText, fontSize: 14.3, fontFamily: "'Cairo',sans-serif" }}>v1.0.0.25 — مكاتب السفريات الموثوقة</div>
+        <div style={{ textAlign: "center", marginTop: 16, color: t.subText, fontSize: 14.3, fontFamily: "'Cairo',sans-serif" }}>v1.0.0.26 — مكاتب السفريات الموثوقة</div>
 
             {/* ── إشعار هام ── */}
             <div style={{ marginTop: 16, borderRadius: 24, border: "1px solid rgba(116,169,255,0.18)", background: "linear-gradient(145deg, #17356d 0%, #0b2453 56%, #081b43 100%)", boxShadow: "0 18px 36px rgba(6,24,64,0.22), inset 0 1px 0 rgba(255,255,255,0.08)", padding: "14px 16px" }}>
@@ -15293,6 +15291,11 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               )}
             </div>
 
+            {isAndroidPlatform && (
+              <div style={{ marginTop: 16, borderRadius: 24, overflow: "hidden", border: "1px solid rgba(116,169,255,0.18)", background: "linear-gradient(145deg, #17356d 0%, #0b2453 56%, #081b43 100%)", boxShadow: "0 18px 36px rgba(6,24,64,0.22)" }}>
+                <NativeInlineAdSlot slotId="settings-inline-slot" lang={lang} dark={dark} height={184} />
+              </div>
+            )}
 
           </div>
         )}
