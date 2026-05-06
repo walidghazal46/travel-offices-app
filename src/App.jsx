@@ -15784,7 +15784,7 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "center",
     position: "sticky",
-    top: 60,
+    top: 0,
     zIndex: 50,
   },
   searchWrap: {

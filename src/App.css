@@ -1074,7 +1074,7 @@
 }
 
 body {
-  padding-top:    var(--safe-top);
+  padding-top:    0;
   padding-bottom: var(--safe-bottom);
   padding-left:   var(--safe-left);
   padding-right:  var(--safe-right);
