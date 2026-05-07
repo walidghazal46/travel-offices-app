@@ -4226,7 +4226,6 @@ export default function App() {
   }, [lang]);
 
   const openStudyTabRoot = useCallback(() => {
-    showInterstitialAd();
     setMainTab("study");
     setStudyTabResetToken((prev) => prev + 1);
 
@@ -4259,6 +4258,11 @@ export default function App() {
         }
       });
     }
+  }, []);
+
+  const openCountryTrustedOffices = useCallback(() => {
+    setView("countryTrusted");
+    showInterstitialAd();
   }, [showInterstitialAd]);
 
   const promptStudyReviewsAuth = useCallback((mode = "login") => {
@@ -9690,7 +9694,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
       {/* Nav */}
       <nav style={{ padding: "16px 10px", flex: 1 }}>
         {[
-          { key: "home",     icon: "🏠", label: tx.navHome,     action: () => { showInterstitialAd(); goToCountryLanding(); } },
+          { key: "home",     icon: "🏠", label: tx.navHome,     action: () => { goToCountryLanding(); } },
           { key: "study",    icon: "🎓", label: tx.navStudy,    action: openStudyTabRoot },
           { key: "cv",       icon: "📄", label: tx.navCV,       action: () => { showInterstitialAd(); setMainTab("cv"); setCvMode(null); setSelectedCvPackage(null); setCvBuilderScreen("menu"); setSelectedCvBuilderOrder(null); setCvStep(0); setCvUnlocked(false); scrollAppToTop(); if (typeof window !== "undefined") { window.requestAnimationFrame(() => { scrollAppToTop(); }); } } },
           { key: "settings", icon: "⚙️", label: tx.navSettings, action: () => setMainTab("settings") },
@@ -11826,7 +11830,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
 
                   {/* ── HERO CARD: المكاتب الموثوقة ── */}
                   <button
-                    onClick={() => { setView("countryTrusted"); }}
+                    onClick={openCountryTrustedOffices}
                     className="crystal-card"
                     style={{
                       width: "100%", border: "none", cursor: "pointer", padding: 0,
@@ -14694,16 +14698,17 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
         {/* ══ STUDY ABROAD TAB ═════════════════════════════════════════════ */}        
         {mainTab === "study" && (
           <div style={{ padding: "62px 0 0" }}>
-            <StudyAbroadDirectory
-              lang={lang}
-              dark={dark}
-              isAdminUser={isAdminUser}
-              authUser={authPreviewUser}
-              isGuestUser={isGuestUser}
-              onRequestAuth={promptStudyReviewsAuth}
-              onRequestAccessAuth={promptStudyAccessAuth}
-              resetSignal={studyTabResetToken}
-            />
+      <StudyAbroadDirectory
+        lang={lang}
+        dark={dark}
+        isAdminUser={isAdminUser}
+        authUser={authPreviewUser}
+        isGuestUser={isGuestUser}
+        onRequestAuth={promptStudyReviewsAuth}
+        onRequestAccessAuth={promptStudyAccessAuth}
+        onOpenOffice={showInterstitialAd}
+        resetSignal={studyTabResetToken}
+      />
             {!isNativePlatform && (
               <div style={{ padding: "8px 12px 20px" }}>
                 <AdSenseUnit />
@@ -15387,7 +15392,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               className="nav-tab-item"
               onClick={() => {
                 if (tab.key === "home") {
-                  showInterstitialAd();
                   goToCountryLanding();
                   scrollAppToTop();
                   if (typeof window !== "undefined") {

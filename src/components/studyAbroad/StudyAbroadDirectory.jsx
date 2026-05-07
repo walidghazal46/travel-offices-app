@@ -180,6 +180,7 @@ export default function StudyAbroadDirectory({
   isGuestUser = false,
   onRequestAuth,
   onRequestAccessAuth,
+  onOpenOffice,
   resetSignal = 0,
 }) {
   const copy = COPY[lang] || COPY.ar;
@@ -468,6 +469,14 @@ export default function StudyAbroadDirectory({
     setCurrentPage(nextPage);
     scrollDirectoryToTop();
   }, [scrollDirectoryToTop]);
+
+  const openStudyOffice = useCallback((office) => {
+    if (!office) return;
+    if (typeof onOpenOffice === "function") {
+      onOpenOffice();
+    }
+    setSelectedOffice(office);
+  }, [onOpenOffice]);
 
   const requestStudyAuth = useCallback((mode) => {
     if (typeof onRequestAccessAuth === "function") {
@@ -858,7 +867,7 @@ export default function StudyAbroadDirectory({
                 key={office.id}
                 office={office}
                 labels={copy}
-                onClick={() => setSelectedOffice(office)}
+                onClick={() => openStudyOffice(office)}
               />
             ))
           : null}
