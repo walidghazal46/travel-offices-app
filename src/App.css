@@ -992,8 +992,8 @@
 
 /* ── Scrollbar Styling ────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 0;
+  height: 0;
 }
 
 ::-webkit-scrollbar-track {
@@ -1001,12 +1001,11 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(212,175,55,0.3);
-  border-radius: 999px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(212,175,55,0.55);
+  background: transparent;
 }
 
 /* ── Text Selection ───────────────────────────────────────────────────────── */

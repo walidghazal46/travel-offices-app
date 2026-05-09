@@ -1118,6 +1118,7 @@ export default function App() {
       return true;
     }
   });
+  const [isNationalityDropdownOpen, setIsNationalityDropdownOpen] = useState(false);
   const [selectedGov, setSelectedGov] = useState(null);
   const [search, setSearch] = useState("");
   const [selectedServiceFilter, setSelectedServiceFilter] = useState(null);
@@ -1179,6 +1180,9 @@ export default function App() {
   const authPreviewOtpRefs = useRef([]);
   const authPreviewOtpResendIntervalRef = useRef(null);
   const authPreviewSplitPhoneInputRef = useRef(null);
+  const nationalityDropdownRef = useRef(null);
+  const didHydrateProfileNationalityRef = useRef(false);
+  const appTopAnchorRef = useRef(null);
   const [accountPanelOpen, setAccountPanelOpen] = useState(false);
   const [accountProfileName, setAccountProfileName] = useState("");
   const [accountProfileEmail, setAccountProfileEmail] = useState("");
@@ -1534,6 +1538,22 @@ export default function App() {
     if (selectedCountry === "المملكة العربية السعودية") return localePack.countryServices || [];
     return localePack.otherCountryServices || [];
   }, [lang, selectedCountry]);
+  const countryPaidServices = useMemo(() => {
+    const localePack = T[lang] || T.ar;
+    if (selectedCountry === "المملكة العربية السعودية") {
+      return localePack.countryServices || [];
+    }
+
+    const baseServices = localePack.otherCountryServices || [];
+    if (selectedCountry === "أمريكا" || selectedCountry === "الاتحاد الأوروبي") {
+      return baseServices.filter((service) => {
+        const label = String(service?.label || "").trim();
+        return label !== "طلب تأشيرة نظامية" && label !== "Free Visa Request";
+      });
+    }
+
+    return baseServices;
+  }, [lang, selectedCountry]);
 
   const getProviderRequestTimestamp = useCallback((entry) => {
     const createdAtValue = entry?.createdAt;
@@ -1633,10 +1653,17 @@ export default function App() {
         setAccountCoins(profileCoins);
         setAdminSessionRole(profileRole);
         const profileNationality = sanitizeNationalityValue(profileSnapshot.nationality);
-        if (profileNationality) {
+        const hasLocalNationalitySelection = Boolean(String(selectedNationality || nationalityInputText || "").trim());
+        if (
+          profileNationality &&
+          !didHydrateProfileNationalityRef.current &&
+          !hasLocalNationalitySelection &&
+          !nationalityEditMode
+        ) {
           setSelectedNationality(profileNationality);
           setNationalityInputText(profileNationality);
         }
+        didHydrateProfileNationalityRef.current = true;
 
         if (DISABLED_ADMIN_EMAILS.includes(normalizedEmail) && profileRole !== "user") {
           await upsertAuthUserProfileInFirebase({
@@ -1712,6 +1739,8 @@ export default function App() {
     authPreviewReady,
     authPreviewUser,
     lang,
+    nationalityEditMode,
+    nationalityInputText,
     selectedCountry,
     selectedNationality,
   ]);
@@ -1831,9 +1860,28 @@ export default function App() {
   }, [providerPortalGuestNotice]);
 
   useEffect(() => {
+    if (!isNationalityDropdownOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!nationalityDropdownRef.current?.contains(event.target)) {
+        setIsNationalityDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [isNationalityDropdownOpen]);
+
+  useEffect(() => {
     setAccountProfileName(authPreviewUser?.displayName || "");
     setAccountProfileEmail(authPreviewUser?.email || "");
     setAccountProfilePhone(authPreviewUser?.phoneNumber || "");
+    didHydrateProfileNationalityRef.current = false;
     if (!authPreviewUser?.uid) {
       setAccountCoins(0);
     }
@@ -1910,6 +1958,15 @@ export default function App() {
     resetAuthPreviewForm();
   }, [resetAuthPreviewForm]);
 
+  const openTravelCountriesLanding = useCallback(() => {
+    setMainTab("home");
+    setSelectedCountry("مصر");
+    setSelectedGov(null);
+    setSearch("");
+    setShowOtherDropdown(false);
+    setView("landing");
+  }, []);
+
   const handleAuthPreviewGuestMode = useCallback(() => {
     clearAuthPreviewFeedback();
     setShowExitConfirm(false);
@@ -1937,6 +1994,7 @@ export default function App() {
             ? "تم تسجيل دخولك عبر Google بنجاح."
             : "You have signed in successfully with Google.",
         });
+        openTravelCountriesLanding();
         closeAuthPreview();
       } catch (error) {
         if (cancelled) return;
@@ -2146,6 +2204,7 @@ export default function App() {
           ? "تم تسجيل دخولك عبر Google بنجاح."
           : "You have signed in successfully with Google.",
       });
+      openTravelCountriesLanding();
       closeAuthPreview();
     } catch (error) {
       if (String(error?.code || "") === "google-redirect-started") {
@@ -3967,6 +4026,7 @@ export default function App() {
               ? "تم تسجيل دخولك بنجاح."
               : "You have signed in successfully.",
           });
+          openTravelCountriesLanding();
           closeAuthPreview();
           return;
         }
@@ -4018,6 +4078,7 @@ export default function App() {
               ? "تم تأكيد رقم الجوال وتسجيل دخولك بنجاح."
               : "Your phone number has been verified and you are now signed in.",
           });
+          openTravelCountriesLanding();
           closeAuthPreview();
           return;
         }
@@ -5255,7 +5316,7 @@ export default function App() {
   const disclaimerSources = OFFICIAL_SOURCE_GROUPS[lang] || OFFICIAL_SOURCE_GROUPS.ar;
   const isCompactPhone = typeof window !== "undefined" && window.innerWidth <= 430;
   const mobileGovFontScale = isCompactPhone ? 0.85 : 1;
-  const mobileOfficeCardWidth = isCompactPhone ? "90%" : "100%";
+const mobileOfficeCardWidth = "100%";
   const officeGridTemplateColumns = isCompactPhone ? "repeat(3, minmax(0, 1fr))" : "repeat(3, minmax(0, 1fr))";
   const officeGridGap = isCompactPhone ? 6 : 8;
   const landingAdConfig = {
@@ -5379,9 +5440,36 @@ export default function App() {
     () => [...topCountries, ...upcomingCountryCards],
     [topCountries, upcomingCountryCards]
   );
+  const nationalityOptions = useMemo(() => (
+    [
+      ...topCountries.map((countryItem) => ({
+        value: countryItem.name,
+        label:
+          lang === "ar"
+            ? (countryItem.name === "المملكة العربية السعودية"
+              ? "السعودية"
+              : countryItem.name === "الإمارات العربية المتحدة"
+                ? "الإمارات"
+                : countryItem.name)
+            : (countryNamesEn[countryItem.name] || countryItem.name),
+      })),
+      {
+        value: OTHER_NATIONALITY_VALUE,
+        label: lang === "ar" ? "جنسية أخرى" : "Other nationality",
+      },
+    ]
+  ), [lang, topCountries]);
   const country = useMemo(() => countriesData.find((c) => c.name === selectedCountry) || null, [selectedCountry]);
   const nationalityCountry = useMemo(() => countriesData.find((c) => c.name === selectedNationality) || null, [selectedNationality]);
-  const isOtherNationalitySelected = selectedNationality === OTHER_NATIONALITY_VALUE;
+  const isOtherNationalitySelected = nationalityEditMode && !nationalityCountry && Boolean(String(selectedNationality || nationalityInputText || "").trim());
+  const hasEmbassyNationality = Boolean(String(selectedNationality || "").trim());
+  const selectedNationalityLabel = useMemo(() => {
+    if (nationalityEditMode && !nationalityCountry) {
+      return String(selectedNationality || nationalityInputText || "").trim() || (lang === "ar" ? "اختر الجنسية" : "Choose nationality");
+    }
+    return String(selectedNationality || "").trim() || (lang === "ar" ? "اختر الجنسية" : "Choose nationality");
+  }, [lang, nationalityCountry, nationalityEditMode, nationalityInputText, selectedNationality]);
+  const canOpenEmbassySection = hasEmbassyNationality && !isOtherNationalitySelected;
   const availableEmbassyCountries = useMemo(
     () => embassyDirectory[selectedCountry] || [],
     [selectedCountry]
@@ -5656,6 +5744,28 @@ export default function App() {
       upsertAuthUserProfileInFirebase({ uid: authPreviewUser.uid, nationality: normalizedNationality }).catch(() => {});
     }
   }, [selectedNationality, authPreviewUser?.uid]);
+
+  useEffect(() => {
+    const cleanNationality = String(selectedNationality || "").trim();
+    if (!cleanNationality) return;
+
+    if (nationalityCountry) {
+      if (nationalityEditMode) {
+        setNationalityEditMode(false);
+      }
+      if (nationalityInputText !== cleanNationality) {
+        setNationalityInputText(cleanNationality);
+      }
+      return;
+    }
+
+    if (!nationalityEditMode) {
+      setNationalityEditMode(true);
+    }
+    if (nationalityInputText !== cleanNationality) {
+      setNationalityInputText(cleanNationality);
+    }
+  }, [selectedNationality, nationalityCountry, nationalityEditMode, nationalityInputText]);
   useEffect(() => {
     setShowOtherEmbassies(false);
     if (nationalityEmbassyCountry) {
@@ -5666,7 +5776,7 @@ export default function App() {
   }, [selectedCountry, selectedNationality, nationalityEmbassyCountry, availableEmbassyCountries]);
 
   useEffect(() => {
-    if (!isOtherNationalitySelected) return;
+    if (canOpenEmbassySection) return;
     if (view === "countryEmbassies") {
       setView("countryMenu");
       return;
@@ -5674,7 +5784,7 @@ export default function App() {
     if (view === "egyptEmbassies") {
       setView("egyptMenu");
     }
-  }, [isOtherNationalitySelected, view]);
+  }, [canOpenEmbassySection, view]);
 
   useEffect(() => {
     if (officePage > totalOfficePages) setOfficePage(totalOfficePages);
@@ -5931,12 +6041,44 @@ export default function App() {
   const getOfficeLabel = (officeName) => (lang === "ar" ? officeName : getOfficeEnglishText(officeName));
   const getOfficeAddressLabel = (officeAddress) => (lang === "ar" ? officeAddress : getOfficeEnglishText(officeAddress));
   const handleCountrySelect = (nextCountry) => {
-    if (!hasSelectedNationality) return;
     setSelectedCountry(nextCountry);
     setSelectedGov(null);
     setSearch("");
     setView(nextCountry === "مصر" ? "egyptMenu" : "countryMenu");
   };
+  const handleNationalitySelect = useCallback((nextValue) => {
+    const cleanValue = String(nextValue || "").trim();
+    setIsNationalityDropdownOpen(false);
+    if (!cleanValue) {
+      setSelectedNationality("");
+      setNationalityInputText("");
+      setNationalityEditMode(false);
+      return;
+    }
+
+    if (cleanValue === OTHER_NATIONALITY_VALUE) {
+      setSelectedNationality("");
+      setNationalityInputText("");
+      setNationalityEditMode(true);
+      return;
+    }
+
+    setSelectedNationality(cleanValue);
+    setNationalityInputText(cleanValue);
+    setNationalityEditMode(false);
+    setNationalityConfirmToast(cleanValue);
+    setTimeout(() => setNationalityConfirmToast(""), 1800);
+  }, []);
+
+  const confirmCustomNationality = useCallback(() => {
+    const cleanCustomNationality = String(nationalityInputText || "").trim();
+    if (!cleanCustomNationality) return;
+    setSelectedNationality(cleanCustomNationality);
+    setNationalityEditMode(true);
+    setIsNationalityDropdownOpen(false);
+    setNationalityConfirmToast(cleanCustomNationality);
+    setTimeout(() => setNationalityConfirmToast(""), 1800);
+  }, [nationalityInputText]);
   const handleGovSelect = (govName) => {
     setSelectedGov(govName);
     setSearch("");
@@ -6167,17 +6309,21 @@ export default function App() {
   const scrollAppToTop = useCallback(() => {
     if (typeof window === "undefined") return;
 
+    if (appTopAnchorRef.current?.scrollIntoView) {
+      try {
+        appTopAnchorRef.current.scrollIntoView({ block: "start", inline: "nearest" });
+      } catch {
+      }
+    }
+
     const scrollTargets = [
       document.scrollingElement,
       document.documentElement,
       document.body,
+      ...Array.from(document.querySelectorAll("main, .app-root, [data-scroll-root], [style*='overflow']")),
     ].filter(Boolean);
 
-    try {
-      window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
-    } catch {
-      window.scrollTo(0, 0);
-    }
+    window.scrollTo(0, 0);
 
     scrollTargets.forEach((target) => {
       try {
@@ -6186,6 +6332,19 @@ export default function App() {
       } catch {
       }
     });
+
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+        scrollTargets.forEach((target) => {
+          try {
+            target.scrollTop = 0;
+            target.scrollLeft = 0;
+          } catch {
+          }
+        });
+      });
+    }
   }, []);
 
   const goToCountryLanding = () => {
@@ -9694,7 +9853,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
       {/* Nav */}
       <nav style={{ padding: "16px 10px", flex: 1 }}>
         {[
-          { key: "home",     icon: "🏠", label: tx.navHome,     action: () => { goToCountryLanding(); } },
+          { key: "home",     icon: "🏠", label: tx.navHome,     action: () => { goToCountryLanding(); scrollAppToTop(); if (typeof window !== "undefined") { window.requestAnimationFrame(() => { scrollAppToTop(); }); } } },
           { key: "study",    icon: "🎓", label: tx.navStudy,    action: openStudyTabRoot },
           { key: "cv",       icon: "📄", label: tx.navCV,       action: () => { showInterstitialAd(); setMainTab("cv"); setCvMode(null); setSelectedCvPackage(null); setCvBuilderScreen("menu"); setSelectedCvBuilderOrder(null); setCvStep(0); setCvUnlocked(false); scrollAppToTop(); if (typeof window !== "undefined") { window.requestAnimationFrame(() => { scrollAppToTop(); }); } } },
           { key: "settings", icon: "⚙️", label: tx.navSettings, action: () => setMainTab("settings") },
@@ -9739,6 +9898,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
 
   return (
     <div dir={dir} className="app-root" style={{ ...styles.root, background: t.bgGradient || t.bg, color: t.text }}>
+      <div ref={appTopAnchorRef} style={{ position: "absolute", top: 0, left: 0, width: 1, height: 1, pointerEvents: "none" }} />
       {isDesktop && <DesktopSidebar />}
       {/* ── Cinematic Background — Floating Light Orbs ─────────────────── */}
       <div className="cinematic-bg">
@@ -11067,7 +11227,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   </button>
 
                   {/* ── BOTTOM CARD: تواصل مع سفارتك ── */}
-                  {!isOtherNationalitySelected && (
+                  {canOpenEmbassySection && (
                     <button
                       onClick={() => setView("egyptEmbassies")}
                       className="crystal-card"
@@ -11093,7 +11253,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     </button>
                   )}
 
-                  {!isOtherNationalitySelected && !isNativePlatform && (
+                  {canOpenEmbassySection && !isNativePlatform && (
                     <div style={{ marginTop: 2 }}>
                       <AdSenseUnit />
                     </div>
@@ -11166,6 +11326,201 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   zoom: isCompactPhone ? 0.88 : 1,
                   margin: "18px auto 0",
                 }}>
+                  <div style={{ marginBottom: 14, borderRadius: 18, padding: "12px 14px 18px", background: dark ? "linear-gradient(135deg, rgba(217,119,6,0.18), rgba(245,158,11,0.10))" : "linear-gradient(135deg, #fffbeb, #fef3c7)", border: `1px solid ${dark ? "rgba(245,158,11,0.24)" : "rgba(217,119,6,0.22)"}`, boxShadow: dark ? "0 0 20px rgba(245,158,11,0.12)" : "0 0 18px rgba(245,158,11,0.10), 0 10px 20px rgba(245,158,11,0.07)", position: "relative", overflow: "visible", zIndex: 12 }}>
+                    <div style={{ position: "absolute", top: -24, left: lang === "ar" ? "auto" : -22, right: lang === "ar" ? -22 : "auto", width: 88, height: 88, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,158,11,0.18), rgba(245,158,11,0))" }} />
+                    <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#fcd34d" : "#b45309", marginBottom: 10, fontFamily: "'Cairo',sans-serif", position: "relative" }}>
+                      {lang === "ar" ? "🪪 اختر جنسيتك" : "🪪 Choose your nationality"}
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10, position: "relative" }}>
+                      <div
+                        ref={nationalityDropdownRef}
+                        style={{
+                          position: "relative",
+                          width: "100%",
+                          borderRadius: 16,
+                          overflow: "visible",
+                          background: dark ? "rgba(15,23,42,0.54)" : "rgba(255,255,255,0.96)",
+                          border: `1px solid ${dark ? "rgba(251,191,36,0.34)" : "rgba(217,119,6,0.24)"}`,
+                          boxShadow: dark ? "0 10px 24px rgba(0,0,0,0.18)" : "0 10px 24px rgba(217,119,6,0.08)",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setIsNationalityDropdownOpen((prev) => !prev)}
+                          style={{
+                            width: "100%",
+                            minHeight: 54,
+                            border: "none",
+                            background: "transparent",
+                            color: t.text,
+                            padding: "12px 46px 12px 16px",
+                            fontSize: 14,
+                            fontWeight: 800,
+                            fontFamily: "'Cairo',sans-serif",
+                            outline: "none",
+                            boxSizing: "border-box",
+                            lineHeight: 1.5,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            textAlign: lang === "ar" ? "right" : "left",
+                            borderRadius: 16,
+                          }}
+                        >
+                          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {selectedNationalityLabel}
+                          </span>
+                        </button>
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "50%",
+                            left: lang === "ar" ? 14 : "auto",
+                            right: lang === "ar" ? "auto" : 14,
+                            transform: "translateY(-50%)",
+                            width: 24,
+                            height: 24,
+                            borderRadius: "50%",
+                            background: dark ? "rgba(251,191,36,0.16)" : "rgba(217,119,6,0.10)",
+                            color: dark ? "#fcd34d" : "#b45309",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 12,
+                            pointerEvents: "none",
+                            transition: "transform 0.2s ease",
+                            transform: `translateY(-50%) rotate(${isNationalityDropdownOpen ? 180 : 0}deg)`,
+                          }}
+                        >
+                          ▾
+                        </div>
+                        {isNationalityDropdownOpen && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: "calc(100% + 8px)",
+                              left: 0,
+                              right: 0,
+                              zIndex: 40,
+                              borderRadius: 18,
+                              overflow: "hidden",
+                              background: dark ? "rgba(11,18,32,0.98)" : "rgba(255,255,255,0.99)",
+                              border: `1px solid ${dark ? "rgba(251,191,36,0.28)" : "rgba(217,119,6,0.20)"}`,
+                              boxShadow: dark ? "0 18px 40px rgba(0,0,0,0.38)" : "0 18px 40px rgba(15,27,58,0.16)",
+                              backdropFilter: "blur(14px)",
+                              WebkitBackdropFilter: "blur(14px)",
+                              maxHeight: 260,
+                              overflowY: "auto",
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleNationalitySelect("")}
+                              style={{
+                                width: "100%",
+                                minHeight: 46,
+                                padding: "10px 16px",
+                                border: "none",
+                                background: !selectedNationality ? (dark ? "rgba(251,191,36,0.14)" : "rgba(217,119,6,0.10)") : "transparent",
+                                color: t.text,
+                                fontSize: 14,
+                                fontWeight: 700,
+                                fontFamily: "'Cairo',sans-serif",
+                                cursor: "pointer",
+                                textAlign: lang === "ar" ? "right" : "left",
+                                borderBottom: `1px solid ${dark ? "rgba(255,255,255,0.06)" : "rgba(148,163,184,0.12)"}`,
+                              }}
+                            >
+                              {lang === "ar" ? "اختر الجنسية" : "Choose nationality"}
+                            </button>
+                            {nationalityOptions.map((option) => {
+                              const isActive = option.value === OTHER_NATIONALITY_VALUE
+                                ? (nationalityEditMode && !nationalityCountry)
+                                : selectedNationality === option.value;
+                              return (
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  onClick={() => handleNationalitySelect(option.value)}
+                                  style={{
+                                    width: "100%",
+                                    minHeight: 46,
+                                    padding: "10px 16px",
+                                    border: "none",
+                                    background: isActive
+                                      ? (dark ? "rgba(251,191,36,0.16)" : "linear-gradient(135deg, rgba(255,251,235,1), rgba(254,243,199,0.92))")
+                                      : "transparent",
+                                    color: isActive ? (dark ? "#fcd34d" : "#b45309") : t.text,
+                                    fontSize: 14,
+                                    fontWeight: isActive ? 900 : 700,
+                                    fontFamily: "'Cairo',sans-serif",
+                                    cursor: "pointer",
+                                    textAlign: lang === "ar" ? "right" : "left",
+                                    borderBottom: `1px solid ${dark ? "rgba(255,255,255,0.06)" : "rgba(148,163,184,0.10)"}`,
+                                  }}
+                                >
+                                  {option.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {nationalityEditMode && (
+                        <div style={{ display: "flex", gap: 8, flexDirection: isCompactPhone ? "column" : "row" }}>
+                          <input
+                            type="text"
+                            value={nationalityInputText}
+                            onChange={(event) => setNationalityInputText(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                confirmCustomNationality();
+                              }
+                            }}
+                            placeholder={lang === "ar" ? "اكتب الجنسية الأخرى" : "Type another nationality"}
+                            style={{
+                              flex: 1,
+                              minHeight: 44,
+                              borderRadius: 14,
+                              border: `1px solid ${dark ? "rgba(251,191,36,0.28)" : "rgba(217,119,6,0.20)"}`,
+                              background: dark ? "rgba(15,23,42,0.44)" : "rgba(255,255,255,0.94)",
+                              color: t.text,
+                              padding: "10px 14px",
+                              fontSize: 13,
+                              fontWeight: 700,
+                              fontFamily: "'Cairo',sans-serif",
+                              outline: "none",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={confirmCustomNationality}
+                            style={{
+                              minWidth: isCompactPhone ? "100%" : 116,
+                              minHeight: 44,
+                              borderRadius: 14,
+                              border: "none",
+                              cursor: "pointer",
+                              background: "linear-gradient(135deg, #d97706, #f59e0b)",
+                              color: "#ffffff",
+                              fontSize: 13,
+                              fontWeight: 900,
+                              fontFamily: "'Cairo',sans-serif",
+                              boxShadow: "0 10px 18px rgba(217,119,6,0.20)",
+                            }}
+                          >
+                            {lang === "ar" ? "حفظ الجنسية" : "Save nationality"}
+                          </button>
+                        </div>
+                      )}
+
+                    </div>
+                  </div>
+
                   <div style={{ marginBottom: 14, borderRadius: 18, padding: "12px 14px", background: dark ? "linear-gradient(135deg, rgba(30,64,175,0.22), rgba(59,130,246,0.10))" : "linear-gradient(135deg, #eff6ff, #dbeafe)", border: `1px solid ${dark ? "rgba(99,179,237,0.22)" : "rgba(59,130,246,0.22)"}`, boxShadow: dark ? "0 0 20px rgba(59,130,246,0.12)" : "0 0 18px rgba(59,130,246,0.10), 0 10px 20px rgba(59,130,246,0.07)", position: "relative", overflow: "hidden" }}>
                     <div style={{ position: "absolute", top: -24, left: lang === "ar" ? "auto" : -22, right: lang === "ar" ? -22 : "auto", width: 88, height: 88, borderRadius: "50%", background: "radial-gradient(circle, rgba(96,165,250,0.22), rgba(96,165,250,0))" }} />
                     <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#93c5fd" : "#1d4ed8", marginBottom: 10, fontFamily: "'Cairo',sans-serif", position: "relative" }}>
@@ -11181,7 +11536,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                         onClick={() => {
                           if (!isComingSoon) handleCountrySelect(c.name);
                         }}
-                        disabled={!hasSelectedNationality || isComingSoon}
+                        disabled={isComingSoon}
                         style={{
                           background: dark
                             ? (isComingSoon
@@ -11197,7 +11552,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                               : (dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)")}`,
                           borderRadius: 18,
                           padding: "14px 6px 12px",
-                          cursor: !hasSelectedNationality || isComingSoon ? "not-allowed" : "pointer",
+                          cursor: isComingSoon ? "not-allowed" : "pointer",
                           display: "flex",
                           flexDirection: "column",
                           alignItems: "center",
@@ -11210,7 +11565,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                               : (dark ? "none" : "0 2px 10px rgba(0,0,0,0.05)")),
                           transition: "all 0.2s ease",
                           outline: "none",
-                          opacity: !hasSelectedNationality ? 0.55 : (isComingSoon ? 0.92 : 1),
+                          opacity: isComingSoon ? 0.92 : 1,
                           position: "relative",
                           overflow: "hidden",
                         }}
@@ -11303,18 +11658,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     })}
                     </div>
                   </div>
-                  {!hasSelectedNationality && (
-                    <div style={{ marginTop: 10, fontSize: 11, fontWeight: 700, color: dark ? "#cbd5e1" : "#64748b", textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
-                      {lang === "ar" ? "اختر الجنسية أولًا لتفعيل الدول." : "Choose your nationality first to enable countries."}
-                    </div>
-                  )}
-                  <div style={{ marginTop: 11, borderRadius: 22, padding: "8px 18px", background: dark ? "linear-gradient(135deg, rgba(22,163,74,0.18), rgba(34,197,94,0.10))" : "linear-gradient(135deg, #f0fdf4, #dcfce7)", border: "1px solid rgba(34,197,94,0.28)", textAlign: "center", boxShadow: dark ? "0 0 24px rgba(34,197,94,0.16), inset 0 1px 0 rgba(255,255,255,0.04)" : "0 0 18px rgba(34,197,94,0.16), 0 10px 24px rgba(34,197,94,0.10)", position: "relative", overflow: "hidden" }}>
-                    <div style={{ position: "absolute", top: -18, left: lang === "ar" ? "auto" : -18, right: lang === "ar" ? -18 : "auto", width: 74, height: 74, borderRadius: "50%", background: "radial-gradient(circle, rgba(74,222,128,0.22), rgba(74,222,128,0))" }} />
-                    <div style={{ fontSize: 11.25, fontWeight: 800, color: "#15803d", lineHeight: 1.35, fontFamily: "'Cairo',sans-serif", position: "relative", textShadow: dark ? "0 0 10px rgba(74,222,128,0.18)" : "0 1px 0 rgba(255,255,255,0.45)" }}>
-                      {lang === "ar" ? "جميع المستخدمين يمكنهم الدخول إلى أي دولة وطلب الخدمة بكل سهولة." : "All users can enter any country page and request the service easily."}
-                    </div>
-                  </div>
-
                   {(() => {
                     const isLockedLinks = !authPreviewUser;
                     const handleLinkClick = (e, href) => {
@@ -11330,7 +11673,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     return (
                     <div style={{ marginTop: 10.4, borderRadius: 20, padding: "7.6px 10px 8.4px", background: dark ? "rgba(255,255,255,0.04)" : "#ffffff", border: `1px solid ${dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.07)"}`, boxShadow: dark ? "none" : "0 4px 20px rgba(0,0,0,0.06)" }}>
                       <div style={{ textAlign: "center", fontSize: 12, color: dark ? "#94a3b8" : "#475569", fontWeight: 800, marginBottom: 6, fontFamily: "'Cairo',sans-serif" }}>
-                        {lang === "ar" ? "روابط مهمة" : "Important Links"}
+                      {lang === "ar" ? "روابط مهمة للمقيمين في السعودية" : "Important links for Saudi residents"}
                       </div>
                       <div
                         className="landing-links-row"
@@ -11651,7 +11994,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               </div>
             )}
 
-            {view === "egyptEmbassies" && !isOtherNationalitySelected && (
+            {view === "egyptEmbassies" && canOpenEmbassySection && (
               <div>
                 <div style={styles.hero}>
                   <div style={{ ...styles.heroTag, background: dark ? "rgba(14,165,233,0.16)" : "rgba(14,165,233,0.10)", border: "1px solid rgba(14,165,233,0.28)", color: dark ? "#67e8f9" : "#0f766e", display: "block", textAlign: "center" }}>
@@ -11941,7 +12284,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   </button>
 
                   {/* ── BOTTOM CARD: تواصل مع سفارتك ── */}
-                  {!isOtherNationalitySelected && (
+                  {canOpenEmbassySection && (
                     <button
                       onClick={() => { setView("countryEmbassies"); }}
                       className="crystal-card"
@@ -12056,7 +12399,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
               </div>
             )}
 
-            {view === "countryEmbassies" && country && !isOtherNationalitySelected && (
+            {view === "countryEmbassies" && country && canOpenEmbassySection && (
               <div>
                 <div style={styles.hero}>
                   <div style={{ ...styles.heroTag, background: dark ? "rgba(14,165,233,0.16)" : "rgba(14,165,233,0.10)", border: "1px solid rgba(14,165,233,0.28)", color: dark ? "#67e8f9" : "#0f766e", display: "block", textAlign: "center" }}>
@@ -12185,7 +12528,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 <React.Suspense fallback={null}>
                 <PaidFlowErrorBoundary lang={lang} resetKey={`country-${selectedCountry}-${countryPaidBackRequest}`}>
                   <PaidServicesFlow
-                    services={selectedCountry === "المملكة العربية السعودية" ? tx.countryServices : tx.otherCountryServices}
+                    services={countryPaidServices}
                     lang={lang}
                     dark={dark}
                     selectedCountry={selectedCountry}
@@ -12694,7 +13037,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   <span style={{ fontSize: 14 }}>🔍</span>
                   <input type="text" placeholder={tx.searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...styles.searchInput, background: "transparent", color: t.text }} />
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: officeGridTemplateColumns, gap: officeGridGap, width: "100%", minWidth: 0, overflowX: "hidden" }}>
+                <div style={{ display: "grid", gridTemplateColumns: officeGridTemplateColumns, gap: officeGridGap, width: "100%", minWidth: 0, overflowX: "hidden", alignItems: "stretch" }}>
                   {visibleFilteredOffices.length === 0 ? (
                     <div style={{ textAlign: "center", color: t.subText, padding: "40px 0", fontSize: 15, gridColumn: "1 / -1" }}>{tx.noResults}</div>
                   ) : paginatedOffices.map((office, i) => {
@@ -12742,11 +13085,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     </button>
                   ))}
                 </div>
-                {!isNativePlatform && (
-                  <div style={{ paddingTop: 10 }}>
-                    <AdSenseUnit />
-                  </div>
-                )}
                 {visibleFilteredOffices.length > officesPerPage && (
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, flexWrap:"wrap", marginTop:14 }}>
                     <button
@@ -12942,7 +13280,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   <React.Suspense fallback={null}>
                   <PaidFlowErrorBoundary lang={lang} resetKey={`country-tab-${selectedCountry}-${countryPaidBackRequest}`}>
                     <PaidServicesFlow
-                      services={selectedCountry === "المملكة العربية السعودية" ? tx.countryServices : tx.otherCountryServices}
+                      services={countryPaidServices}
                       lang={lang}
                       dark={dark}
                       selectedCountry={selectedCountry}
@@ -15598,9 +15936,45 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
 }
 
 const InfoRow = ({ label, value, color }) => (
-  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #e2e8f0" }}>
-    <span style={{ color: color || "#64748b", fontSize: 12 }}>{label}</span>
-    <span style={{ color: "#1f2937", fontSize: 12, fontWeight: 600 }}>{value}</span>
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "stretch",
+      gap: 6,
+      padding: "8px 0",
+      borderBottom: "1px solid #e2e8f0",
+    }}
+  >
+    <span
+      style={{
+        color: color || "#64748b",
+        fontSize: 12,
+        flexShrink: 0,
+        textAlign: "right",
+        fontWeight: 700,
+      }}
+    >
+      {label}
+    </span>
+    <span
+      style={{
+        color: "#1f2937",
+        fontSize: 12,
+        fontWeight: 600,
+        minWidth: 0,
+        width: "100%",
+        display: "block",
+        textAlign: "left",
+        direction: "ltr",
+        unicodeBidi: "plaintext",
+        overflowWrap: "anywhere",
+        wordBreak: "break-all",
+        lineHeight: 1.6,
+      }}
+    >
+      {value}
+    </span>
   </div>
 );
 

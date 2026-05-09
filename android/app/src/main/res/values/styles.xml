@@ -25,7 +25,7 @@
         <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo_inset</item>
         <item name="windowSplashScreenIconBackgroundColor">#122b63</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
-        <item name="android:background">@drawable/splash</item>
+        <item name="android:background">@drawable/launch_splash</item>
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>
