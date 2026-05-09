@@ -11253,13 +11253,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     </button>
                   )}
 
-                  {canOpenEmbassySection && !isNativePlatform && (
-                    <div style={{ marginTop: 2 }}>
-                      <AdSenseUnit />
-                    </div>
-                  )}
-                  {/* الإعلان يظهر بعد اختيار الدولة وليس في الصفحة الأولى */}
-
                 </div>
 
                 <a
@@ -11838,8 +11831,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     </div>
                     )}
                   </div>
-
-                  {!isNativePlatform && <AdSenseUnit />}
 
                   {/* ── Site info box below ad ── */}
                   <div
@@ -13889,11 +13880,10 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 </div>
               )}
 
-              {!cvMode ? (
+                  {!cvMode ? (
                 <div style={{ display:"grid", gap:10, marginTop: 12 }}>
                   {cvJobSitesCard}
                   {cvJobSitesAdCard}
-                  {!isNativePlatform && !showJobsBannerAd && <AdSenseUnit />}
                 </div>
               ) : cvMode === "builder" ? (
                 cvBuilderScreen === "menu" ? (
@@ -15047,11 +15037,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
         onOpenOffice={showInterstitialAd}
         resetSignal={studyTabResetToken}
       />
-            {!isNativePlatform && (
-              <div style={{ padding: "8px 12px 20px" }}>
-                <AdSenseUnit />
-              </div>
-            )}
           </div>
         )}
 
