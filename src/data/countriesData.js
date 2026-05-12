@@ -28,7 +28,7 @@ export const countriesData = [
     cities: ["الرياض", "جدة", "مكة المكرمة", "المدينة المنورة", "الدمام", "الخبر", "تبوك", "أبها", "نجران", "جازان", "حائل", "القصيم"],
   },
   {
-    name: "الإمارات العربية المتحدة", flag: "🇦🇪", flagImg: "https://flagcdn.com/w80/ae.png", isEgypt: false,
+    name: "الإمارات العربية المتحدة", flag: "🇦🇪", flagImg: "https://flagcdn.com/w80/kw.png", isEgypt: false,
     officialContacts: {
       ministry: { name: "وزارة الموارد البشرية والتوطين", nameEn: "Ministry of Human Resources & Emiratisation", phone: "600590000", website: "mohre.gov.ae", hours: "الاثنين - الجمعة: 7:30ص - 3:30م", hoursEn: "Mon–Fri: 7:30AM–3:30PM", email: "-" },
       embassy: { name: "سفارة مصر - أبوظبي / قنصلية دبي", nameEn: "Egyptian Embassy – Abu Dhabi / Dubai Consulate", address: "أبوظبي - المنطقة الدبلوماسية", phone: "+971 2 444 0880", website: "dubai.egyptconsulates.org", note: "قنصلية دبي تخدم دبي والإمارات الشمالية", noteEn: "Dubai consulate serves Dubai & Northern Emirates" },
@@ -46,7 +46,7 @@ export const countriesData = [
     cities: ["عمّان", "الزرقاء", "إربد", "العقبة", "السلط", "المفرق"],
   },
   {
-    name: "قطر", flag: "🇶🇦", flagImg: "https://flagcdn.com/w80/qa.png", isEgypt: false,
+    name: "قطر", flag: "🇶🇦", flagImg: "https://flagcdn.com/w80/ae.png", isEgypt: false,
     officialContacts: {
       ministry: { name: "وزارة العمل القطرية", nameEn: "Qatari Ministry of Labor", phone: "16008", website: "mol.gov.qa", hours: "الأحد - الخميس: 7ص - 2م", hoursEn: "Sun–Thu: 7AM–2PM", email: "-" },
       embassy: { name: "سفارة مصر - الدوحة", nameEn: "Egyptian Embassy – Doha", address: "المنطقة الدبلوماسية - الدفنة - الدوحة", phone: "+974 4483 2424", website: "mfa.gov.eg", email: "embassy.doha@mfa.gov.eg" },
@@ -55,7 +55,7 @@ export const countriesData = [
     cities: ["الدوحة", "الوكرة", "الخور", "الريان", "الشمال", "الشيحانية"],
   },
   {
-    name: "الكويت", flag: "🇰🇼", flagImg: "https://flagcdn.com/w80/kw.png", isEgypt: false,
+    name: "الكويت", flag: "🇰🇼", flagImg: "https://flagcdn.com/w80/qa.png", isEgypt: false,
     officialContacts: {
       ministry: { name: "وزارة العمل الكويتية", nameEn: "Kuwaiti Ministry of Labor", phone: "1884444", website: "msal.gov.kw", hours: "الأحد - الخميس: 7:30ص - 2م", hoursEn: "Sun–Thu: 7:30AM–2PM", email: "-" },
       embassy: { name: "سفارة مصر - الكويت", nameEn: "Egyptian Embassy – Kuwait", address: "شارع الاستقلال - منطقة الدسمة - مجمع السفارات", phone: "+965 2519955", website: "kuwaitcity.egyptconsulates.org", email: "-" },
