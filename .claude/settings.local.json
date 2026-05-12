@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vite *)",
+      "Bash(npm run *)",
+      "Bash(where node *)",
+      "Bash(node ./node_modules/.bin/vite build)",
+      "Bash(node ./node_modules/vite/bin/vite.js build)",
+      "Bash(ls -la c:/Users/admin/test1/android/app/src/main/assets/public/assets/*.js)",
+      "Bash(ls -la c:/Users/admin/test1/dist/assets/*.js)",
+      "Bash(find c:/Users/admin/test1/android -name \"*.java\" -exec grep -l \"SplashScreen\" {} \\\\;)",
+      "Bash(find c:/Users/admin/test1/android -name \"MainActivity.java\" -exec cat {} \\\\;)",
+      "Bash(node -e ' *)",
+      "Bash(npm --version)",
+      "Bash(node node_modules/.bin/vite)",
+      "Bash(curl -s http://localhost:5173 -o /dev/null -w \"%{http_code}\")",
+      "Bash(node node_modules/vite/bin/vite.js)",
+      "Bash(cp c:/Users/admin/test1/backups/backup_before_refactor_20260415_224515/.gitignore c:/Users/admin/test1/.gitignore)",
+      "Bash(cp c:/Users/admin/test1/backups/backup_before_refactor_20260415_224515/firestore.office_customizations.rules c:/Users/admin/test1/firestore.office_customizations.rules)",
+      "Bash(cp c:/Users/admin/test1/backups/backup_before_refactor_20260415_224515/package.json c:/Users/admin/test1/package.json)",
+      "Bash(cp c:/Users/admin/test1/backups/backup_before_refactor_20260415_224515/src/App.jsx c:/Users/admin/test1/src/App.jsx)",
+      "Bash(cp c:/Users/admin/test1/backups/backup_before_refactor_20260415_224515/src/components/PhoneAuth.jsx c:/Users/admin/test1/src/components/PhoneAuth.jsx)",
+      "Bash(node node_modules/vite/bin/vite.js build)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('homepage','لا يوجد'\\)\\)\")",
+      "PowerShell(cd 'c:\\\\Users\\\\admin\\\\test1'; $job = Start-Job { cd 'c:\\\\Users\\\\admin\\\\test1'; npm run dev }; Start-Sleep 8; Receive-Job $job)",
+      "PowerShell(cd 'c:\\\\Users\\\\admin\\\\test1'; $job = Start-Job { cd 'c:\\\\Users\\\\admin\\\\test1'; npm run dev 2>&1 }; Start-Sleep 8; Receive-Job $job)",
+      "PowerShell(cd 'c:\\\\Users\\\\admin\\\\test1'; Start-Process powershell -ArgumentList \"-NoExit\", \"-Command\", \"cd 'c:\\\\Users\\\\admin\\\\test1'; npm run dev\")",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}

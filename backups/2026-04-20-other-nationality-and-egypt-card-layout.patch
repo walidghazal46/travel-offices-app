@@ -1,0 +1,233 @@
+From 64626ba3c8328fccf179fc8f01ed754a7a03b329 Mon Sep 17 00:00:00 2001
+From: Walid Ghazal <walidghazal46@gmail.com>
+Date: Mon, 20 Apr 2026 14:23:47 +0300
+Subject: [PATCH] Add other nationality embassy handling and refine Egypt
+ governor card layout
+
+---
+ android/app/src/main/assets/public/index.html |   2 +-
+ src/App.jsx                                   | 138 ++++++++++--------
+ 2 files changed, 80 insertions(+), 60 deletions(-)
+
+diff --git a/android/app/src/main/assets/public/index.html b/android/app/src/main/assets/public/index.html
+index 02fe05f..94bb581 100644
+--- a/android/app/src/main/assets/public/index.html
++++ b/android/app/src/main/assets/public/index.html
+@@ -28,7 +28,7 @@
+       #crawlable-intro .legal-links a { color: #0369a1; text-decoration: none; }
+       #crawlable-intro .legal-links a:hover { text-decoration: underline; }
+     </style>
+-    <script type="module" crossorigin src="./assets/index-DHDPBScA.js"></script>
++    <script type="module" crossorigin src="./assets/index-DfWm8ozj.js"></script>
+     <link rel="modulepreload" crossorigin href="./assets/chunk-B3K2TuZy.js">
+     <link rel="stylesheet" crossorigin href="./assets/index-X1QQJCoV.css">
+   </head>
+diff --git a/src/App.jsx b/src/App.jsx
+index 686d7b2..17865b1 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -74,6 +74,7 @@ const ADMIN_SECURITY_DEFAULT_PASSCODE = "793131";
+ 
+ 
+ const WHATSAPP = "201064463650";
++const OTHER_NATIONALITY_VALUE = "__other_nationality__";
+ const LINKEDIN = "https://www.linkedin.com/in/walid-ghazal-pmi-pmp%C2%AE-85208678/";
+ const YOUTUBE = "http://www.youtube.com/@WalidGhazal";
+ const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.travel.offices";
+@@ -4554,6 +4555,7 @@ export default function App() {
+   const topCountries = useMemo(() => countriesData.slice(0, 10), []);
+   const country = useMemo(() => countriesData.find((c) => c.name === selectedCountry) || null, [selectedCountry]);
+   const nationalityCountry = useMemo(() => countriesData.find((c) => c.name === selectedNationality) || null, [selectedNationality]);
++  const isOtherNationalitySelected = selectedNationality === OTHER_NATIONALITY_VALUE;
+   const availableEmbassyCountries = useMemo(
+     () => embassyDirectory[selectedCountry] || [],
+     [selectedCountry]
+@@ -4787,6 +4789,17 @@ export default function App() {
+     setSelectedEmbassyCountry("");
+   }, [selectedCountry, selectedNationality, nationalityEmbassyCountry, availableEmbassyCountries]);
+ 
++  useEffect(() => {
++    if (!isOtherNationalitySelected) return;
++    if (view === "countryEmbassies") {
++      setView("countryMenu");
++      return;
++    }
++    if (view === "egyptEmbassies") {
++      setView("egyptMenu");
++    }
++  }, [isOtherNationalitySelected, view]);
++
+   useEffect(() => {
+     if (officePage > totalOfficePages) setOfficePage(totalOfficePages);
+   }, [officePage, totalOfficePages]);
+@@ -9308,32 +9321,34 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                     <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                   </button>
+ 
+-                  <button
+-                    onClick={() => setView("egyptEmbassies")}
+-                    className="section-card"
+-                    style={{
+-                      width: "100%",
+-                      textAlign: lang === "ar" ? "right" : "left",
+-                      background: dark ? "linear-gradient(135deg, rgba(8,145,178,0.24), rgba(14,165,233,0.10))" : "linear-gradient(135deg, #ecfeff, #e0f2fe)",
+-                      border: "1px solid rgba(14,165,233,0.28)",
+-                      borderRadius: 20,
+-                      padding: "8px 10px",
+-                      cursor: "pointer",
+-                      display: "flex",
+-                      alignItems: "center",
+-                      gap: 8,
+-                      boxShadow: dark ? "0 0 18px rgba(14,165,233,0.18)" : "0 10px 22px rgba(14,165,233,0.12)",
+-                      fontFamily: "'Cairo',sans-serif",
+-                      minHeight: 67
+-                    }}
+-                  >
+-                    <div style={{ width: 32, height: 32, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(14,165,233,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }}>🏛️</div>
+-                    <div style={{ flex: 1 }}>
+-                      <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#67e8f9" : "#0f766e", marginBottom: 2 }}>{lang === "ar" ? "تواصل مع سفارتك" : "Contact Your Embassy"}</div>
+-                      <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? `الوصول السريع إلى سفارتك داخل مصر${selectedNationality ? ` - الجنسية الحالية: ${selectedNationality}` : ""}` : `Quick access to your embassy inside Egypt${selectedNationality ? ` - current nationality: ${countryNamesEn[selectedNationality] || selectedNationality}` : ""}`}</div>
+-                    </div>
+-                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(14,165,233,0.16)", color: dark ? "#67e8f9" : "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+-                  </button>
++                  {!isOtherNationalitySelected && (
++                    <button
++                      onClick={() => setView("egyptEmbassies")}
++                      className="section-card"
++                      style={{
++                        width: "100%",
++                        textAlign: lang === "ar" ? "right" : "left",
++                        background: dark ? "linear-gradient(135deg, rgba(8,145,178,0.24), rgba(14,165,233,0.10))" : "linear-gradient(135deg, #ecfeff, #e0f2fe)",
++                        border: "1px solid rgba(14,165,233,0.28)",
++                        borderRadius: 20,
++                        padding: "8px 10px",
++                        cursor: "pointer",
++                        display: "flex",
++                        alignItems: "center",
++                        gap: 8,
++                        boxShadow: dark ? "0 0 18px rgba(14,165,233,0.18)" : "0 10px 22px rgba(14,165,233,0.12)",
++                        fontFamily: "'Cairo',sans-serif",
++                        minHeight: 67
++                      }}
++                    >
++                      <div style={{ width: 32, height: 32, borderRadius: 12, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(14,165,233,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }}>🏛️</div>
++                      <div style={{ flex: 1 }}>
++                        <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#67e8f9" : "#0f766e", marginBottom: 2 }}>{lang === "ar" ? "تواصل مع سفارتك" : "Contact Your Embassy"}</div>
++                        <div style={{ fontSize: 10, color: t.text, lineHeight: 1.6 }}>{lang === "ar" ? `الوصول السريع إلى سفارتك داخل مصر${selectedNationality ? ` - الجنسية الحالية: ${selectedNationality}` : ""}` : `Quick access to your embassy inside Egypt${selectedNationality ? ` - current nationality: ${countryNamesEn[selectedNationality] || selectedNationality}` : ""}`}</div>
++                      </div>
++                      <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(14,165,233,0.16)", color: dark ? "#67e8f9" : "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
++                    </button>
++                  )}
+ 
+                 </div>
+ 
+@@ -9424,6 +9439,9 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                               {lang === "ar" ? `${nationality.flag} ${nationality.name}` : `${nationality.flag} ${countryNamesEn[nationality.name] || nationality.name}`}
+                             </option>
+                           ))}
++                          <option value={OTHER_NATIONALITY_VALUE}>
++                            {lang === "ar" ? "جنسية أخرى" : "Other nationality"}
++                          </option>
+                         </select>
+                       </div>
+                     </div>
+@@ -9744,9 +9762,9 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                     const guestLockedCount = isGuestUser ? Math.max(0, count - guestVisibleCount) : 0;
+                     return (
+                       <button key={gov.name} onClick={() => count > 0 ? handleGovSelect(gov.name) : null}
+-                        style={{ ...styles.govCard, background: t.cardBg, border: `1px solid ${t.border}`, opacity: count === 0 ? 0.5 : 1, cursor: count === 0 ? "default" : "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left", minHeight: 78, padding: "10px 8px" }}>
++                        style={{ ...styles.govCard, background: t.cardBg, border: `1px solid ${t.border}`, opacity: count === 0 ? 0.5 : 1, cursor: count === 0 ? "default" : "pointer", display: "flex", alignItems: "center", gap: 8, textAlign: "left", minHeight: 78, padding: "10px 8px", direction: "ltr" }}>
+                         <div style={{ width: 30, height: 30, borderRadius: 10, background: `${t.gold}15`, color: t.gold, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{gov.icon}</div>
+-                        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: lang === "ar" ? "flex-end" : "flex-start", textAlign: lang === "ar" ? "right" : "left", lineHeight: 1.25 }}>
++                        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: lang === "ar" ? "flex-end" : "flex-start", textAlign: lang === "ar" ? "right" : "left", justifyContent: "center", lineHeight: 1.25 }}>
+                           <div style={{ fontSize: lang === "en" ? 9.1 : 10.5, fontWeight: 800, color: t.text, marginBottom: 3, lineHeight: 1.3 }}>{lang === "en" ? gov.nameEn : gov.name}</div>
+                           <div style={{ fontSize: 9.8, fontWeight: 700, color: count > 0 ? t.gold : t.subText, lineHeight: 1.2 }}>{count > 0 ? `${guestVisibleCount} ${lang === "en" ? "offices" : "مكتب"}` : tx.comingSoon}</div>
+                           {guestLockedCount > 0 && (
+@@ -9782,7 +9800,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+               </div>
+             )}
+ 
+-            {view === "egyptEmbassies" && (
++            {view === "egyptEmbassies" && !isOtherNationalitySelected && (
+               <div>
+                 <div style={styles.hero}>
+                   <div style={{ ...styles.heroTag, background: dark ? "rgba(14,165,233,0.16)" : "rgba(14,165,233,0.10)", border: "1px solid rgba(14,165,233,0.28)", color: dark ? "#67e8f9" : "#0f766e", display: "block", textAlign: "center" }}>
+@@ -10075,35 +10093,37 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+                     <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(202,138,4,0.16)", color: dark ? "#fde68a" : "#a16207", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+                   </button>
+ 
+-                  <button
+-                    onClick={() => { setView("countryEmbassies"); }}
+-                    className="section-card"
+-                    style={{
+-                      width: "100%",
+-                      maxWidth: "100%",
+-                      boxSizing: "border-box",
+-                      textAlign: lang === "ar" ? "right" : "left",
+-                      background: dark ? "linear-gradient(135deg, rgba(8,145,178,0.24), rgba(14,165,233,0.10))" : "linear-gradient(135deg, #ecfeff, #e0f2fe)",
+-                      border: "1px solid rgba(14,165,233,0.28)",
+-                      borderRadius: 22,
+-                      padding: "12px 12px",
+-                      cursor: "pointer",
+-                      display: "flex",
+-                      alignItems: "center",
+-                      gap: 11,
+-                      overflow: "hidden",
+-                      boxShadow: dark ? "0 0 16px rgba(14,165,233,0.16)" : "0 10px 22px rgba(14,165,233,0.10)",
+-                      fontFamily: "'Cairo',sans-serif",
+-                      minHeight: 82
+-                    }}
+-                  >
+-                    <div style={{ width: 38, height: 38, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(14,165,233,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🏛️</div>
+-                    <div style={{ flex: 1, minWidth: 0 }}>
+-                      <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#67e8f9" : "#0f766e", marginBottom: 3 }}>{lang === "ar" ? "تواصل مع سفارتك" : "Contact Your Embassy"}</div>
+-                      <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? `الوصول السريع إلى سفارتك داخل ${country.name}${selectedNationality ? ` - الجنسية الحالية: ${selectedNationality}` : ""}` : `Quick access to your embassy inside ${countryNamesEn[country.name] || country.name}${selectedNationality ? ` - current nationality: ${countryNamesEn[selectedNationality] || selectedNationality}` : ""}`}</div>
+-                    </div>
+-                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(14,165,233,0.16)", color: dark ? "#67e8f9" : "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
+-                  </button>
++                  {!isOtherNationalitySelected && (
++                    <button
++                      onClick={() => { setView("countryEmbassies"); }}
++                      className="section-card"
++                      style={{
++                        width: "100%",
++                        maxWidth: "100%",
++                        boxSizing: "border-box",
++                        textAlign: lang === "ar" ? "right" : "left",
++                        background: dark ? "linear-gradient(135deg, rgba(8,145,178,0.24), rgba(14,165,233,0.10))" : "linear-gradient(135deg, #ecfeff, #e0f2fe)",
++                        border: "1px solid rgba(14,165,233,0.28)",
++                        borderRadius: 22,
++                        padding: "12px 12px",
++                        cursor: "pointer",
++                        display: "flex",
++                        alignItems: "center",
++                        gap: 11,
++                        overflow: "hidden",
++                        boxShadow: dark ? "0 0 16px rgba(14,165,233,0.16)" : "0 10px 22px rgba(14,165,233,0.10)",
++                        fontFamily: "'Cairo',sans-serif",
++                        minHeight: 82
++                      }}
++                    >
++                      <div style={{ width: 38, height: 38, borderRadius: 14, background: dark ? "rgba(255,255,255,0.05)" : "#ffffff", border: "1px solid rgba(14,165,233,0.24)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🏛️</div>
++                      <div style={{ flex: 1, minWidth: 0 }}>
++                        <div style={{ fontSize: 14, fontWeight: 900, color: dark ? "#67e8f9" : "#0f766e", marginBottom: 3 }}>{lang === "ar" ? "تواصل مع سفارتك" : "Contact Your Embassy"}</div>
++                        <div style={{ fontSize: 11, color: t.text, lineHeight: 1.65 }}>{lang === "ar" ? `الوصول السريع إلى سفارتك داخل ${country.name}${selectedNationality ? ` - الجنسية الحالية: ${selectedNationality}` : ""}` : `Quick access to your embassy inside ${countryNamesEn[country.name] || country.name}${selectedNationality ? ` - current nationality: ${countryNamesEn[selectedNationality] || selectedNationality}` : ""}`}</div>
++                      </div>
++                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(14,165,233,0.16)", color: dark ? "#67e8f9" : "#0f766e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>{lang === "ar" ? "‹" : "›"}</div>
++                    </button>
++                  )}
+ 
+                 </div>
+ 
+@@ -10223,7 +10243,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
+               </div>
+             )}
+ 
+-            {view === "countryEmbassies" && country && (
++            {view === "countryEmbassies" && country && !isOtherNationalitySelected && (
+               <div>
+                 <div style={styles.hero}>
+                   <div style={{ ...styles.heroTag, background: dark ? "rgba(14,165,233,0.16)" : "rgba(14,165,233,0.10)", border: "1px solid rgba(14,165,233,0.28)", color: dark ? "#67e8f9" : "#0f766e", display: "block", textAlign: "center" }}>
+-- 
+2.53.0.windows.3
+

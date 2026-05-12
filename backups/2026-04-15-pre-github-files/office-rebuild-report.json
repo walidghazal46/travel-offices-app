@@ -1,0 +1,387 @@
+{
+  "generatedAt": "2026-04-15T10:11:26.709Z",
+  "excelPath": "companies_data0.xlsx",
+  "appPath": "src\\App.jsx",
+  "summary": {
+    "excelAuthorityRows": 865,
+    "currentAppOffices": 865,
+    "rebuiltAuthoritativeOffices": 865,
+    "removedDuplicatedOrConflictingOffices": 0,
+    "newLegacyAliasesGenerated": 0,
+    "trackedLegacyAliases": 92,
+    "fullyPreservedSingleSourceIds": 865,
+    "licensesResolvedFromCompetingRows": 0,
+    "unresolvedExcelLicenses": 0
+  },
+  "conflictResolutions": [],
+  "legacyAliases": [
+    {
+      "fromId": 52,
+      "toId": 2408
+    },
+    {
+      "fromId": 81,
+      "toId": 2404
+    },
+    {
+      "fromId": 86,
+      "toId": 2406
+    },
+    {
+      "fromId": 98,
+      "toId": 2429
+    },
+    {
+      "fromId": 107,
+      "toId": 2440
+    },
+    {
+      "fromId": 109,
+      "toId": 2438
+    },
+    {
+      "fromId": 110,
+      "toId": 2442
+    },
+    {
+      "fromId": 111,
+      "toId": 2434
+    },
+    {
+      "fromId": 215,
+      "toId": 2398
+    },
+    {
+      "fromId": 237,
+      "toId": 2415
+    },
+    {
+      "fromId": 248,
+      "toId": 2424
+    },
+    {
+      "fromId": 257,
+      "toId": 2420
+    },
+    {
+      "fromId": 300,
+      "toId": 2443
+    },
+    {
+      "fromId": 301,
+      "toId": 2432
+    },
+    {
+      "fromId": 303,
+      "toId": 615
+    },
+    {
+      "fromId": 311,
+      "toId": 2445
+    },
+    {
+      "fromId": 414,
+      "toId": 2430
+    },
+    {
+      "fromId": 418,
+      "toId": 2428
+    },
+    {
+      "fromId": 420,
+      "toId": 2414
+    },
+    {
+      "fromId": 424,
+      "toId": 2473
+    },
+    {
+      "fromId": 429,
+      "toId": 2462
+    },
+    {
+      "fromId": 432,
+      "toId": 2455
+    },
+    {
+      "fromId": 435,
+      "toId": 2464
+    },
+    {
+      "fromId": 500,
+      "toId": 2399
+    },
+    {
+      "fromId": 501,
+      "toId": 2401
+    },
+    {
+      "fromId": 502,
+      "toId": 2423
+    },
+    {
+      "fromId": 503,
+      "toId": 2410
+    },
+    {
+      "fromId": 504,
+      "toId": 2407
+    },
+    {
+      "fromId": 505,
+      "toId": 2457
+    },
+    {
+      "fromId": 506,
+      "toId": 2402
+    },
+    {
+      "fromId": 507,
+      "toId": 2441
+    },
+    {
+      "fromId": 508,
+      "toId": 2412
+    },
+    {
+      "fromId": 509,
+      "toId": 2475
+    },
+    {
+      "fromId": 510,
+      "toId": 2476
+    },
+    {
+      "fromId": 511,
+      "toId": 2458
+    },
+    {
+      "fromId": 512,
+      "toId": 2477
+    },
+    {
+      "fromId": 513,
+      "toId": 2478
+    },
+    {
+      "fromId": 514,
+      "toId": 2449
+    },
+    {
+      "fromId": 515,
+      "toId": 2447
+    },
+    {
+      "fromId": 516,
+      "toId": 2465
+    },
+    {
+      "fromId": 517,
+      "toId": 2472
+    },
+    {
+      "fromId": 518,
+      "toId": 2471
+    },
+    {
+      "fromId": 519,
+      "toId": 2468
+    },
+    {
+      "fromId": 612,
+      "toId": 2448
+    },
+    {
+      "fromId": 613,
+      "toId": 68
+    },
+    {
+      "fromId": 614,
+      "toId": 2413
+    },
+    {
+      "fromId": 616,
+      "toId": 33
+    },
+    {
+      "fromId": 811,
+      "toId": 2474
+    },
+    {
+      "fromId": 814,
+      "toId": 2463
+    },
+    {
+      "fromId": 816,
+      "toId": 126
+    },
+    {
+      "fromId": 817,
+      "toId": 298
+    },
+    {
+      "fromId": 902,
+      "toId": 2426
+    },
+    {
+      "fromId": 905,
+      "toId": 2450
+    },
+    {
+      "fromId": 1003,
+      "toId": 2456
+    },
+    {
+      "fromId": 1104,
+      "toId": 2466
+    },
+    {
+      "fromId": 1105,
+      "toId": 2455
+    },
+    {
+      "fromId": 1200,
+      "toId": 2409
+    },
+    {
+      "fromId": 1201,
+      "toId": 2470
+    },
+    {
+      "fromId": 1405,
+      "toId": 2460
+    },
+    {
+      "fromId": 1500,
+      "toId": 2425
+    },
+    {
+      "fromId": 1501,
+      "toId": 2467
+    },
+    {
+      "fromId": 1601,
+      "toId": 2452
+    },
+    {
+      "fromId": 1602,
+      "toId": 2439
+    },
+    {
+      "fromId": 1603,
+      "toId": 2444
+    },
+    {
+      "fromId": 1904,
+      "toId": 2469
+    },
+    {
+      "fromId": 1906,
+      "toId": 2451
+    },
+    {
+      "fromId": 1907,
+      "toId": 2479
+    },
+    {
+      "fromId": 2394,
+      "toId": 203
+    },
+    {
+      "fromId": 2395,
+      "toId": 206
+    },
+    {
+      "fromId": 2396,
+      "toId": 211
+    },
+    {
+      "fromId": 2397,
+      "toId": 214
+    },
+    {
+      "fromId": 2400,
+      "toId": 266
+    },
+    {
+      "fromId": 2403,
+      "toId": 412
+    },
+    {
+      "fromId": 2405,
+      "toId": 82
+    },
+    {
+      "fromId": 2411,
+      "toId": 802
+    },
+    {
+      "fromId": 2416,
+      "toId": 96
+    },
+    {
+      "fromId": 2417,
+      "toId": 97
+    },
+    {
+      "fromId": 2418,
+      "toId": 711
+    },
+    {
+      "fromId": 2419,
+      "toId": 68
+    },
+    {
+      "fromId": 2421,
+      "toId": 258
+    },
+    {
+      "fromId": 2422,
+      "toId": 259
+    },
+    {
+      "fromId": 2427,
+      "toId": 809
+    },
+    {
+      "fromId": 2431,
+      "toId": 292
+    },
+    {
+      "fromId": 2433,
+      "toId": 903
+    },
+    {
+      "fromId": 2435,
+      "toId": 296
+    },
+    {
+      "fromId": 2436,
+      "toId": 298
+    },
+    {
+      "fromId": 2437,
+      "toId": 299
+    },
+    {
+      "fromId": 2446,
+      "toId": 611
+    },
+    {
+      "fromId": 2453,
+      "toId": 306
+    },
+    {
+      "fromId": 2454,
+      "toId": 121
+    },
+    {
+      "fromId": 2459,
+      "toId": 116
+    },
+    {
+      "fromId": 2461,
+      "toId": 117
+    }
+  ]
+}

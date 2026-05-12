@@ -1,0 +1,49 @@
+{
+  "name": "travel-offices",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "sync:offices": "node scripts/sync-offices-from-excel.cjs --excel companies_data0.xlsx",
+    "sync:offices:file": "node scripts/sync-offices-from-excel.cjs",
+    "sync:offices:report": "node scripts/sync-offices-from-excel.cjs --excel companies_data0.xlsx --report office-data/office-rebuild-report.json",
+    "sync:offices:apply": "node scripts/sync-offices-from-excel.cjs --excel companies_data0.xlsx --apply",
+    "sync:offices:file:report": "node scripts/sync-offices-from-excel.cjs --report office-data/office-rebuild-report.json",
+    "sync:offices:apply:report": "node scripts/sync-offices-from-excel.cjs --excel companies_data0.xlsx --apply --report office-data/office-rebuild-report.json",
+    "sync:offices:file:apply": "node scripts/sync-offices-from-excel.cjs --apply",
+    "sync:offices:file:apply:report": "node scripts/sync-offices-from-excel.cjs --apply --report office-data/office-rebuild-report.json",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
+  },
+  "dependencies": {
+    "@capacitor-community/admob": "^8.0.0",
+    "@capacitor-firebase/authentication": "^8.2.0",
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
+    "@capacitor/filesystem": "^8.1.2",
+    "@capacitor/share": "^8.0.1",
+    "canvg": "^4.0.3",
+    "firebase": "^12.11.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "gh-pages": "^6.3.0",
+    "globals": "^17.4.0",
+    "vite": "^8.0.1",
+    "xlsx": "^0.18.5"
+  }
+}

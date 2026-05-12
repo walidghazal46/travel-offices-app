@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdminEmail() {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in [
+          "walidghazal46@gmail.com"
+        ];
+    }
+
+    function hasValidOfficeCustomizationShape() {
+      return request.resource.data.keys().hasOnly([
+        "officeId",
+        "name",
+        "license",
+        "address",
+        "gov",
+        "phone",
+        "entryType",
+        "updatedAt"
+      ])
+      && request.resource.data.officeId is int
+      && request.resource.data.officeId > 0
+      && request.resource.data.name is string
+      && request.resource.data.name.size() > 0
+      && request.resource.data.license is int
+      && request.resource.data.license > 0
+      && request.resource.data.address is string
+      && request.resource.data.address.size() > 0
+      && request.resource.data.gov is string
+      && request.resource.data.gov.size() > 0
+      && request.resource.data.phone is string
+      && request.resource.data.entryType is string
+      && request.resource.data.entryType in ["override", "added"];
+    }
+
+    function hasValidOfficeCustomizationDocId(docId) {
+      return docId.matches('^(override|added)-[1-9][0-9]*$')
+        && docId == (request.resource.data.entryType + "-" + string(request.resource.data.officeId));
+    }
+
+    match /office_customizations/{docId} {
+      allow read: if true;
+
+      // Admin-only write access to office customization records.
+      allow create, update: if isAdminEmail()
+        && hasValidOfficeCustomizationShape()
+        && hasValidOfficeCustomizationDocId(docId);
+
+      allow delete: if isAdminEmail();
+    }
+  }
+}

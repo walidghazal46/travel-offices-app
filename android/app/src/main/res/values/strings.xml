@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">مكاتب السفريات</string>
+    <string name="title_activity_main">مكاتب السفريات</string>
+    <string name="empty_activity_title"></string>
+    <string name="package_name">com.travel.offices</string>
+    <string name="custom_url_scheme">com.travel.offices</string>
+    <string name="admob_application_id">ca-app-pub-6810176545596111~2542215116</string>
+</resources>

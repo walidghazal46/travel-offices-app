@@ -1,0 +1,13 @@
+{
+  "appId": "com.travel.offices",
+  "appName": "مكاتب السفريات",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "FirebaseAuthentication": {
+      "providers": ["google.com", "phone"]
+    }
+  }
+}

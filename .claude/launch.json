@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Vite (React Frontend)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "Firebase Emulators (Functions + Firestore)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["-C", "functions", "run", "serve"],
+      "port": 5001
+    }
+  ]
+}
