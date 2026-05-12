@@ -1222,3 +1222,18 @@ body {
   }
 }
 .delay-5 { animation-delay: 0.40s; }
+
+@keyframes istiqadamTextShimmer {
+  0%   { background-position: -300% center; }
+  100% { background-position: 300% center; }
+}
+.istiqadam-title-shimmer {
+  background: linear-gradient(90deg, #f0c040 0%, #ffffff 40%, #f0c040 60%, #86efac 80%, #f0c040 100%);
+  background-size: 300% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: istiqadamTextShimmer 3.5s linear infinite;
+}
+.istiqadam-input::placeholder { color: rgba(255,255,255,0.45); }
+.istiqadam-input:focus { border-color: rgba(200,151,10,0.6) !important; box-shadow: 0 0 0 2px rgba(200,151,10,0.15); }

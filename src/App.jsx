@@ -1172,6 +1172,7 @@ export default function App() {
   const [authPreviewError, setAuthPreviewError] = useState("");
   const [authPreviewSuccess, setAuthPreviewSuccess] = useState("");
   const [guestMode, setGuestMode] = useState(false);
+  const [istiqadamSearch, setIstiqadamSearch] = useState("");
   const [authPreviewUser, setAuthPreviewUser] = useState(() => shapeAuthPreviewUser(initialAuthSnapshot));
   const [authPreviewReady, setAuthPreviewReady] = useState(() => !!initialAuthSnapshot);
   const [adminSessionRole, setAdminSessionRole] = useState("user");
@@ -11651,6 +11652,98 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     })}
                     </div>
                   </div>
+                  {/* ── استقدام card ── */}
+                  {(() => {
+                    const isLocked = !authPreviewUser || isGuestUser;
+                    const profCats = [
+                      { icon: "🏠", label: lang === "ar" ? "عمالة منزلية" : "Domestic Workers", items: ["عامل/عاملة منزلية","سائق خاص","مربية أطفال","طباخ/طباخة","حارس منزل","راعية مسنين","منظّفة منزل","بستاني","ممرضة منزلية","عامل مزرعة خاصة"] },
+                      { icon: "🏥", label: lang === "ar" ? "مهن صحية" : "Healthcare", items: ["طبيب عام","طبيب متخصص","طبيب أسنان","ممرضة معتمدة","أخصائي مختبر","أخصائي أشعة","أخصائي علاج طبيعي","صيدلاني","فني تخدير","أخصائي تغذية"] },
+                      { icon: "🏗️", label: lang === "ar" ? "هندسة وتقنية" : "Engineering", items: ["مهندس مدني","مهندس معماري","مهندس كهرباء","فني كهرباء معتمد","فني تكييف وتبريد","فني سباكة","فني لحام","مشغّل رافعة","سائق معدات ثقيلة","فني صيانة مباني"] },
+                      { icon: "🍽️", label: lang === "ar" ? "ضيافة ومطاعم" : "Hospitality", items: ["شيف محترف","نادل/نادلة","موظف استقبال","خبير حلويات","مدير مطعم","عامل نظافة فندق","باريستا","عامل مطبخ"] },
+                      { icon: "📚", label: lang === "ar" ? "تعليم وتدريب" : "Education", items: ["معلم لغة عربية","معلم لغة إنجليزية","معلم رياضيات","مدرّب مهني","أستاذ جامعي","مشرف تربوي","أخصائي تعليم خاص"] },
+                      { icon: "🚛", label: lang === "ar" ? "نقل ولوجستيات" : "Transport", items: ["سائق شاحنة","سائق حافلة مدرسية","سائق توصيل","ميكانيكي سيارات","كهربائي سيارات","عامل مستودع","مشغّل رافعة شوكية"] },
+                      { icon: "💼", label: lang === "ar" ? "تجارة ومال" : "Business", items: ["محاسب قانوني","مدقق حسابات","أخصائي موارد بشرية","مبرمج/مطوّر","مصمم جرافيك","مسوّق رقمي","مستشار قانوني","مترجم"] },
+                      { icon: "🌾", label: lang === "ar" ? "زراعة وأمن" : "Agriculture & Security", items: ["عامل مزرعة","مشرف مزرعة","حارس أمن","عامل نظافة","مربّي ماشية","صبّاغ مبانٍ","فني طاقة شمسية"] },
+                    ];
+                    const q = istiqadamSearch.trim();
+                    const filtered = q
+                      ? profCats.map(c => ({ ...c, items: c.items.filter(i => i.includes(q)) })).filter(c => c.items.length > 0)
+                      : profCats;
+                    return (
+                      <div style={{ marginTop: 10.4, borderRadius: 20, padding: "10px 10px 14px", background: "linear-gradient(135deg,#0d1f13 0%,#162a1d 50%,#1a3825 100%)", border: "1px solid rgba(200,151,10,0.3)", boxShadow: "0 4px 28px rgba(26,107,58,0.22),0 0 50px rgba(200,151,10,0.07)", position: "relative", overflow: "hidden" }}>
+                        {/* glow orbs */}
+                        <div style={{ position:"absolute",top:-50,left:-50,width:160,height:160,borderRadius:"50%",background:"radial-gradient(circle,rgba(200,151,10,0.14),transparent 70%)",pointerEvents:"none" }} />
+                        <div style={{ position:"absolute",bottom:-40,right:-40,width:130,height:130,borderRadius:"50%",background:"radial-gradient(circle,rgba(45,158,88,0.18),transparent 70%)",pointerEvents:"none" }} />
+                        {/* badge */}
+                        <div style={{ textAlign:"center", marginBottom:6 }}>
+                          <span style={{ display:"inline-block", background:"rgba(200,151,10,0.15)", border:"1px solid rgba(200,151,10,0.4)", color:"#f0c040", fontSize:10, fontWeight:700, padding:"3px 14px", borderRadius:30, fontFamily:"'Cairo',sans-serif" }}>
+                            📋 {lang==="ar" ? "دليل رسمي موثق · 2025" : "Official Guide · 2025"}
+                          </span>
+                        </div>
+                        {/* title shimmer */}
+                        <div className="istiqadam-title-shimmer" style={{ textAlign:"center", fontSize:14, fontWeight:900, lineHeight:1.35, marginBottom:6, fontFamily:"'Cairo',sans-serif" }}>
+                          {lang==="ar" ? "المهن المتاحة للاستقدام في السعودية 🇸🇦" : "Available Professions for Recruitment in KSA 🇸🇦"}
+                        </div>
+                        {/* stats */}
+                        <div style={{ display:"flex", justifyContent:"center", gap:14, marginBottom:10 }}>
+                          {[{n:"+80",l:lang==="ar"?"مهنة":"Professions"},{n:"9",l:lang==="ar"?"قطاعات":"Sectors"},{n:"20+",l:lang==="ar"?"دولة":"Countries"}].map(s=>(
+                            <div key={s.n} style={{ textAlign:"center" }}>
+                              <div style={{ fontSize:16, fontWeight:900, color:"#f0c040", fontFamily:"'Cairo',sans-serif" }}>{s.n}</div>
+                              <div style={{ fontSize:10, color:"rgba(255,255,255,0.55)", fontFamily:"'Cairo',sans-serif" }}>{s.l}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {isLocked ? (
+                          <div
+                            onClick={() => setModal({ type:"guestLinksAlert", title: lang==="ar"?"تسجيل الدخول مطلوب":"Login Required", msg: lang==="ar"?"يجب تسجيل الدخول للوصول إلى دليل الاستقدام الكامل بـ +80 مهنة":"Sign in to access the full recruitment guide with 80+ professions" })}
+                            style={{ background:"rgba(0,0,0,0.65)", backdropFilter:"blur(6px)", borderRadius:14, padding:"18px 16px", textAlign:"center", cursor:"pointer", border:"1px solid rgba(200,151,10,0.25)" }}
+                          >
+                            <div style={{ fontSize:26, marginBottom:6 }}>🔒</div>
+                            <div style={{ fontSize:13, fontWeight:900, color:"#f0c040", fontFamily:"'Cairo',sans-serif", marginBottom:4 }}>
+                              {lang==="ar" ? "للمستخدمين المسجلين فقط" : "Registered users only"}
+                            </div>
+                            <div style={{ fontSize:11, color:"rgba(255,255,255,0.65)", fontFamily:"'Cairo',sans-serif", marginBottom:10 }}>
+                              {lang==="ar" ? "سجّل دخولك للوصول إلى قائمة كاملة بـ +80 مهنة متاحة للاستقدام مع البحث بالمهنة" : "Sign in to browse 80+ professions across 9 sectors with full search"}
+                            </div>
+                            <div style={{ display:"inline-block", background:"linear-gradient(90deg,#1a6b3a,#2d9e58)", color:"#fff", fontSize:12, fontWeight:800, padding:"7px 22px", borderRadius:22, fontFamily:"'Cairo',sans-serif", boxShadow:"0 4px 14px rgba(26,107,58,0.4)" }}>
+                              {lang==="ar" ? "تسجيل الدخول ←" : "Sign In →"}
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <input
+                              type="text"
+                              className="istiqadam-input"
+                              placeholder={lang==="ar" ? "🔍 ابحث عن مهنة..." : "🔍 Search profession..."}
+                              value={istiqadamSearch}
+                              onChange={e => setIstiqadamSearch(e.target.value)}
+                              style={{ width:"100%", padding:"8px 12px", borderRadius:12, border:"1px solid rgba(200,151,10,0.3)", background:"rgba(255,255,255,0.08)", color:"#fff", fontSize:12, fontFamily:"'Cairo',sans-serif", marginBottom:10, outline:"none", direction:"rtl", transition:"border-color 0.2s,box-shadow 0.2s" }}
+                            />
+                            <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+                              {filtered.map(cat => (
+                                <div key={cat.label} style={{ background:"rgba(255,255,255,0.055)", borderRadius:12, padding:"8px 10px", border:"1px solid rgba(200,151,10,0.13)" }}>
+                                  <div style={{ fontSize:11, fontWeight:800, color:"#f0c040", fontFamily:"'Cairo',sans-serif", marginBottom:6 }}>{cat.icon} {cat.label}</div>
+                                  <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
+                                    {cat.items.map(item => (
+                                      <span key={item} style={{ background:"rgba(45,158,88,0.18)", border:"1px solid rgba(45,158,88,0.28)", color:"#86efac", borderRadius:6, padding:"2px 8px", fontSize:10, fontFamily:"'Cairo',sans-serif" }}>{item}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                              {filtered.length === 0 && (
+                                <div style={{ textAlign:"center", color:"rgba(255,255,255,0.45)", fontSize:12, padding:16, fontFamily:"'Cairo',sans-serif" }}>
+                                  {lang==="ar" ? "لا توجد نتائج للبحث" : "No results found"}
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ marginTop:8, fontSize:10, color:"rgba(255,255,255,0.35)", textAlign:"center", fontFamily:"'Cairo',sans-serif" }}>
+                              {lang==="ar" ? "المصدر: وزارة الموارد البشرية · منصة مساند · قوى" : "Source: HRSD · Musaned · Qiwa"}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {(() => {
                     const isLockedLinks = !authPreviewUser;
                     const handleLinkClick = (e, href) => {
