@@ -3905,6 +3905,7 @@ export default function App() {
             ? "تم تأكيد رقم الجوال وتسجيل دخولك بنجاح."
             : "Your phone number has been verified and you are now signed in.",
         });
+        openTravelCountriesLanding();
         closeAuthPreview();
       } catch (error) {
         console.error("OTP verification failed", error);
@@ -11679,7 +11680,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                         <div style={{ position:"absolute",bottom:-40,right:-40,width:130,height:130,borderRadius:"50%",background:"radial-gradient(circle,rgba(99,102,241,0.07),transparent 70%)",pointerEvents:"none" }} />
                         {/* badge */}
                         <div style={{ textAlign:"center", marginBottom:6 }}>
-                          <span style={{ display:"inline-block", background:"rgba(37,99,235,0.09)", border:"1px solid rgba(37,99,235,0.25)", color: dark?"#93c5fd":"#1d4ed8", fontSize:10, fontWeight:700, padding:"3px 14px", borderRadius:30, fontFamily:"'Cairo',sans-serif" }}>
+                          <span style={{ display:"inline-block", background:"rgba(37,99,235,0.09)", border:"1px solid rgba(37,99,235,0.25)", color: dark?"#93c5fd":"#1d4ed8", fontSize:15, fontWeight:700, padding:"3px 14px", borderRadius:30, fontFamily:"'Cairo',sans-serif" }}>
                             📋 {lang==="ar" ? "دليل مهن الاستقدام 2026" : "Recruitment Guide 2026"}
                           </span>
                         </div>
@@ -11699,17 +11700,14 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                         {isLocked ? (
                           <div
                             onClick={() => setModal({ type:"guestLinksAlert", title: lang==="ar"?"تسجيل الدخول مطلوب":"Login Required", msg: lang==="ar"?"يجب تسجيل الدخول للوصول إلى دليل الاستقدام الكامل بـ +80 مهنة":"Sign in to access the full recruitment guide with 80+ professions" })}
-                            style={{ background: dark?"rgba(0,0,0,0.55)":"rgba(239,246,255,0.95)", backdropFilter:"blur(6px)", borderRadius:14, padding:"18px 16px", textAlign:"center", cursor:"pointer", border:`1px solid ${dark?"rgba(255,255,255,0.1)":"rgba(37,99,235,0.2)"}` }}
+                            style={{ background: dark?"rgba(30,58,138,0.18)":"rgba(219,234,254,0.7)", borderRadius:16, padding:"20px 16px", textAlign:"center", cursor:"pointer", border:`2px solid ${dark?"rgba(147,197,253,0.25)":"rgba(37,99,235,0.3)"}`, marginTop:4 }}
                           >
-                            <div style={{ fontSize:26, marginBottom:6 }}>🔒</div>
-                            <div style={{ fontSize:13, fontWeight:900, color: dark?"#93c5fd":"#1e40af", fontFamily:"'Cairo',sans-serif", marginBottom:4 }}>
-                              {lang==="ar" ? "للمستخدمين المسجلين فقط" : "Registered users only"}
+                            <div style={{ fontSize:28, marginBottom:8 }}>🔒</div>
+                            <div style={{ fontSize:14, fontWeight:900, color: dark?"#93c5fd":"#1e40af", fontFamily:"'Cairo',sans-serif", lineHeight:1.5, marginBottom:12 }}>
+                              {lang==="ar" ? "يجب تسجيل الدخول للإطلاع على جميع المهن المتاحة لها الاستقدام" : "Sign in to view all professions available for recruitment"}
                             </div>
-                            <div style={{ fontSize:11, color: dark?"rgba(255,255,255,0.6)":"#475569", fontFamily:"'Cairo',sans-serif", marginBottom:10 }}>
-                              {lang==="ar" ? "سجّل دخولك للوصول إلى قائمة كاملة بـ +80 مهنة متاحة للاستقدام مع البحث بالمهنة" : "Sign in to browse 80+ professions across 9 sectors with full search"}
-                            </div>
-                            <div style={{ display:"inline-block", background:"linear-gradient(90deg,#1d4ed8,#2563eb)", color:"#fff", fontSize:12, fontWeight:800, padding:"7px 22px", borderRadius:22, fontFamily:"'Cairo',sans-serif", boxShadow:"0 4px 14px rgba(37,99,235,0.35)" }}>
-                              {lang==="ar" ? "تسجيل الدخول ←" : "Sign In →"}
+                            <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(90deg,#1d4ed8,#2563eb)", color:"#fff", fontSize:13, fontWeight:800, padding:"9px 26px", borderRadius:24, fontFamily:"'Cairo',sans-serif", boxShadow:"0 4px 16px rgba(37,99,235,0.4)" }}>
+                              <span>تسجيل الدخول</span><span>←</span>
                             </div>
                           </div>
                         ) : (
