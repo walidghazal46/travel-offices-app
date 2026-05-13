@@ -363,38 +363,6 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
   const inputStyle = { width:"100%", padding:"10px 12px", borderRadius:10, fontSize:13, border:`1px solid ${t.border}`, background:t.inputBg, color:t.text, fontFamily:"'Cairo',sans-serif", outline:"none", boxSizing:"border-box" };
   const labelStyle = { fontSize:11, fontWeight:700, color:t.subText, fontFamily:"'Cairo',sans-serif", marginBottom:4, display:"block" };
 
-  const defaultDialCode = useMemo(() => {
-    const code = String(NATIONALITY_DIAL_CODES[String(selectedNationality || "").trim()] || "").trim();
-    return code.startsWith("+") ? code : "+";
-  }, [selectedNationality]);
-
-  const normalizeNationalDigits = useCallback((rawValue) => {
-    const digits = String(rawValue || "").replace(/\D/g, "");
-    return digits.startsWith("0") ? digits.slice(1) : digits;
-  }, []);
-
-  const splitPhoneWithDial = useCallback((rawValue, dialCode) => {
-    const digits = String(rawValue || "").replace(/\D/g, "");
-    const dialDigits = String(dialCode || "").replace(/\D/g, "");
-    if (!digits) return { national: "" };
-    if (dialDigits && digits.startsWith(dialDigits)) {
-      return { national: digits.slice(dialDigits.length) };
-    }
-    if (digits.startsWith("00") && dialDigits && digits.slice(2).startsWith(dialDigits)) {
-      return { national: digits.slice(2 + dialDigits.length) };
-    }
-    return { national: digits };
-  }, []);
-
-  const composeInternationalPhone = useCallback((dialCode, nationalRaw) => {
-    const dialDigits = String(dialCode || "").replace(/\D/g, "");
-    const nationalDigits = normalizeNationalDigits(nationalRaw);
-    if (!dialDigits || !nationalDigits) return "";
-    return `+${dialDigits}${nationalDigits}`;
-  }, [normalizeNationalDigits]);
-
-  const isValidIntlPhone = useCallback((value) => /^\+[1-9]\d{7,14}$/.test(String(value || "").trim()), []);
-
   const upd = (f,v) => setForm(p=>({...p,[f]:v}));
   const paymentMethodConfig = form.paymentMethod ? banks[form.paymentMethod] : null;
   const currentPrice = selectedService?.price || 10;
@@ -409,16 +377,6 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
   const selectedSubServices = selectedService?.subServices || [];
   const requiresSubService = selectedSubServices.length > 0;
   const isOtherSubService = requiresSubService && isOtherSubServiceValue(form.subService, isAr);
-  const phoneNationalDigits = splitPhoneWithDial(form.phone, defaultDialCode).national;
-  const whatsappNationalDigits = splitPhoneWithDial(form.whatsapp, defaultDialCode).national;
-
-  useEffect(() => {
-    setForm((prev) => ({
-      ...prev,
-      phone: composeInternationalPhone(defaultDialCode, splitPhoneWithDial(prev.phone, defaultDialCode).national),
-      whatsapp: composeInternationalPhone(defaultDialCode, splitPhoneWithDial(prev.whatsapp, defaultDialCode).national),
-    }));
-  }, [defaultDialCode, composeInternationalPhone, splitPhoneWithDial]);
 
   useEffect(() => {
     onScreenChange?.(screen);
@@ -1034,8 +992,6 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
     const serial = generateOrderSerial();
     const now = new Date();
     const dateStr = now.toLocaleString(isAr ? "ar-EG" : "en-US",{dateStyle:"medium",timeStyle:"short"});
-    const normalizedPhone = composeInternationalPhone(defaultDialCode, splitPhoneWithDial(form.phone, defaultDialCode).national);
-    const normalizedWhatsapp = composeInternationalPhone(defaultDialCode, splitPhoneWithDial(form.whatsapp, defaultDialCode).national);
     const providedServiceValue = requiresSubService
       ? `${selectedService?.label || ""}${form.subService ? ` — ${isOtherSubService ? form.customService.trim() : form.subService}` : ""}`
       : (selectedService?.label || form.providedService || "");
@@ -1050,9 +1006,9 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
       country:form.country,
       city:form.city,
       name:form.name,
-      phone:normalizedPhone,
+      phone:form.phone,
       email:form.email,
-      whatsapp:normalizedWhatsapp,
+      whatsapp:form.whatsapp,
       paymentMethod: isAr ? banks[form.paymentMethod]?.label : banks[form.paymentMethod]?.labelEn,
       paymentMethodKey:form.paymentMethod,
       notes:form.notes,
@@ -1878,10 +1834,8 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
 
   // ── SCREEN: form ─────────────────────────────────────────────────────────
   if (screen === "form") {
-    const validSubService = !requiresSubService || (form.subService.trim() && (!isOtherSubService || form.customService.trim()));
-    const normalizedPhone = composeInternationalPhone(defaultDialCode, phoneNationalDigits);
-    const normalizedWhatsapp = composeInternationalPhone(defaultDialCode, whatsappNationalDigits);
-    const valid1 = form.name.trim() && isValidIntlPhone(normalizedPhone) && isValidIntlPhone(normalizedWhatsapp) && form.email.trim() && form.country.trim() && form.city.trim() && validSubService;
+    const validEmail = form.email.trim().includes("@");
+    const valid1 = validEmail;
     return (
       <div dir={dir} style={{ fontFamily:"'Cairo',sans-serif", color:t.text }}>
         {requestLimitNoticeNode}
@@ -1945,40 +1899,32 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
                 </>
               )}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-                <PaidFieldWrap label={isAr?"رقم الهاتف *":"Phone *"} labelStyle={labelStyle}>
-                  <div style={{ display:"grid", gridTemplateColumns:"40px minmax(0, 1.4fr)", gap:6, direction:"ltr" }}>
-                    <input style={{ ...inputStyle, textAlign:"center", fontWeight:800, padding:"9px 4px" }} value={defaultDialCode} readOnly dir="ltr" />
-                    <input
-                      style={{ ...inputStyle, direction:"ltr", textAlign:"left" }}
-                      value={phoneNationalDigits}
-                      placeholder={isAr ? "اكتب الرقم بدون المفتاح" : "Enter number without dial code"}
-                      inputMode="tel"
-                      dir="ltr"
-                      onChange={e=>{
-                        const national = normalizeNationalDigits(e.target.value);
-                        upd("phone", composeInternationalPhone(defaultDialCode, national));
-                        if (phoneFieldError) setPhoneFieldError("");
-                      }}
-                    />
-                  </div>
+                <PaidFieldWrap label={isAr?"رقم الهاتف":"Phone"} labelStyle={labelStyle}>
+                  <input
+                    style={{ ...inputStyle, direction:"ltr", textAlign:"left" }}
+                    value={form.phone}
+                    placeholder={isAr ? "مثال: +2010XXXXXXXX" : "Example: +2010XXXXXXXX"}
+                    inputMode="tel"
+                    dir="ltr"
+                    onChange={e=>{
+                      upd("phone", e.target.value);
+                      if (phoneFieldError) setPhoneFieldError("");
+                    }}
+                  />
                   {!!phoneFieldError && <div style={{ marginTop:6, fontSize:11, color:"#dc2626", fontWeight:800 }}>{phoneFieldError}</div>}
                 </PaidFieldWrap>
-                <PaidFieldWrap label={isAr?"واتساب *":"WhatsApp *"} labelStyle={labelStyle}>
-                  <div style={{ display:"grid", gridTemplateColumns:"40px minmax(0, 1.4fr)", gap:6, direction:"ltr" }}>
-                    <input style={{ ...inputStyle, textAlign:"center", fontWeight:800, padding:"9px 4px" }} value={defaultDialCode} readOnly dir="ltr" />
-                    <input
-                      style={{ ...inputStyle, direction:"ltr", textAlign:"left" }}
-                      value={whatsappNationalDigits}
-                      placeholder={isAr ? "رقم واتساب بدون المفتاح" : "WhatsApp number without dial code"}
-                      inputMode="tel"
-                      dir="ltr"
-                      onChange={e=>{
-                        const national = normalizeNationalDigits(e.target.value);
-                        upd("whatsapp", composeInternationalPhone(defaultDialCode, national));
-                        if (whatsappFieldError) setWhatsappFieldError("");
-                      }}
-                    />
-                  </div>
+                <PaidFieldWrap label={isAr?"واتساب":"WhatsApp"} labelStyle={labelStyle}>
+                  <input
+                    style={{ ...inputStyle, direction:"ltr", textAlign:"left" }}
+                    value={form.whatsapp}
+                    placeholder={isAr ? "مثال: +9665XXXXXXXX" : "Example: +9665XXXXXXXX"}
+                    inputMode="tel"
+                    dir="ltr"
+                    onChange={e=>{
+                      upd("whatsapp", e.target.value);
+                      if (whatsappFieldError) setWhatsappFieldError("");
+                    }}
+                  />
                   {!!whatsappFieldError && <div style={{ marginTop:6, fontSize:11, color:"#dc2626", fontWeight:800 }}>{whatsappFieldError}</div>}
                 </PaidFieldWrap>
               </div>
@@ -2031,27 +1977,11 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
             </div>
             <button
               onClick={() => {
-                if (!form.email.trim()) {
+                if (!form.email.trim() || !form.email.includes("@")) {
                   setEmailFieldError(
                     isAr
-                      ? "حقل البريد الإلكتروني إجباري قبل الانتقال لخطوة الدفع."
-                      : "Email is required before moving to the payment step."
-                  );
-                  return;
-                }
-                if (!isValidIntlPhone(normalizedPhone)) {
-                  setPhoneFieldError(
-                    isAr
-                      ? "رقم الهاتف إجباري ويجب أن يكون صحيحًا مع مفتاح الدولة."
-                      : "Phone is required and must be valid with a country code."
-                  );
-                  return;
-                }
-                if (!isValidIntlPhone(normalizedWhatsapp)) {
-                  setWhatsappFieldError(
-                    isAr
-                      ? "رقم واتساب إجباري ويجب أن يكون صحيحًا مع مفتاح الدولة."
-                      : "WhatsApp is required and must be valid with a country code."
+                      ? "يرجى كتابة بريد إلكتروني صحيح يحتوي على @."
+                      : "Please enter a valid email containing @."
                   );
                   return;
                 }

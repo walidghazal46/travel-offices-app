@@ -1,3 +1,4 @@
+import MamnoPage from "./MamnoPage";
 import IstiqadamPage from "./IstiqadamPage";
 import { App as CapApp } from "@capacitor/app";
 import { Filesystem, Directory } from "@capacitor/filesystem";
@@ -135,8 +136,8 @@ function isMainBannerAdActive(adConfig) {
 
 const T = {
   ar: {
-    appTitle: "مكاتب السفريات الموثوقة",
-    appSub: "Trusted Travel Offices",
+    appTitle: "دليل مكاتب السفريات",
+    appSub: "Travel Offices Directory",
     countryLabel: "الدولة",
     chooseGov: "اختر محافظتك",
     heroSub: "ابحث عن مكتب سفريات موثوق ومرخص قريب منك",
@@ -173,9 +174,9 @@ const T = {
     forbiddenTitle: "⚠️ تحقق قبل التعامل",
     forbiddenDesc: "تأكد أن المكتب ليس ضمن الشركات المحظورة من قِبل وزارة العمل المصرية قبل دفع أي مبالغ.",
     forbiddenLink: "🔍 اعرض قائمة الشركات المحظورة الرسمية",
-    discTitle: "إشعار هام",
-    discBody: "هذا التطبيق دليل مستقل ولا يمثل أي جهة حكومية ولا يقدم خدمات حكومية نيابة عنها.",
-    discSub: "تعتمد البيانات الحكومية الظاهرة داخل التطبيق على مصادر رسمية معلنة لكل قسم، مثل بوابات وزارة العمل المصرية، وزارات العمل الرسمية، وبوابات السفارات ووزارات الخارجية المعروضة داخل التطبيق.",
+    discTitle: "إشعار إخلاء مسؤولية",
+    discBody: "هذا التطبيق هو دليل معلومات مستقل ولا يمثل أي جهة حكومية.",
+    discSub: "تعتمد البيانات الحكومية داخل التطبيق على مصادر رسمية معلنة: الموقع الرسمي لوزارة العمل المصرية (manpower.gov.eg)، وزارة الموارد البشرية السعودية (hrsd.gov.sa)، منصات مساند وقوى (musaned.com.sa, qiwa.sa)، وهيئة الخبراء (laws.boe.gov.sa)، بالإضافة إلى بوابات السفارات ووزارات الخارجية الرسمية.",
     discEn: "This app is independently developed and is not affiliated with, endorsed by, or representing any government entity.",
     discExpand: "عرض الإشعار",
     discCollapse: "إخفاء الإشعار",
@@ -236,8 +237,8 @@ const T = {
     ],
   },
   en: {
-    appTitle: "Trusted Travel Offices",
-    appSub: "مكاتب السفريات الموثوقة",
+    appTitle: "Travel Offices Directory",
+    appSub: "دليل مكاتب السفريات",
     countryLabel: "Country",
     chooseGov: "Choose Your Governorate",
     heroSub: "Find a trusted licensed travel office near you",
@@ -276,7 +277,7 @@ const T = {
     forbiddenLink: "🔍 View Official Prohibited Companies List",
     discTitle: "Important Notice",
     discBody: "This is an independent guide app. It does not represent any government entity and does not provide government services on its behalf.",
-    discSub: "Government-related information shown in the app is compiled from official public sources for each section, including the Egyptian Ministry of Labor, official labor ministry portals, and official embassy or foreign ministry portals shown in the app.",
+    discSub: "Government-related data in the app is based on official public sources: Egyptian Ministry of Labor (manpower.gov.eg), Saudi Ministry of Human Resources (hrsd.gov.sa), Musaned and Qiwa platforms (musaned.com.sa, qiwa.sa), Saudi Bureau of Experts (laws.boe.gov.sa), and official Embassy/MOFA portals.",
     discEn: "This app is independently developed and is not affiliated with, endorsed by, or representing any government entity.",
     discExpand: "Show Notice",
     discCollapse: "Hide Notice",
@@ -341,62 +342,62 @@ const T = {
 const OFFICIAL_SOURCE_GROUPS = {
   ar: [
     {
-      label: "شركات إلحاق العمالة المرخصة في مصر",
+      label: "الموقع الرسمي لوزارة العمل المصرية",
       url: "https://www.manpower.gov.eg/",
     },
     {
-      label: "بوابات وزارات العمل الرسمية بالدول المعروضة",
+      label: "وزارة الموارد البشرية والتنمية الاجتماعية (السعودية)",
       url: "https://hrsd.gov.sa/",
+    },
+    {
+      label: "منصة مساند — الاستقدام الرسمي (السعودية)",
+      url: "https://musaned.com.sa/",
+    },
+    {
+      label: "منصة قوى — لوائح العمل والتوطين (السعودية)",
+      url: "https://qiwa.sa/",
+    },
+    {
+      label: "بوابة هيئة الخبراء — الأنظمة واللوائح (السعودية)",
+      url: "https://laws.boe.gov.sa/",
     },
     {
       label: "بوابات السفارات والقنصليات المصرية الرسمية",
       url: "https://egyptconsulates.org/",
     },
     {
-      label: "بوابات السفارات ووزارات الخارجية الرسمية المعروضة",
+      label: "بوابات السفارات ووزارات الخارجية الرسمية",
       url: "https://embassies.mofa.gov.sa/",
-    },
-    {
-      label: "بعثات الإمارات الرسمية",
-      url: "https://www.mofa.gov.ae/en/missions",
-    },
-    {
-      label: "بوابة السفارات الأردنية الرسمية",
-      url: "https://mfa.gov.jo/ar/embassies",
-    },
-    {
-      label: "بوابة بعثات قطر الرسمية",
-      url: "https://www.mofa.gov.qa/qatar-and-the-world-ar",
     },
   ],
   en: [
     {
-      label: "Licensed recruitment offices in Egypt",
+      label: "Official Egyptian Ministry of Labor",
       url: "https://www.manpower.gov.eg/",
     },
     {
-      label: "Official labor ministry portals for the countries shown",
+      label: "Ministry of Human Resources (Saudi Arabia)",
       url: "https://hrsd.gov.sa/",
     },
     {
-      label: "Official Egyptian embassy and consulate portals",
+      label: "Musaned Platform — Official Recruitment (KSA)",
+      url: "https://musaned.com.sa/",
+    },
+    {
+      label: "Qiwa Platform — Labor Regulations (KSA)",
+      url: "https://qiwa.sa/",
+    },
+    {
+      label: "Saudi Bureau of Experts — Laws & Regulations",
+      url: "https://laws.boe.gov.sa/",
+    },
+    {
+      label: "Official Egyptian Embassy portals",
       url: "https://egyptconsulates.org/",
     },
     {
-      label: "Official embassy and foreign ministry portals shown in the app",
+      label: "Official Embassy and MOFA portals",
       url: "https://embassies.mofa.gov.sa/",
-    },
-    {
-      label: "Official UAE missions portal",
-      url: "https://www.mofa.gov.ae/en/missions",
-    },
-    {
-      label: "Official Jordanian embassies portal",
-      url: "https://mfa.gov.jo/ar/embassies",
-    },
-    {
-      label: "Official Qatar missions portal",
-      url: "https://www.mofa.gov.qa/qatar-and-the-world-ar",
     },
   ],
 };
@@ -1175,6 +1176,8 @@ export default function App() {
   const [guestMode, setGuestMode] = useState(false);
   const [istiqadamSearch, setIstiqadamSearch] = useState("");
   const [showIstiqadamPage, setShowIstiqadamPage] = useState(false);
+  const [mamnoSearch, setMamnoSearch] = useState("");
+  const [showMamnoPage, setShowMamnoPage] = useState(false);
   const [authPreviewUser, setAuthPreviewUser] = useState(() => shapeAuthPreviewUser(initialAuthSnapshot));
   const [authPreviewReady, setAuthPreviewReady] = useState(() => !!initialAuthSnapshot);
   const [adminSessionRole, setAdminSessionRole] = useState("user");
@@ -6380,6 +6383,11 @@ const mobileOfficeCardWidth = "100%";
       return;
     }
 
+    if (showMamnoPage) {
+      setShowMamnoPage(false);
+      return;
+    }
+
     if (providerPortalGuestNotice) {
       setProviderPortalGuestNotice("");
       return;
@@ -9903,6 +9911,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
   return (
     <div dir={dir} className="app-root" style={{ ...styles.root, background: t.bgGradient || t.bg, color: t.text }}>
       {showIstiqadamPage && <IstiqadamPage dark={dark} onClose={() => setShowIstiqadamPage(false)} />}
+      {showMamnoPage && <MamnoPage dark={dark} onClose={() => setShowMamnoPage(false)} />}
       <div ref={appTopAnchorRef} style={{ position: "absolute", top: 0, left: 0, width: 1, height: 1, pointerEvents: "none" }} />
       {isDesktop && <DesktopSidebar />}
       {/* ── Cinematic Background — Floating Light Orbs ─────────────────── */}
@@ -11752,6 +11761,97 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       </div>
                     );
                   })()}
+                  {/* ── المهن المحظورة (Mamno) card ── */}
+                  {(() => {
+                    const isLocked = !authPreviewUser || isGuestUser;
+                    const mamnoCats = [
+                      { icon: "🏢", label: lang === "ar" ? "المهن الإدارية والقيادية" : "Administrative & Leadership", items: ["مدير الموارد البشرية", "مسؤول التوظيف", "سكرتير تنفيذي", "مساعد إداري", "مدخل بيانات", "أمين مخزن", "مخلص جمركي", "موظف استقبال", "حارس أمن", "أخصائي علاقات عامة"] },
+                      { icon: "🛒", label: lang === "ar" ? "مهن التجارة والتجزئة" : "Retail & Trade", items: ["البائعون في الملابس", "البائعون في الأثاث", "البائعون في الأجهزة", "البائعون في الساعات", "البائعون في قطع الغيار", "كاشير (محاسب مبيعات)"] },
+                      { icon: "🏨", label: lang === "ar" ? "السياحة والضيافة" : "Tourism & Hospitality", items: ["موظف استقبال فندقي", "مأمور سنترال فندقي", "مدير فندق (نسبة 70%)", "مدير الأمن والسلامة", "مشرف طوابق", "مرشد سياحي"] },
+                      { icon: "📣", label: lang === "ar" ? "التسويق والمبيعات" : "Marketing & Sales", items: ["مدير تسويق", "مصمم جرافيك", "أخصائي تسويق رقمي", "مدير دعاية وإعلان", "أخصائي مبيعات أجهزة", "مندوب مبيعات دوائي"] },
+                      { icon: "📦", label: lang === "ar" ? "المشتريات والعقود" : "Procurement & Contracts", items: ["مدير مشتريات", "مندوب مشتريات", "مدير عقود", "أخصائي مناقصات", "محلل سلسلة إمداد", "مسؤول مستودع"] },
+                      { icon: "💰", label: lang === "ar" ? "المحاسبة والمالية" : "Accounting & Finance", items: ["محاسب قانوني", "مراجع داخلي", "محلل مالي", "مدير مالي", "أخصائي ضرائب", "مدير ميزانية"] },
+                      { icon: "🏗️", label: lang === "ar" ? "الهندسة والبناء" : "Engineering & Construction", items: ["مهندس مدني", "مهندس معماري", "مهندس كهربائي", "مهندس ميكانيكا", "مراقب بناء"] },
+                      { icon: "🏥", label: lang === "ar" ? "المهن الصحية" : "Healthcare", items: ["طبيب أسنان", "صيدلاني مستشفيات", "أخصائي مختبر طبي", "أخصائي أشعة", "فني علاج طبيعي"] },
+                    ];
+                    const q = mamnoSearch.trim();
+                    const filtered = q
+                      ? mamnoCats.map(c => ({ ...c, items: c.items.filter(i => i.includes(q)) })).filter(c => c.items.length > 0)
+                      : mamnoCats;
+
+                    return (
+                      <div style={{ marginTop: 10.4, borderRadius: 20, padding: "10px 10px 14px", background: dark ? "rgba(255,255,255,0.04)" : "linear-gradient(160deg,rgba(255,255,255,0.98) 0%,rgba(255,245,245,0.97) 100%)", border: `1px solid ${dark ? "rgba(220,38,38,0.20)" : "rgba(220,38,38,0.15)"}`, boxShadow: dark ? "none" : "0 4px 28px rgba(220,38,38,0.10),0 0 0 1px rgba(255,255,255,0.9)", position: "relative", overflow: "hidden" }}>
+                        {/* glow orbs */}
+                        <div style={{ position:"absolute",top:-50,left:-50,width:160,height:160,borderRadius:"50%",background:"radial-gradient(circle,rgba(220,38,38,0.07),transparent 70%)",pointerEvents:"none" }} />
+                        <div style={{ position:"absolute",bottom:-40,right:-40,width:130,height:130,borderRadius:"50%",background:"radial-gradient(circle,rgba(239,68,68,0.07),transparent 70%)",pointerEvents:"none" }} />
+                        {/* badge */}
+                        <div style={{ textAlign:"center", marginBottom:6 }}>
+                          <span style={{ display:"inline-block", background:"rgba(220,38,38,0.09)", border:"1px solid rgba(220,38,38,0.25)", color: dark?"#fca5a5":"#dc2626", fontSize:15, fontWeight:700, padding:"3px 14px", borderRadius:30, fontFamily:"'Cairo',sans-serif" }}>
+                            🚫 {lang==="ar" ? "دليل المهن الممنوع استقدامها 2026" : "Forbidden Jobs Guide 2026"}
+                          </span>
+                        </div>
+                        {/* title shimmer */}
+                        <div style={{ textAlign:"center", fontSize:14, fontWeight:900, lineHeight:1.35, marginBottom:6, fontFamily:"'Cairo',sans-serif", color: dark ? "#fca5a5" : "#991b1b" }}>
+                          {lang==="ar" ? "المهن المحظورة والمسعودة في السعودية 🇸🇦" : "Forbidden & Saudized Jobs in KSA 🇸🇦"}
+                        </div>
+                        {/* stats */}
+                        <div style={{ display:"flex", justifyContent:"center", gap:14, marginBottom:10 }}>
+                          {[{n:"69+",l:lang==="ar"?"مهنة محظورة":"Forbidden"},{n:"8",l:lang==="ar"?"قطاعات":"Sectors"},{n:"2026",l:lang==="ar"?"عام التطبيق":"Application Year"}].map(s=>(
+                            <div key={s.l} style={{ textAlign:"center" }}>
+                              <div style={{ fontSize:16, fontWeight:900, color: dark?"#fca5a5":"#dc2626", fontFamily:"'Cairo',sans-serif" }}>{s.n}</div>
+                              <div style={{ fontSize:10, color: dark?"rgba(255,255,255,0.5)":"#64748b", fontFamily:"'Cairo',sans-serif" }}>{s.l}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {isLocked ? (
+                          <div
+                            onClick={() => setModal({ type:"guestLinksAlert", title: lang==="ar"?"تسجيل الدخول مطلوب":"Login Required", msg: lang==="ar"?"يجب تسجيل الدخول للوصول إلى دليل المهن المحظورة الكامل واللوائح التنظيمية":"Sign in to access the full forbidden jobs guide and regulatory restrictions" })}
+                            style={{ background: dark?"rgba(127,29,29,0.18)":"rgba(254,242,242,0.7)", borderRadius:16, padding:"20px 16px", textAlign:"center", cursor:"pointer", border:`2px solid ${dark?"rgba(248,113,113,0.25)":"rgba(220,38,38,0.3)"}`, marginTop:4 }}
+                          >
+                            <div style={{ fontSize:28, marginBottom:8 }}>🔒</div>
+                            <div style={{ fontSize:14, fontWeight:900, color: dark?"#fca5a5":"#991b1b", fontFamily:"'Cairo',sans-serif", lineHeight:1.5, marginBottom:12 }}>
+                              {lang==="ar" ? "يجب تسجيل الدخول للإطلاع على جميع المهن المحظور استقدامها ونسب التوطين" : "Sign in to view all forbidden jobs and Saudization percentages"}
+                            </div>
+                            <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(90deg,#dc2626,#991b1b)", color:"#fff", fontSize:13, fontWeight:800, padding:"9px 26px", borderRadius:24, fontFamily:"'Cairo',sans-serif", boxShadow:"0 4px 16px rgba(220,38,38,0.4)" }}>
+                              <span>تسجيل الدخول</span><span>←</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <button onClick={() => setShowMamnoPage(true)} style={{ width:"100%", padding:"9px 14px", borderRadius:12, background:"linear-gradient(90deg,#dc2626,#991b1b)", color:"#fff", fontSize:12, fontWeight:800, fontFamily:"'Cairo',sans-serif", border:"none", cursor:"pointer", marginBottom:10, boxShadow:"0 4px 14px rgba(220,38,38,0.3)" }}>
+                              📖 {lang==="ar" ? "عرض الدليل الكامل — المهن المحظورة والجزاءات" : "View Full Guide — Forbidden Jobs & Penalties"}
+                            </button>
+                            <input
+                              type="text"
+                              placeholder={lang==="ar" ? "🔍 ابحث عن مهنة محظورة..." : "🔍 Search forbidden profession..."}
+                              value={mamnoSearch}
+                              onChange={e => setMamnoSearch(e.target.value)}
+                              style={{ width:"100%", padding:"8px 12px", borderRadius:12, border:`1px solid ${dark?"rgba(255,255,255,0.15)":"rgba(220,38,38,0.2)"}`, background: dark?"rgba(255,255,255,0.07)":"rgba(255,245,245,0.8)", color: dark?"#f1f5f9":"#7f1d1d", fontSize:12, fontFamily:"'Cairo',sans-serif", marginBottom:10, outline:"none", direction:"rtl" }}
+                            />
+                            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                              {filtered.map(cat => (
+                                <button key={cat.label} onClick={() => setShowMamnoPage(true)} style={{ background: dark?"rgba(255,255,255,0.05)":"rgba(255,245,245,0.7)", borderRadius:14, padding:"9px 12px", border:`1px solid ${dark?"rgba(255,255,255,0.08)":"rgba(220,38,38,0.12)"}`, cursor:"pointer", textAlign:"right", width:"100%" }}>
+                                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7 }}>
+                                    <span style={{ fontSize:11, color: dark?"rgba(255,255,255,0.35)":"#94a3b8", fontFamily:"'Cairo',sans-serif" }}>اضغط للتفاصيل ←</span>
+                                    <div style={{ fontSize:13, fontWeight:800, color: dark?"#fca5a5":"#dc2626", fontFamily:"'Cairo',sans-serif" }}>{cat.icon} {cat.label}</div>
+                                  </div>
+                                  <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
+                                    {cat.items.slice(0,6).map(item => (
+                                      <span key={item} style={{ background: dark?"rgba(220,38,38,0.2)":"rgba(254,226,226,0.9)", border:`1px solid ${dark?"rgba(220,38,38,0.3)":"rgba(248,113,113,0.6)"}`, color: dark?"#fca5a5":"#991b1b", borderRadius:7, padding:"2px 9px", fontSize:12, fontFamily:"'Cairo',sans-serif" }}>{item}</span>
+                                    ))}
+                                    {cat.items.length > 6 && <span style={{ background:"transparent", border:`1px dashed ${dark?"rgba(220,38,38,0.3)":"rgba(248,113,113,0.6)"}`, color: dark?"#fca5a5":"#ef4444", borderRadius:7, padding:"2px 9px", fontSize:12, fontFamily:"'Cairo',sans-serif" }}>+{cat.items.length - 6} أكثر...</span>}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                            <div style={{ marginTop:8, fontSize:10, color: dark?"rgba(255,255,255,0.3)":"#94a3b8", textAlign:"center", fontFamily:"'Cairo',sans-serif" }}>
+                              {lang==="ar" ? "المصدر: وزارة الموارد البشرية والتنمية الاجتماعية · منصة قوى" : "Source: HRSD · Qiwa"}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {(() => {
                     const isLockedLinks = !authPreviewUser;
                     const handleLinkClick = (e, href) => {
@@ -11806,6 +11906,97 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                         ))}
                       </div>
                     </div>
+                    );
+                  })()}
+                  {/* ── المهن المحظورة (Mamno) card ── */}
+                  {(() => {
+                    const isLocked = !authPreviewUser || isGuestUser;
+                    const mamnoCats = [
+                      { icon: "🏢", label: lang === "ar" ? "المهن الإدارية والقيادية" : "Administrative & Leadership", items: ["مدير الموارد البشرية", "مسؤول التوظيف", "سكرتير تنفيذي", "مساعد إداري", "مدخل بيانات", "أمين مخزن", "مخلص جمركي", "موظف استقبال", "حارس أمن", "أخصائي علاقات عامة"] },
+                      { icon: "🛒", label: lang === "ar" ? "مهن التجارة والتجزئة" : "Retail & Trade", items: ["البائعون في الملابس", "البائعون في الأثاث", "البائعون في الأجهزة", "البائعون في الساعات", "البائعون في قطع الغيار", "كاشير (محاسب مبيعات)"] },
+                      { icon: "🏨", label: lang === "ar" ? "السياحة والضيافة" : "Tourism & Hospitality", items: ["موظف استقبال فندقي", "مأمور سنترال فندقي", "مدير فندق (نسبة 70%)", "مدير الأمن والسلامة", "مشرف طوابق", "مرشد سياحي"] },
+                      { icon: "📣", label: lang === "ar" ? "التسويق والمبيعات" : "Marketing & Sales", items: ["مدير تسويق", "مصمم جرافيك", "أخصائي تسويق رقمي", "مدير دعاية وإعلان", "أخصائي مبيعات أجهزة", "مندوب مبيعات دوائي"] },
+                      { icon: "📦", label: lang === "ar" ? "المشتريات والعقود" : "Procurement & Contracts", items: ["مدير مشتريات", "مندوب مشتريات", "مدير عقود", "أخصائي مناقصات", "محلل سلسلة إمداد", "مسؤول مستودع"] },
+                      { icon: "💰", label: lang === "ar" ? "المحاسبة والمالية" : "Accounting & Finance", items: ["محاسب قانوني", "مراجع داخلي", "محلل مالي", "مدير مالي", "أخصائي ضرائب", "مدير ميزانية"] },
+                      { icon: "🏗️", label: lang === "ar" ? "الهندسة والبناء" : "Engineering & Construction", items: ["مهندس مدني", "مهندس معماري", "مهندس كهربائي", "مهندس ميكانيكا", "مراقب بناء"] },
+                      { icon: "🏥", label: lang === "ar" ? "المهن الصحية" : "Healthcare", items: ["طبيب أسنان", "صيدلاني مستشفيات", "أخصائي مختبر طبي", "أخصائي أشعة", "فني علاج طبيعي"] },
+                    ];
+                    const q = mamnoSearch.trim();
+                    const filtered = q
+                      ? mamnoCats.map(c => ({ ...c, items: c.items.filter(i => i.includes(q)) })).filter(c => c.items.length > 0)
+                      : mamnoCats;
+
+                    return (
+                      <div style={{ marginTop: 10.4, borderRadius: 20, padding: "10px 10px 14px", background: dark ? "rgba(255,255,255,0.04)" : "linear-gradient(160deg,rgba(255,255,255,0.98) 0%,rgba(255,245,245,0.97) 100%)", border: `1px solid ${dark ? "rgba(220,38,38,0.20)" : "rgba(220,38,38,0.15)"}`, boxShadow: dark ? "none" : "0 4px 28px rgba(220,38,38,0.10),0 0 0 1px rgba(255,255,255,0.9)", position: "relative", overflow: "hidden" }}>
+                        {/* glow orbs */}
+                        <div style={{ position:"absolute",top:-50,left:-50,width:160,height:160,borderRadius:"50%",background:"radial-gradient(circle,rgba(220,38,38,0.07),transparent 70%)",pointerEvents:"none" }} />
+                        <div style={{ position:"absolute",bottom:-40,right:-40,width:130,height:130,borderRadius:"50%",background:"radial-gradient(circle,rgba(239,68,68,0.07),transparent 70%)",pointerEvents:"none" }} />
+                        {/* badge */}
+                        <div style={{ textAlign:"center", marginBottom:6 }}>
+                          <span style={{ display:"inline-block", background:"rgba(220,38,38,0.09)", border:"1px solid rgba(220,38,38,0.25)", color: dark?"#fca5a5":"#dc2626", fontSize:15, fontWeight:700, padding:"3px 14px", borderRadius:30, fontFamily:"'Cairo',sans-serif" }}>
+                            🚫 {lang==="ar" ? "دليل المهن الممنوع استقدامها 2026" : "Forbidden Jobs Guide 2026"}
+                          </span>
+                        </div>
+                        {/* title shimmer */}
+                        <div style={{ textAlign:"center", fontSize:14, fontWeight:900, lineHeight:1.35, marginBottom:6, fontFamily:"'Cairo',sans-serif", color: dark ? "#fca5a5" : "#991b1b" }}>
+                          {lang==="ar" ? "المهن المحظورة والمسعودة في السعودية 🇸🇦" : "Forbidden & Saudized Jobs in KSA 🇸🇦"}
+                        </div>
+                        {/* stats */}
+                        <div style={{ display:"flex", justifyContent:"center", gap:14, marginBottom:10 }}>
+                          {[{n:"69+",l:lang==="ar"?"مهنة محظورة":"Forbidden"},{n:"8",l:lang==="ar"?"قطاعات":"Sectors"},{n:"2026",l:lang==="ar"?"عام التطبيق":"Application Year"}].map(s=>(
+                            <div key={s.l} style={{ textAlign:"center" }}>
+                              <div style={{ fontSize:16, fontWeight:900, color: dark?"#fca5a5":"#dc2626", fontFamily:"'Cairo',sans-serif" }}>{s.n}</div>
+                              <div style={{ fontSize:10, color: dark?"rgba(255,255,255,0.5)":"#64748b", fontFamily:"'Cairo',sans-serif" }}>{s.l}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {isLocked ? (
+                          <div
+                            onClick={() => setModal({ type:"guestLinksAlert", title: lang==="ar"?"تسجيل الدخول مطلوب":"Login Required", msg: lang==="ar"?"يجب تسجيل الدخول للوصول إلى دليل المهن المحظورة الكامل واللوائح التنظيمية":"Sign in to access the full forbidden jobs guide and regulatory restrictions" })}
+                            style={{ background: dark?"rgba(127,29,29,0.18)":"rgba(254,242,242,0.7)", borderRadius:16, padding:"20px 16px", textAlign:"center", cursor:"pointer", border:`2px solid ${dark?"rgba(248,113,113,0.25)":"rgba(220,38,38,0.3)"}`, marginTop:4 }}
+                          >
+                            <div style={{ fontSize:28, marginBottom:8 }}>🔒</div>
+                            <div style={{ fontSize:14, fontWeight:900, color: dark?"#fca5a5":"#991b1b", fontFamily:"'Cairo',sans-serif", lineHeight:1.5, marginBottom:12 }}>
+                              {lang==="ar" ? "يجب تسجيل الدخول للإطلاع على جميع المهن المحظور استقدامها ونسب التوطين" : "Sign in to view all forbidden jobs and Saudization percentages"}
+                            </div>
+                            <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(90deg,#dc2626,#991b1b)", color:"#fff", fontSize:13, fontWeight:800, padding:"9px 26px", borderRadius:24, fontFamily:"'Cairo',sans-serif", boxShadow:"0 4px 16px rgba(220,38,38,0.4)" }}>
+                              <span>تسجيل الدخول</span><span>←</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <button onClick={() => setShowMamnoPage(true)} style={{ width:"100%", padding:"9px 14px", borderRadius:12, background:"linear-gradient(90deg,#dc2626,#991b1b)", color:"#fff", fontSize:12, fontWeight:800, fontFamily:"'Cairo',sans-serif", border:"none", cursor:"pointer", marginBottom:10, boxShadow:"0 4px 14px rgba(220,38,38,0.3)" }}>
+                              📖 {lang==="ar" ? "عرض الدليل الكامل — المهن المحظورة والجزاءات" : "View Full Guide — Forbidden Jobs & Penalties"}
+                            </button>
+                            <input
+                              type="text"
+                              placeholder={lang==="ar" ? "🔍 ابحث عن مهنة محظورة..." : "🔍 Search forbidden profession..."}
+                              value={mamnoSearch}
+                              onChange={e => setMamnoSearch(e.target.value)}
+                              style={{ width:"100%", padding:"8px 12px", borderRadius:12, border:`1px solid ${dark?"rgba(255,255,255,0.15)":"rgba(220,38,38,0.2)"}`, background: dark?"rgba(255,255,255,0.07)":"rgba(255,245,245,0.8)", color: dark?"#f1f5f9":"#7f1d1d", fontSize:12, fontFamily:"'Cairo',sans-serif", marginBottom:10, outline:"none", direction:"rtl" }}
+                            />
+                            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                              {filtered.map(cat => (
+                                <button key={cat.label} onClick={() => setShowMamnoPage(true)} style={{ background: dark?"rgba(255,255,255,0.05)":"rgba(255,245,245,0.7)", borderRadius:14, padding:"9px 12px", border:`1px solid ${dark?"rgba(255,255,255,0.08)":"rgba(220,38,38,0.12)"}`, cursor:"pointer", textAlign:"right", width:"100%" }}>
+                                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7 }}>
+                                    <span style={{ fontSize:11, color: dark?"rgba(255,255,255,0.35)":"#94a3b8", fontFamily:"'Cairo',sans-serif" }}>اضغط للتفاصيل ←</span>
+                                    <div style={{ fontSize:13, fontWeight:800, color: dark?"#fca5a5":"#dc2626", fontFamily:"'Cairo',sans-serif" }}>{cat.icon} {cat.label}</div>
+                                  </div>
+                                  <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
+                                    {cat.items.slice(0,6).map(item => (
+                                      <span key={item} style={{ background: dark?"rgba(220,38,38,0.2)":"rgba(254,226,226,0.9)", border:`1px solid ${dark?"rgba(220,38,38,0.3)":"rgba(248,113,113,0.6)"}`, color: dark?"#fca5a5":"#991b1b", borderRadius:7, padding:"2px 9px", fontSize:12, fontFamily:"'Cairo',sans-serif" }}>{item}</span>
+                                    ))}
+                                    {cat.items.length > 6 && <span style={{ background:"transparent", border:`1px dashed ${dark?"rgba(220,38,38,0.3)":"rgba(248,113,113,0.6)"}`, color: dark?"#fca5a5":"#ef4444", borderRadius:7, padding:"2px 9px", fontSize:12, fontFamily:"'Cairo',sans-serif" }}>+{cat.items.length - 6} أكثر...</span>}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                            <div style={{ marginTop:8, fontSize:10, color: dark?"rgba(255,255,255,0.3)":"#94a3b8", textAlign:"center", fontFamily:"'Cairo',sans-serif" }}>
+                              {lang==="ar" ? "المصدر: وزارة الموارد البشرية والتنمية الاجتماعية · منصة قوى" : "Source: HRSD · Qiwa"}
+                            </div>
+                          </>
+                        )}
+                      </div>
                     );
                   })()}
 

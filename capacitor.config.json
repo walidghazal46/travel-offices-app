@@ -1,6 +1,6 @@
 {
   "appId": "com.travel.offices",
-  "appName": "مكاتب السفريات",
+  "appName": "دليل مكاتب السفريات",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"
