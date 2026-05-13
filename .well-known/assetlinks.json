@@ -1,0 +1,11 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.travel.offices",
+      "sha256_cert_fingerprints":
+        ["73:31:FF:A7:9B:5A:C7:25:C1:7E:04:53:23:5D:D8:C2:87:3B:BD:CC:D2:34:25:2A:22:F0:36:93:6F:48:1F:17"]
+    }
+  }
+]
