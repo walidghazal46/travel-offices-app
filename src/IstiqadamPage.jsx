@@ -12,7 +12,7 @@ const CATS = [
       "راعية أطفال ذوي احتياجات خاصة","ممرضة منزلية",
       "عامل مزرعة خاصة","سائق خاص لأفراد الأسرة",
     ],
-    note: { icon:"📌", color:"#92400e", bg:"#fffbeb", border:"#d97706", text:"منصة مساند (musaned.com.sa) — المرجع الرسمي الأول لاستقدام العمالة المنزلية وتحديد الجنسيات والمهن المعتمدة لكل دولة." },
+    note: { icon:"📌", color:"#92400e", bg:"#fffbeb", border:"#d97706", text:"منصة مساند (musaned.com.sa) — منصة حكومية متخصصة في استقدام العمالة المنزلية، يمكن من خلالها الاطلاع على الجنسيات والمهن المتاحة لكل دولة." },
   },
   {
     id: "health", icon: "🏥", color: "#0369a1", bg: "#f0f9ff",
@@ -57,7 +57,7 @@ const CATS = [
   {
     id: "education", icon: "📚", color: "#0f766e", bg: "#f0fdfa",
     title: "مهن التعليم والتدريب",
-    subtitle: "يشمل التعليم الحكومي والخاص ومراكز التدريب — مع اشتراطات وزارة التعليم",
+    subtitle: "يشمل التعليم الحكومي والخاص ومراكز التدريب — راجع الجهات المختصة للاشتراطات",
     items: [
       "معلم لغة عربية","معلم لغة إنجليزية","معلم رياضيات وعلوم",
       "معلم تربية إسلامية","معلم تربية رياضية","معلم فنون وتصميم",
@@ -180,7 +180,7 @@ export default function IstiqadamPage({ onClose, dark }) {
             المهن المتاحة <span style={{ color:"#f0c040" }}>للاستقدام</span><br/>في المملكة العربية السعودية
           </div>
           <div style={{ fontSize:12, color:"rgba(255,255,255,0.7)", marginBottom:14 }}>
-            دليل موثق بالمصادر الرسمية من وزارة الموارد البشرية ومنصة مساند والجهات الحكومية المعتمدة
+            دليل إرشادي بمعلومات متاحة للعامة — ليس تطبيقاً حكومياً ولا يمثل أي جهة رسمية
           </div>
 
           {/* stats */}
@@ -300,7 +300,7 @@ export default function IstiqadamPage({ onClose, dark }) {
         {!q && <>
           <div style={{ fontSize:13, fontWeight:800, color:textMain, margin:"20px 0 12px", display:"flex", alignItems:"center", gap:6 }}>
             <span style={{ display:"inline-block", width:4, height:20, background:"#1d4ed8", borderRadius:2 }}/>
-            خطوات الاستقدام الرسمية
+            خطوات الاستقدام المعتادة
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
             {STEPS.map((s,i) => (
@@ -391,7 +391,7 @@ export default function IstiqadamPage({ onClose, dark }) {
           {/* ── PLATFORMS ── */}
           <div style={{ fontSize:13, fontWeight:800, color:textMain, marginBottom:10, display:"flex", alignItems:"center", gap:6 }}>
             <span style={{ display:"inline-block", width:4, height:20, background:"#1d4ed8", borderRadius:2 }}/>
-            المنصات والجهات الرسمية المختصة
+            منصات وجهات مرتبطة بالاستقدام
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:20 }}>
             {[
@@ -438,10 +438,16 @@ export default function IstiqadamPage({ onClose, dark }) {
             </div>
           </div>
 
-          {/* footer */}
-          <div style={{ textAlign:"center", fontSize:10, color:textSub, marginTop:20, paddingBottom:10, lineHeight:1.8 }}>
-            جُمع هذا الدليل استناداً إلى المصادر الرسمية السعودية المعتمدة<br/>
-            وزارة الموارد البشرية · منصة مساند · منصة قوى · الهيئة السعودية للتخصصات الصحية
+          {/* disclaimer */}
+          <div style={{ background:dark?"rgba(255,255,255,0.04)":"#f8fafc", border:`1px solid ${dark?"rgba(255,255,255,0.10)":"#e2e8f0"}`, borderRadius:12, padding:"12px 14px", marginTop:16 }}>
+            <div style={{ fontSize:11, color:textSub, lineHeight:1.9, textAlign:"center" }}>
+              ⚠️ <strong style={{color:textMain}}>تنويه:</strong> هذا التطبيق غير تابع لأي جهة حكومية ولا يمثل وزارة الموارد البشرية أو أي جهة رسمية.<br/>
+              المعلومات الواردة هي لأغراض إرشادية فقط وتم جمعها من مصادر متاحة للعامة.<br/>
+              يُرجى دائماً مراجعة الجهات الرسمية للحصول على أحدث المعلومات.
+            </div>
+          </div>
+          <div style={{ textAlign:"center", fontSize:10, color:textSub, marginTop:12, paddingBottom:10 }}>
+            جميع المعلومات لأغراض إرشادية — راجع المصادر الرسمية للتأكد
           </div>
         </>}
 
