@@ -9713,43 +9713,12 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
           </div>
         </div>
         {authPreviewMode !== "otp" && (
-          <div style={{ marginTop: -2, width: "min(100%, 270px)", marginInline: "auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <a
-              href={`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
-                lang === "ar"
-                  ? "مرحبًا، أواجه مشكلة في تسجيل الدخول داخل تطبيق مكاتب السفريات الموثوقة."
-                  : "Hello, I am facing a login issue in the Trusted Travel Offices app."
-              )}`}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                width: "100%",
-                height: isCompactPhone ? 36 : 37,
-                borderRadius: 12,
-                border: "1px solid rgba(37,211,102,0.45)",
-                background: "linear-gradient(135deg, rgba(16,99,53,0.44), rgba(20,150,71,0.34))",
-                color: "#eafff1",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                textDecoration: "none",
-                padding: "0 10px",
-                boxSizing: "border-box",
-                boxShadow: "0 0 12px rgba(37,211,102,0.22)",
-                fontSize: 12,
-                fontWeight: 900,
-                fontFamily: "'Cairo',sans-serif",
-              }}
-            >
-              <span>{lang === "ar" ? "مشاكل التسجيل" : "Login issues"}</span>
-              <span style={{ fontSize: 15, lineHeight: 1 }}>☏</span>
-            </a>
-
+          <div style={{ marginTop: -2, width: "min(100%, 270px)", marginInline: "auto", display: "flex", justifyContent: "center" }}>
             <button
               type="button"
               onClick={() => setShowExitConfirm(true)}
               style={{
-                width: "100%",
+                width: "min(100%, 160px)",
                 height: isCompactPhone ? 36 : 37,
                 borderRadius: 12,
                 border: "1px solid rgba(248,113,113,0.55)",
@@ -15342,9 +15311,9 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
             )}
             {(() => {
               const settingsShell = {
-                background: "linear-gradient(145deg, #17356d 0%, #0b2453 56%, #081b43 100%)",
-                border: "1px solid rgba(116,169,255,0.22)",
-                boxShadow: "0 14px 28px rgba(6,24,64,0.22), inset 0 1px 0 rgba(255,255,255,0.10)",
+                background: "linear-gradient(145deg, #2c4f95 0%, #1f3f7a 55%, #16305f 100%)",
+                border: `1px solid ${t.gold}2e`,
+                boxShadow: `0 14px 28px rgba(6,24,64,0.22), inset 0 1px 0 rgba(255,255,255,0.10), 0 0 16px ${t.gold}14`,
                 borderRadius: 18,
                 padding: isCompactPhone ? "10px 10px" : "12px 14px",
                 minHeight: 70,
@@ -15374,11 +15343,11 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 flex: 1,
                 minHeight: 34,
                 borderRadius: 10,
-                border: active ? "1.5px solid #68a6ff" : "1px solid rgba(255,255,255,0.08)",
+                border: active ? `1.5px solid ${t.gold}` : "1px solid rgba(255,255,255,0.08)",
                 background: active
-                  ? "linear-gradient(145deg, rgba(17,50,114,0.96), rgba(14,43,98,0.92))"
+                  ? `linear-gradient(145deg, ${t.gold}33, ${t.gold}1a)`
                   : "linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
-                color: "#ffffff",
+                color: active ? t.gold : "#ffffff",
                 fontWeight: 800,
                 fontSize: isCompactPhone ? 10 : 11,
                 fontFamily: "'Cairo',sans-serif",
@@ -15388,7 +15357,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 gap: 6,
                 cursor: "pointer",
                 position: "relative",
-                boxShadow: active ? "0 0 0 2px rgba(104,166,255,0.12), inset 0 1px 0 rgba(255,255,255,0.12)" : "inset 0 1px 0 rgba(255,255,255,0.05)",
+                boxShadow: active ? `0 0 0 2px ${t.gold}22, inset 0 1px 0 rgba(255,255,255,0.12)` : "inset 0 1px 0 rgba(255,255,255,0.05)",
               });
               const tileStyle = {
                 display: "flex",
@@ -15400,9 +15369,9 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 minHeight: isCompactPhone ? 80 : 95,
                 borderRadius: 18,
                 padding: "10px 8px",
-                border: "1px solid rgba(116,169,255,0.18)",
-                background: "linear-gradient(145deg, #17356d 0%, #0b2453 56%, #081b43 100%)",
-                boxShadow: "0 8px 18px rgba(6,24,64,0.16), inset 0 1px 0 rgba(255,255,255,0.08)",
+                border: `1px solid ${t.gold}2e`,
+                background: "linear-gradient(145deg, #2c4f95 0%, #1f3f7a 55%, #16305f 100%)",
+                boxShadow: `0 8px 18px rgba(6,24,64,0.18), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 16px ${t.gold}14`,
                 textDecoration: "none",
                 cursor: "pointer",
                 textAlign: "center",
@@ -15422,10 +15391,10 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 3px 10px rgba(0,0,0,0.18)",
               });
               const settingsActionTiles = [
-                { icon: "⭐", iconBg: "linear-gradient(145deg,#29467f,#1b3265)", label: tx.settingsRate, desc: "", href: PLAY_STORE_URL },
-                { icon: "🔄", iconBg: "linear-gradient(145deg,#29467f,#1b3265)", label: tx.settingsUpdate, desc: "", href: PLAY_STORE_URL },
-                { icon: "🔒", iconBg: "linear-gradient(145deg,#29467f,#1b3265)", label: tx.settingsPrivacy, desc: "", action: () => setPrivacyPolicyOpen(true) },
-                { icon: "📧", iconBg: "linear-gradient(145deg,#29467f,#1b3265)", label: tx.settingsSupport, desc: "", href: "mailto:walidghazal46@gmail.com?subject=دعم فني - تطبيق مكاتب السفريات الموثوقة" },
+                { icon: "⭐", iconBg: "linear-gradient(145deg,#3d63b8,#27447f)", label: tx.settingsRate, desc: "", href: PLAY_STORE_URL },
+                { icon: "🔄", iconBg: "linear-gradient(145deg,#3d63b8,#27447f)", label: tx.settingsUpdate, desc: "", href: PLAY_STORE_URL },
+                { icon: "🔒", iconBg: "linear-gradient(145deg,#3d63b8,#27447f)", label: tx.settingsPrivacy, desc: "", action: () => setPrivacyPolicyOpen(true) },
+                { icon: "📧", iconBg: "linear-gradient(145deg,#3d63b8,#27447f)", label: tx.settingsSupport, desc: "", href: "mailto:walidghazal46@gmail.com?subject=دعم فني - تطبيق مكاتب السفريات الموثوقة" },
                 { icon: "in", iconBg: "linear-gradient(145deg,#1e6db9,#0d4d96)", label: "LinkedIn", desc: "", href: LINKEDIN, iconStyle: { fontFamily: "sans-serif", fontWeight: 900, fontSize: 16 } },
                 { icon: "▶", iconBg: "linear-gradient(145deg,#ff3b30,#c81512)", label: "YouTube", desc: "", href: YOUTUBE, iconStyle: { fontSize: 16 } },
               ];
@@ -15433,7 +15402,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 ? [
                     {
                       icon: "👤",
-                      iconBg: "linear-gradient(145deg,#29467f,#1b3265)",
+                      iconBg: "linear-gradient(145deg,#3d63b8,#27447f)",
                       label: lang === "ar" ? "الحساب" : "Account",
                       desc: "",
                       action: () => {
@@ -15445,7 +15414,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     },
                     {
                       icon: "📖",
-                      iconBg: "linear-gradient(145deg,#29467f,#1b3265)",
+                      iconBg: "linear-gradient(145deg,#3d63b8,#27447f)",
                       label: lang === "ar" ? "شرح الاستخدام" : "How to use",
                       desc: "",
                       action: () => setUsageGuideOpen(true),
@@ -15454,7 +15423,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 : [
                     {
                       icon: "📖",
-                      iconBg: "linear-gradient(145deg,#29467f,#1b3265)",
+                      iconBg: "linear-gradient(145deg,#3d63b8,#27447f)",
                       label: lang === "ar" ? "شرح الاستخدام" : "How to use",
                       desc: "",
                       action: () => setUsageGuideOpen(true),
@@ -15477,14 +15446,14 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 ? [
                     ...(isAdminUser ? [{
                       icon: "👑",
-                      iconBg: "linear-gradient(145deg,#29467f,#1b3265)",
+                      iconBg: "linear-gradient(145deg,#3d63b8,#27447f)",
                       label: lang === "ar" ? "حساب الأدمن" : "Admin Account",
                       desc: "",
                       action: openAdminSecurityModal,
                     }] : []),
                     {
                       icon: "↪",
-                      iconBg: "linear-gradient(145deg,#29467f,#1b3265)",
+                      iconBg: "linear-gradient(145deg,#3d63b8,#27447f)",
                       label: lang === "ar" ? "تسجيل الخروج" : "Sign Out",
                       desc: "",
                       action: () => setSignOutConfirmOpen(true),
@@ -15741,15 +15710,15 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
         <div style={{ textAlign: "center", marginTop: 16, color: t.subText, fontSize: 14.3, fontFamily: "'Cairo',sans-serif" }}>v1.0.0.26 — مكاتب السفريات الموثوقة</div>
 
             {/* ── إشعار هام ── */}
-            <div style={{ marginTop: 16, borderRadius: 24, border: "1px solid rgba(116,169,255,0.18)", background: "linear-gradient(145deg, #17356d 0%, #0b2453 56%, #081b43 100%)", boxShadow: "0 18px 36px rgba(6,24,64,0.22), inset 0 1px 0 rgba(255,255,255,0.08)", padding: "14px 16px" }}>
+            <div style={{ marginTop: 16, borderRadius: 24, border: `1px solid ${t.gold}2e`, background: "linear-gradient(145deg, #2c4f95 0%, #1f3f7a 55%, #16305f 100%)", boxShadow: `0 18px 36px rgba(6,24,64,0.22), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 16px ${t.gold}14`, padding: "14px 16px" }}>
               <button
                 type="button"
                 onClick={() => setDiscNoticeOpen((prev) => !prev)}
                 style={{
                   width: "100%",
                   borderRadius: 18,
-                  border: "1px solid rgba(116,169,255,0.18)",
-                  background: "linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04))",
+                  border: `1px solid ${t.gold}26`,
+                  background: "linear-gradient(145deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04))",
                   color: "#ffffff",
                   padding: "10px 11px",
                   display: "flex",
