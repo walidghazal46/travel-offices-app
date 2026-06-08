@@ -17877,6 +17877,26 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
 
         <div style={{ textAlign: "center", marginTop: 16, color: t.subText, fontSize: 14.3, fontFamily: "'Cairo',sans-serif" }}>v1.0.0.26 — مكاتب السفريات الموثوقة</div>
 
+        {/* ── روابط الموقع (footer nav) ── */}
+        <div style={{ marginTop: 10, marginBottom: 4, padding: "10px 12px", borderRadius: 14, border: `1px solid ${t.border}`, background: dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", fontFamily: "'Cairo',sans-serif" }}>
+          {[
+            { label: lang === "ar" ? "من نحن" : "About", href: "https://trustedoffices.org/about.html" },
+            { label: lang === "ar" ? "اتصل بنا" : "Contact", href: "https://trustedoffices.org/contact.html" },
+            { label: lang === "ar" ? "سياسة الخصوصية" : "Privacy Policy", href: "https://trustedoffices.org/privacy-policy.html" },
+            { label: lang === "ar" ? "الشروط والأحكام" : "Terms", href: "https://trustedoffices.org/terms.html" },
+          ].map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: dark ? "#94a3b8" : "#64748b", fontSize: 11, textDecoration: "none", padding: "3px 8px", borderRadius: 99, border: `1px solid ${t.border}`, background: dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)" }}
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
+
             {/* ── إشعار هام ── */}
             <div style={{ marginTop: 16, borderRadius: 24, border: `1px solid ${t.gold}2e`, background: "linear-gradient(145deg, #2c4f95 0%, #1f3f7a 55%, #16305f 100%)", boxShadow: `0 18px 36px rgba(6,24,64,0.22), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 16px ${t.gold}14`, padding: "14px 16px" }}>
               <button

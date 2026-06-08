@@ -31,7 +31,10 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6810176545596111" crossorigin="anonymous"></script>
 
     <style>
+      /* Footer hidden from app users — links are provided inside the React app
+         instead. The element stays in DOM so crawlers can index it. */
       #site-footer {
+        display: none;
         font-family: Tahoma, Arial, sans-serif;
         background: #f1f5f9;
         border-top: 1px solid #e2e8f0;
