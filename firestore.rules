@@ -146,6 +146,16 @@ service cloud.firestore {
         );
     }
 
+    // ─── cv_package_stats ────────────────────────────────────────────────────
+    // Public read so every visitor can see CV package popularity/ratings.
+    // Authenticated users can write because the app updates these aggregate
+    // counters (request counts, ratings) whenever a signed-in user requests
+    // or rates a CV package (see syncCvPackageStatsInFirebase).
+    match /cv_package_stats/{packageKey} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
     // ─── users ───────────────────────────────────────────────────────────────
     // Users can read and update their own profile. Admins can read all.
     // Deletion is only via Cloud Function (deleteAuthUserByAdmin).
