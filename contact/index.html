@@ -5,19 +5,111 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="canonical" href="https://trustedoffices.org/contact.html" />
     <title>اتصل بنا | مكاتب السفريات الموثوقة</title>
+    <meta name="description" content="تواصل مع فريق مكاتب السفريات الموثوقة للدعم الفني أو الاستفسارات أو حجز الإعلانات." />
     <style>
+      * { box-sizing: border-box; }
       body { font-family: Tahoma, Arial, sans-serif; margin: 0; background: #f8fafc; color: #0f172a; }
-      .wrap { max-width: 900px; margin: 24px auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; line-height: 1.9; }
-      h1 { margin: 0 0 12px; }
-      p { margin: 0 0 12px; }
-      a { color: #0369a1; }
+      header { background: #1e3a8a; color: #fff; padding: 18px 24px; text-align: center; }
+      header h1 { margin: 0; font-size: 20px; }
+      header p { margin: 4px 0 0; font-size: 12px; opacity: 0.8; }
+      .wrap { max-width: 860px; margin: 24px auto; padding: 0 16px 40px; }
+      .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 16px; line-height: 1.9; }
+      h2 { margin: 0 0 10px; color: #1e3a8a; font-size: 15px; border-bottom: 2px solid #e0e7ff; padding-bottom: 6px; }
+      p { margin: 0 0 10px; color: #334155; font-size: 14px; }
+      .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+      .contact-item { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 16px; text-align: center; }
+      .contact-item .icon { font-size: 28px; margin-bottom: 6px; }
+      .contact-item .title { font-size: 13px; font-weight: bold; color: #1e3a8a; margin-bottom: 4px; }
+      .contact-item a { color: #0369a1; text-decoration: none; font-size: 13px; display: block; }
+      .contact-item a:hover { text-decoration: underline; }
+      .topic-list { list-style: none; padding: 0; margin: 0; }
+      .topic-list li { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #334155; }
+      .topic-list li:last-child { border-bottom: none; }
+      .topic-list li::before { content: "✓ "; color: #1e3a8a; font-weight: bold; }
+      .footer-nav { text-align: center; margin-top: 24px; }
+      .footer-nav a { color: #1e3a8a; text-decoration: none; margin: 0 8px; font-size: 13px; }
+      @media (max-width: 480px) { .contact-grid { grid-template-columns: 1fr; } }
     </style>
   </head>
   <body>
-    <main class="wrap">
-      <h1>اتصل بنا</h1>
-      <p>هذه نسخة مسار مختصر. الصفحة الأساسية: <a href="/contact.html">contact.html</a></p>
-      <p><a href="/">العودة إلى الصفحة الرئيسية</a></p>
-    </main>
+    <header>
+      <h1>📬 اتصل بنا</h1>
+      <p>نسعد بتواصلك — فريقنا جاهز للمساعدة</p>
+    </header>
+
+    <div class="wrap">
+
+      <div class="card">
+        <h2>قنوات التواصل</h2>
+        <div class="contact-grid">
+          <div class="contact-item">
+            <div class="icon">📧</div>
+            <div class="title">البريد الإلكتروني</div>
+            <a href="mailto:walidghazal46@gmail.com">walidghazal46@gmail.com</a>
+            <span style="font-size:11px;color:#64748b;display:block;margin-top:4px;">للاستفسارات العامة والدعم</span>
+          </div>
+          <div class="contact-item">
+            <div class="icon">💬</div>
+            <div class="title">واتساب</div>
+            <a href="https://wa.me/201064463650" target="_blank" rel="noreferrer">+20 106 446 3650</a>
+            <span style="font-size:11px;color:#64748b;display:block;margin-top:4px;">للتواصل السريع والإعلانات</span>
+          </div>
+          <div class="contact-item">
+            <div class="icon">🌐</div>
+            <div class="title">الموقع الإلكتروني</div>
+            <a href="https://trustedoffices.org">trustedoffices.org</a>
+          </div>
+          <div class="contact-item">
+            <div class="icon">📱</div>
+            <div class="title">تطبيق أندرويد</div>
+            <a href="https://play.google.com/store/apps/details?id=com.travel.offices" target="_blank" rel="noreferrer">Google Play</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>يمكنك التواصل معنا بخصوص</h2>
+        <ul class="topic-list">
+          <li>الإبلاغ عن مكتب سفريات غير موثوق أو معلومات خاطئة</li>
+          <li>اقتراح إضافة مكتب جديد للدليل</li>
+          <li>الاستفسار عن خدمات السيرة الذاتية والتوظيف</li>
+          <li>حجز مساحة إعلانية داخل التطبيق أو الموقع</li>
+          <li>الإبلاغ عن مشكلة تقنية أو خطأ في التطبيق</li>
+          <li>طلبات الخصوصية وحذف البيانات</li>
+          <li>الشراكات والتعاون</li>
+          <li>أي استفسار آخر</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>حجز إعلان في التطبيق / الموقع</h2>
+        <p>
+          إذا كنت تملك خدمة أو نشاطاً تجارياً يستهدف المسافرين والباحثين عن عمل بالخارج، يمكنك الإعلان داخل تطبيقنا والوصول إلى جمهور مهتم ومستهدف.
+        </p>
+        <p>
+          <a href="https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82" target="_blank" rel="noreferrer">
+            📲 تواصل معنا عبر واتساب لحجز إعلانك
+          </a>
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>وقت الاستجابة</h2>
+        <p>
+          نحرص على الرد على جميع الرسائل خلال <strong>24–48 ساعة</strong> في أيام العمل. للأمور العاجلة، يُفضّل التواصل عبر واتساب.
+        </p>
+      </div>
+
+    </div>
+
+    <nav class="footer-nav" dir="rtl">
+      <a href="/">الرئيسية</a>
+      <a href="/about.html">من نحن</a>
+      <a href="/privacy-policy.html">سياسة الخصوصية</a>
+      <a href="/terms.html">الشروط والأحكام</a>
+    </nav>
+    <p style="text-align:center;color:#94a3b8;font-size:11px;font-family:Tahoma,Arial,sans-serif;margin:12px 0 20px;">
+      © 2024–2026 مكاتب السفريات الموثوقة · جميع الحقوق محفوظة
+    </p>
   </body>
 </html>
