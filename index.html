@@ -31,6 +31,21 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6810176545596111" crossorigin="anonymous"></script>
 
     <style>
+      /* SPA root layout — prevents body from scrolling so the static footer
+         stays in the DOM (visible to crawlers) but never intrudes into the app */
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      #root {
+        height: 100%;
+        overflow: hidden;
+      }
+
+      /* Footer stays in DOM for SEO / AdSense crawlers but is not reachable
+         by users scrolling through the app */
       #site-footer {
         font-family: Tahoma, Arial, sans-serif;
         background: #f1f5f9;
@@ -40,6 +55,7 @@
         color: #475569;
         font-size: 13px;
         line-height: 1.8;
+        /* Visually below the app; body overflow:hidden keeps it unreachable */
       }
       #site-footer h2 { margin: 0 0 6px; font-size: 15px; color: #1e3a8a; }
       #site-footer p { margin: 0 0 6px; }
@@ -48,9 +64,9 @@
       #site-footer .footer-links a:hover { text-decoration: underline; }
       #site-footer .footer-copy { margin-top: 10px; font-size: 11px; color: #94a3b8; }
     </style>
-    <script type="module" crossorigin src="./assets/index-C4oqz_dI.js"></script>
+    <script type="module" crossorigin src="./assets/index-DqG5NhCY.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/chunk-CaILmz35.js">
-    <link rel="stylesheet" crossorigin href="./assets/index-BD7r9kVa.css">
+    <link rel="stylesheet" crossorigin href="./assets/index-wXnZvfNI.css">
   </head>
   <body>
     <div id="root"></div>
