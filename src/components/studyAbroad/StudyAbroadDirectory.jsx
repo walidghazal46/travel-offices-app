@@ -1,11 +1,7 @@
 import React, { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { fetchStudyAbroadOffices } from "../../services/studyAbroadOffices";
 import {
-  createOrderViaFirebaseFunction,
-  fetchUserOrdersFromFirebase,
-  fetchUserProfileFromFirebase,
   subscribeStudyOfficesInlineAdFromFirebase,
-  upsertAuthUserProfileInFirebase,
 } from "../../firebase";
 import FilterBar from "./FilterBar";
 import OfficeCard from "./OfficeCard";
@@ -18,22 +14,12 @@ const COUNTRIES = ["بريطانيا", "أمريكا", "كندا", "أسترال
 const RATINGS = ["ممتاز", "جيد جداً", "جيد"];
 const OFFICES_PER_PAGE = 5;
 const FREE_OFFICES_PREVIEW_LIMIT = 2;
-const STUDY_ACCESS_BASE_PRICE_USD = 10;
-const STUDY_ACCESS_DISCOUNTED_PRICE_USD = 5;
-const STUDY_ACCESS_DISCOUNT_PERCENT = 50;
-const STUDY_ACCESS_SERVICE_KEY = "study-offices-access";
-const WHATSAPP_NUMBER = "201064463650";
 const STUDY_INLINE_AD_FALLBACK_IMAGE_URL = "https://firebasestorage.googleapis.com/v0/b/travel-offices-90c53.firebasestorage.app/o/studyads%2FChatGPT%20Image%20Apr%2028%2C%202026%2C%2010_52_43%20AM.png?alt=media&token=6e14882b-8807-4c82-9461-41769058ce51";
 const STUDY_INLINE_AD_FALLBACK_LINK_URL = "https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D8%B5%D9%81%D8%AD%D8%A9%20%D9%85%D9%83%D8%A7%D8%AA%D8%A8%20%D8%A7%D9%84%D8%AF%D8%B1%D8%A7%D8%B3%D8%A9";
 
-function generateStudyAccessOrderSerial() {
-  const ts = Date.now().toString(36).toUpperCase();
-  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `STUDY-${ts}-${rand}`;
-}
-
-function StudyAdSenseSlot() {
+function StudyAdSenseSlot({ lang = "ar", dark = false }) {
   const ref = React.useRef(null);
+  const [adFilled, setAdFilled] = React.useState(false);
 
   useEffect(() => {
     if (!ref.current || typeof window === "undefined") return;
@@ -42,19 +28,46 @@ function StudyAdSenseSlot() {
     } catch {
       // Keep silent if the ad network skips the request in local/dev environments.
     }
+    const timer = setTimeout(() => {
+      const ins = ref.current;
+      if (ins && ins.getAttribute("data-ad-status") === "filled") {
+        setAdFilled(true);
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
-    <div style={{ margin: "0 16px 12px", overflow: "hidden" }}>
+    <div style={{ margin: "0 16px 12px", overflow: "hidden", minHeight: 336, background: dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)", borderRadius: 10, position: "relative", display: "flex", flexDirection: "column", alignItems: "stretch" }}>
       <ins
         ref={ref}
         className="adsbygoogle"
-        style={{ display: "block" }}
+        style={{ display: "block", minHeight: 336, width: "100%" }}
         data-ad-client="ca-pub-6810176545596111"
         data-ad-slot="2882839892"
         data-ad-format="auto"
         data-full-width-responsive="true"
       />
+      {!adFilled && (
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none", gap: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fbbf24" : "#d97706", fontFamily: "'Cairo',sans-serif" }}>
+            📢 {lang === "ar" ? "مساحة إعلانية" : "Ad Space"}
+          </div>
+          <div style={{ fontSize: 11, color: dark ? "#94a3b8" : "#64748b", lineHeight: 1.6, textAlign: "center", maxWidth: 240, fontFamily: "'Cairo',sans-serif" }}>
+            {lang === "ar"
+              ? "هذه المنطقة مخصصة للإعلانات. للحجز تواصل معنا."
+              : "This area is reserved for ads. Contact us to book."}
+          </div>
+          <a
+            href={STUDY_INLINE_AD_FALLBACK_LINK_URL}
+            target="_blank"
+            rel="noreferrer"
+            style={{ pointerEvents: "all", display: "inline-block", padding: "8px 18px", borderRadius: 999, background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "#fff", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", textDecoration: "none" }}
+          >
+            {lang === "ar" ? "احجز إعلانك الآن" : "Book your ad now"}
+          </a>
+        </div>
+      )}
     </div>
   );
 }
@@ -181,6 +194,7 @@ export default function StudyAbroadDirectory({
   onRequestAuth,
   onRequestAccessAuth,
   onOpenOffice,
+  onAdminManageAd,
   resetSignal = 0,
 }) {
   const copy = COPY[lang] || COPY.ar;
@@ -197,17 +211,6 @@ export default function StudyAbroadDirectory({
   });
   const [selectedOffice, setSelectedOffice] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [fullAccessEnabled, setFullAccessEnabled] = useState(false);
-  const [studyAccessPending, setStudyAccessPending] = useState(false);
-  const [paymentScreenOpen, setPaymentScreenOpen] = useState(false);
-  const [paymentBusy, setPaymentBusy] = useState(false);
-  const [paymentError, setPaymentError] = useState("");
-  const [paymentForm, setPaymentForm] = useState({
-    name: "",
-    phone: "",
-    whatsapp: "",
-    email: "",
-  });
   const [studyInlineAd, setStudyInlineAd] = useState({
     active: true,
     imageUrl: STUDY_INLINE_AD_FALLBACK_IMAGE_URL,
@@ -216,8 +219,6 @@ export default function StudyAbroadDirectory({
     startDate: "",
     endDate: "",
   });
-
-  const canViewAllStudyOffices = isAdminUser || fullAccessEnabled;
 
   const scrollDirectoryToTop = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -253,81 +254,6 @@ export default function StudyAbroadDirectory({
   }, []);
 
   const deferredSearchValue = useDeferredValue(searchValue);
-
-  useEffect(() => {
-    if (!authUid) {
-      setFullAccessEnabled(false);
-      setStudyAccessPending(false);
-      setPaymentScreenOpen(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const profile = await fetchUserProfileFromFirebase(authUid);
-        if (cancelled) return;
-
-        const accessMeta = profile?.studyAccess || {};
-        let hasFull = accessMeta?.fullAccess === true;
-        const pendingOrderId = String(accessMeta?.pendingOrderId || "").trim();
-
-        // Fallback: if profile still shows pending, verify the order status directly.
-        // This handles cases where the admin approved but the profile update failed or is stale.
-        if (!hasFull && pendingOrderId) {
-          try {
-            const userOrders = await fetchUserOrdersFromFirebase(authUid);
-            const matchingOrder = userOrders.find(
-              (o) => String(o?.firebaseId || o?.id || "").trim() === pendingOrderId
-                || String(o?.serial || o?.orderNumber || "").trim() === String(accessMeta?.pendingOrderSerial || "").trim()
-            );
-            const isApproved = matchingOrder?.studyAccessApproved === true
-              || String(matchingOrder?.status || "").toLowerCase() === "approved"
-              || String(matchingOrder?.orderStatus || "").toLowerCase() === "approved";
-            if (isApproved) {
-              hasFull = true;
-              // Silently fix the profile in the background
-              upsertAuthUserProfileInFirebase({
-                uid: authUid,
-                studyAccess: {
-                  fullAccess: true,
-                  approvedAt: matchingOrder?.studyAccessApprovedAt || new Date().toISOString(),
-                  approvedOrderId: pendingOrderId,
-                  approvedOrderSerial: String(accessMeta?.pendingOrderSerial || "").trim(),
-                  pendingOrderId: null,
-                  pendingOrderSerial: null,
-                },
-              }).catch(() => {});
-            }
-          } catch {
-            // ignore - fallback failed, keep hasFull as false
-          }
-        }
-
-        const hasPending = !hasFull && Boolean(accessMeta?.pendingOrderId || accessMeta?.pendingOrderSerial);
-
-        setFullAccessEnabled(hasFull);
-        setStudyAccessPending(hasPending);
-        setPaymentForm((prev) => ({
-          name: prev.name || String(profile?.displayName || authUser?.displayName || "").trim(),
-          phone: prev.phone || String(profile?.phoneNumber || authUser?.phoneNumber || "").trim(),
-          whatsapp: prev.whatsapp || String(profile?.phoneNumber || authUser?.phoneNumber || "").trim(),
-          email: prev.email || String(profile?.email || authUser?.email || "").trim(),
-        }));
-      } catch {
-        if (cancelled) return;
-        setFullAccessEnabled(false);
-        setStudyAccessPending(false);
-      } finally {
-        if (cancelled) return;
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [authUid, authUser?.displayName, authUser?.email, authUser?.phoneNumber]);
 
   useEffect(() => {
     let cancelled = false;
@@ -407,17 +333,8 @@ export default function StudyAbroadDirectory({
     });
   }, [deferredSearchValue, filters, offices]);
 
-  const visibleOfficesByAccess = useMemo(() => {
-    if (!isAuthenticated || canViewAllStudyOffices) {
-      return filteredOffices;
-    }
-    return filteredOffices.slice(0, FREE_OFFICES_PREVIEW_LIMIT);
-  }, [canViewAllStudyOffices, filteredOffices, isAuthenticated]);
-
-  const lockedOfficesCount = useMemo(() => {
-    if (!isAuthenticated || canViewAllStudyOffices) return 0;
-    return Math.max(0, filteredOffices.length - visibleOfficesByAccess.length);
-  }, [canViewAllStudyOffices, filteredOffices.length, isAuthenticated, visibleOfficesByAccess.length]);
+  // Study offices are fully free for any signed-in (non-guest) account — no paywall.
+  const visibleOfficesByAccess = filteredOffices;
 
   const totalPages = Math.max(1, Math.ceil(visibleOfficesByAccess.length / OFFICES_PER_PAGE));
 
@@ -444,8 +361,6 @@ export default function StudyAbroadDirectory({
 
   useEffect(() => {
     setSelectedOffice(null);
-    setPaymentScreenOpen(false);
-    setPaymentError("");
     setSearchValue("");
     setFilters({
       governorate: "",
@@ -486,117 +401,16 @@ export default function StudyAbroadDirectory({
     onRequestAuth?.(mode);
   }, [onRequestAccessAuth, onRequestAuth]);
 
-  const openPaymentScreen = useCallback(() => {
-    setPaymentError("");
-    setPaymentScreenOpen(true);
-    scrollDirectoryToTop();
-  }, [scrollDirectoryToTop]);
-
-  const closePaymentScreen = useCallback(() => {
-    setPaymentError("");
-    setPaymentScreenOpen(false);
-  }, []);
-
-  const handlePaymentInputChange = useCallback((field, value) => {
-    setPaymentForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  }, []);
-
-  const submitStudyAccessOrder = useCallback(async () => {
-    if (!authUid || paymentBusy) return;
-
-    const cleanName = String(paymentForm.name || "").trim();
-    const cleanPhone = String(paymentForm.phone || "").trim();
-    const cleanWhatsapp = String(paymentForm.whatsapp || "").trim();
-    const cleanEmail = String(paymentForm.email || authUser?.email || "").trim();
-
-    if (!cleanName || !cleanPhone || !cleanWhatsapp) {
-      setPaymentError(copy.requiredField);
-      return;
-    }
-
-    setPaymentBusy(true);
-    setPaymentError("");
-
-    const nowIso = new Date().toISOString();
-    const serial = generateStudyAccessOrderSerial();
-
-    try {
-      const orderPayload = {
-        serial,
-        orderNumber: serial,
-        service: lang === "ar" ? "تفعيل كامل مكاتب الدراسة بالخارج" : "Full access for study offices",
-        serviceKey: STUDY_ACCESS_SERVICE_KEY,
-        serviceCategory: "study-access",
-        price: STUDY_ACCESS_DISCOUNTED_PRICE_USD,
-        basePriceUsd: STUDY_ACCESS_BASE_PRICE_USD,
-        finalPriceUsd: STUDY_ACCESS_DISCOUNTED_PRICE_USD,
-        discountPercent: STUDY_ACCESS_DISCOUNT_PERCENT,
-        currency: "USD",
-        paymentMethod: "manual-whatsapp",
-        billingLabel: lang === "ar" ? "تفعيل مكاتب الدراسة" : "Study offices activation",
-        status: "pending",
-        orderStatus: "pending",
-        reviewed: false,
-        requiresReceiptUpload: false,
-        name: cleanName,
-        phone: cleanPhone,
-        whatsapp: cleanWhatsapp,
-        email: cleanEmail,
-        userUid: authUid,
-        country: "مصر",
-        date: nowIso,
-        createdAtClient: nowIso,
-      };
-
-      const firebaseId = await createOrderViaFirebaseFunction(orderPayload);
-
-      await upsertAuthUserProfileInFirebase({
-        uid: authUid,
-        email: cleanEmail,
-        phoneNumber: cleanPhone,
-        displayName: cleanName,
-        providerId: cleanPhone ? "phone" : (cleanEmail ? "email" : "unknown"),
-        studyAccess: {
-          fullAccess: false,
-          pendingOrderId: firebaseId,
-          pendingOrderSerial: serial,
-          lastRequestedAt: nowIso,
-        },
-      });
-
-      const whatsappText = [
-        "السلام عليكم، أريد تفعيل الوصول الكامل لمكاتب الدراسة.",
-        "",
-        `رقم الطلب: ${serial}`,
-        `الاسم: ${cleanName}`,
-        `الهاتف: ${cleanPhone}`,
-        `الواتساب: ${cleanWhatsapp}`,
-        `البريد الإلكتروني: ${cleanEmail || "-"}`,
-        `السعر الأساسي: ${STUDY_ACCESS_BASE_PRICE_USD}$`,
-        `الخصم: ${STUDY_ACCESS_DISCOUNT_PERCENT}%`,
-        `المطلوب دفعه: ${STUDY_ACCESS_DISCOUNTED_PRICE_USD}$`,
-        "",
-        "برجاء إرفاق إيصال الدفع في رسائل الواتساب للمتابعة.",
-      ].join("\n");
-
-      setStudyAccessPending(true);
-      setPaymentScreenOpen(false);
-
-      if (typeof window !== "undefined") {
-        window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(whatsappText)}`, "_blank", "noopener,noreferrer");
-      }
-    } catch {
-      setPaymentError(copy.submitFailed);
-    } finally {
-      setPaymentBusy(false);
-    }
-  }, [authUid, authUser?.email, copy.requiredField, copy.submitFailed, lang, paymentBusy, paymentForm.email, paymentForm.name, paymentForm.phone, paymentForm.whatsapp]);
-
   const renderStudyInlineAdCard = (cardClassName) => (
-    <article className={cardClassName} style={studyInlineAdImageUrl ? { padding: 0, overflow: "hidden", borderRadius: 14 } : undefined}>
+    <article className={cardClassName} style={studyInlineAdImageUrl ? { padding: 0, overflow: "hidden", borderRadius: 14, position: "relative", minHeight: 336 } : { position: "relative", minHeight: 336, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+      {isAdminUser && typeof onAdminManageAd === "function" && (
+        <button
+          onClick={onAdminManageAd}
+          style={{ position: "absolute", top: 6, insetInlineEnd: 8, border: "1px solid rgba(212,175,55,0.65)", background: "rgba(18,43,99,0.88)", color: "#f5d77b", borderRadius: 10, padding: "4px 9px", fontSize: 10, fontWeight: 900, cursor: "pointer", fontFamily: "'Cairo',sans-serif", zIndex: 3, backdropFilter: "blur(4px)", boxShadow: "0 2px 8px rgba(0,0,0,0.28)" }}
+        >
+          ✏️ {lang === "ar" ? "إدارة الإعلان" : "Manage Ad"}
+        </button>
+      )}
       {studyInlineAdImageUrl ? (
         <a
           href={studyInlineAdLinkUrl}
@@ -615,8 +429,7 @@ export default function StudyAbroadDirectory({
             loading="lazy"
             style={{
               width: "100%",
-              height: "100%",
-              minHeight: 190,
+              height: 336,
               objectFit: "cover",
               display: "block",
             }}
@@ -668,96 +481,19 @@ export default function StudyAbroadDirectory({
         />
       ) : (
       <>
-      {isAuthenticated && paymentScreenOpen ? (
-        <section className={styles.accessPaywallSection}>
-          <div className={styles.accessPaywallCard}>
-            <h2 className={styles.accessPaywallTitle}>{copy.accessPageTitle}</h2>
-            <p className={styles.accessPaywallText}>{copy.accessPageSub}</p>
+      <header className={styles.header}>
+        <div className={styles.headerInner}>
+          <h1 className={styles.title}>{copy.title}</h1>
+          <p className={styles.subtitle}>{copy.subtitle}</p>
+        </div>
+      </header>
 
-            <div className={styles.accessPriceGrid}>
-              <div className={styles.accessPriceItem}>
-                <span>{copy.basePrice}</span>
-                <strong className={styles.accessOldPrice}>${STUDY_ACCESS_BASE_PRICE_USD}</strong>
-              </div>
-              <div className={styles.accessPriceItem}>
-                <span>{copy.discount}</span>
-                <strong>{STUDY_ACCESS_DISCOUNT_PERCENT}%</strong>
-              </div>
-              <div className={styles.accessPriceItem}>
-                <span>{copy.finalPrice}</span>
-                <strong className={styles.accessFinalPrice}>${STUDY_ACCESS_DISCOUNTED_PRICE_USD}</strong>
-              </div>
-              <div className={styles.accessPaymentAccount}>
-                <span>حساب انستا باي / محفظة كاش</span>
-                <strong className={styles.accessPaymentPhone}>01064463650</strong>
-              </div>
-            </div>
+      <div className={styles.warningBox}>
+        <span className={styles.warningIcon}>⚠️</span>
+        <p>{copy.warning}</p>
+      </div>
 
-            <div className={styles.accessFormGrid}>
-              <input
-                className={styles.accessInput}
-                value={paymentForm.name}
-                onChange={(event) => handlePaymentInputChange("name", event.target.value)}
-                placeholder={copy.name}
-              />
-              <input
-                className={styles.accessInput}
-                value={paymentForm.phone}
-                onChange={(event) => handlePaymentInputChange("phone", event.target.value)}
-                placeholder={copy.phone}
-              />
-              <input
-                className={styles.accessInput}
-                value={paymentForm.whatsapp}
-                onChange={(event) => handlePaymentInputChange("whatsapp", event.target.value)}
-                placeholder={copy.whatsappNumber}
-              />
-              <input
-                className={styles.accessInput}
-                value={paymentForm.email}
-                onChange={(event) => handlePaymentInputChange("email", event.target.value)}
-                placeholder={copy.email}
-              />
-            </div>
-
-            {paymentError ? <p className={styles.accessError}>{paymentError}</p> : null}
-
-            <div className={styles.accessPaywallActions}>
-              <button type="button" className={styles.accessBackBtn} onClick={closePaymentScreen}>
-                {copy.backToOffices}
-              </button>
-              <button
-                type="button"
-                className={styles.accessPayBtn}
-                onClick={submitStudyAccessOrder}
-                disabled={paymentBusy}
-              >
-                {paymentBusy ? (lang === "ar" ? "جارٍ الإرسال..." : "Submitting...") : copy.payNow}
-              </button>
-            </div>
-          </div>
-
-          {renderStudyInlineAdCard(styles.accessAdCard)}
-        </section>
-      ) : null}
-
-      {!paymentScreenOpen ? (
-        <>
-          <header className={styles.header}>
-            <div className={styles.headerInner}>
-              <h1 className={styles.title}>{copy.title}</h1>
-              <p className={styles.subtitle}>{copy.subtitle}</p>
-            </div>
-          </header>
-
-          <div className={styles.warningBox}>
-            <span className={styles.warningIcon}>⚠️</span>
-            <p>{copy.warning}</p>
-          </div>
-
-          <StudyAdSenseSlot />
-        </>
-      ) : null}
+      <StudyAdSenseSlot lang={lang} dark={dark} />
 
       {!isAuthenticated ? (
         <section className={styles.lockedAccessSection}>
@@ -795,18 +531,7 @@ export default function StudyAbroadDirectory({
         </section>
       ) : null}
 
-      {isAuthenticated && !canViewAllStudyOffices && !paymentScreenOpen ? (
-        <div className={styles.previewInfoBox}>
-          <strong>{copy.previewCounter} : {Math.min(FREE_OFFICES_PREVIEW_LIMIT, filteredOffices.length)}</strong>
-          <p>{copy.lockedOfficeNotice}</p>
-          {studyAccessPending ? <span className={styles.pendingBadge}>{copy.accessPending}</span> : null}
-          <button type="button" className={styles.previewActivateBtn} onClick={openPaymentScreen}>
-            {copy.activateFullAccess}
-          </button>
-        </div>
-      ) : null}
-
-      {!isAuthenticated || paymentScreenOpen ? null : (
+      {!isAuthenticated ? null : (
       <>
       <SearchBar
         value={searchValue}
@@ -871,21 +596,6 @@ export default function StudyAbroadDirectory({
               />
             ))
           : null}
-
-          {!loading && !error && lockedOfficesCount > 0 ? (
-            <article className={`${styles.card} ${styles.lockedOfficeCard}`}>
-              <span className={styles.lockedOfficeBadge}>🔒</span>
-              <h3 className={styles.lockedOfficeTitle}>{copy.lockedOfficeNotice}</h3>
-              <p className={styles.lockedOfficeText}>
-                {lang === "ar"
-                  ? `عدد المكاتب المقفلة حاليًا: ${lockedOfficesCount}`
-                  : `Currently locked offices: ${lockedOfficesCount}`}
-              </p>
-              <button type="button" className={styles.lockedOfficeBtn} onClick={openPaymentScreen}>
-                {copy.activateFullAccess}
-              </button>
-            </article>
-          ) : null}
 
         {!loading && !error && pagedOffices.length > 0 ? renderStudyInlineAdCard(`${styles.card} ${styles.inlineAdCard}`) : null}
       </div>

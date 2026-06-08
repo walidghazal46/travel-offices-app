@@ -31,6 +31,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -207,7 +208,122 @@ export async function saveJobsBannerAdConfigInFirebase(config = {}) {
   );
 }
 
-export const CREATE_ORDER_FUNCTION_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/createOrder";
+export function subscribeCvSectionInlineAdFromFirebase(callback) {
+  return onSnapshot(
+    doc(firestoreDb, "Ads", "cv_section_inline"),
+    (snapshot) => callback(normalizeBannerAd(snapshot)),
+    (error) => {
+      console.warn("CV section inline ad subscription failed", error);
+      callback(emptyBannerAd());
+    }
+  );
+}
+
+export async function saveCvSectionInlineAdConfigInFirebase(config = {}) {
+  const payload = removeUndefined({
+    active: config.active !== false,
+    image_url: String(config.imageUrl || "").trim(),
+    link: String(config.linkUrl || "").trim(),
+    title: String(config.title || "").trim(),
+    start_date: String(config.startDate || "").trim(),
+    end_date: String(config.endDate || "").trim(),
+    updatedAt: serverTimestamp(),
+  });
+
+  await withRetry(async () =>
+    setDoc(doc(firestoreDb, "Ads", "cv_section_inline"), payload, { merge: true })
+  );
+}
+
+export function subscribeSaudiLinksInlineAdFromFirebase(callback) {
+  return onSnapshot(
+    doc(firestoreDb, "Ads", "saudi_links_inline"),
+    (snapshot) => callback(normalizeBannerAd(snapshot)),
+    (error) => {
+      console.warn("Saudi links inline ad subscription failed", error);
+      callback(emptyBannerAd());
+    }
+  );
+}
+
+export async function saveSaudiLinksInlineAdConfigInFirebase(config = {}) {
+  const payload = removeUndefined({
+    active: config.active !== false,
+    image_url: String(config.imageUrl || "").trim(),
+    link: String(config.linkUrl || "").trim(),
+    title: String(config.title || "").trim(),
+    start_date: String(config.startDate || "").trim(),
+    end_date: String(config.endDate || "").trim(),
+    updatedAt: serverTimestamp(),
+  });
+  await withRetry(async () =>
+    setDoc(doc(firestoreDb, "Ads", "saudi_links_inline"), payload, { merge: true })
+  );
+}
+
+// ─── Admin broadcast notifications ───────────────────────────────────────
+// Stored in `admin_notifications` collection. Public read (every signed-in
+// user sees the broadcast list), admin-only write (see firestore.rules).
+export function subscribeAdminNotificationsFromFirebase(callback, max = 40) {
+  const notificationsQuery = query(
+    collection(firestoreDb, "admin_notifications"),
+    orderBy("createdAt", "desc"),
+    limit(max)
+  );
+
+  return onSnapshot(
+    notificationsQuery,
+    (snapshot) => {
+      const items = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data() || {};
+        return {
+          id: docSnap.id,
+          title: String(data.title || "").trim(),
+          body: String(data.body || "").trim(),
+          link: String(data.link || "").trim(),
+          createdAt: data.createdAt || null,
+        };
+      });
+      callback(items);
+    },
+    (error) => {
+      console.warn("Admin notifications subscription failed", error);
+      callback([]);
+    }
+  );
+}
+
+export async function sendAdminNotificationInFirebase({ title, body, link } = {}) {
+  const cleanTitle = String(title || "").trim();
+  const cleanBody = String(body || "").trim();
+  const cleanLink = String(link || "").trim();
+
+  if (!cleanTitle || !cleanBody) {
+    throw new Error("Notification title and body are required");
+  }
+
+  const payload = removeUndefined({
+    title: cleanTitle,
+    body: cleanBody,
+    link: cleanLink,
+    createdAt: serverTimestamp(),
+  });
+
+  return withRetry(async () =>
+    addDoc(collection(firestoreDb, "admin_notifications"), payload)
+  );
+}
+
+export async function deleteAdminNotificationInFirebase(notificationId) {
+  const cleanId = String(notificationId || "").trim();
+  if (!cleanId) return;
+
+  await withRetry(async () =>
+    deleteDoc(doc(firestoreDb, "admin_notifications", cleanId))
+  );
+}
+
+export const CREATE_ORDER_FUNCTION_URL ="https://us-central1-travel-offices-90c53.cloudfunctions.net/createOrder";
 export const UPLOAD_ORDER_RECEIPT_FUNCTION_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/uploadOrderReceipt";
 export const EXCHANGE_CUSTOM_TOKEN_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/exchangeIdTokenForCustomToken";
 export const DELETE_AUTH_USER_BY_ADMIN_FUNCTION_URL = "https://us-central1-travel-offices-90c53.cloudfunctions.net/deleteAuthUserByAdmin";
@@ -1417,6 +1533,69 @@ export async function grantOfficeReviewCoinsIfEligible(uid, officeId, coins = 10
   );
 
   return { awarded: true, coins: nextCoins };
+}
+
+// Generates a deterministic, shareable referral code from a user's uid.
+export function getReferralCodeForUid(uid) {
+  const cleanUid = String(uid || "").trim();
+  if (!cleanUid) return "";
+  const cleaned = cleanUid.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  return `REF-${cleaned.slice(0, 8)}`;
+}
+
+// Redeems a friend's referral code for a one-time welcome coin bonus.
+// Each account may redeem exactly one referral code, and may not redeem its own code.
+export async function redeemReferralCodeIfEligible(uid, code, rewardCoins = 15) {
+  const cleanUid = String(uid || "").trim();
+  const cleanCode = String(code || "").trim().toUpperCase();
+  const rewardAmount = Number(rewardCoins);
+
+  if (!cleanUid) {
+    throw new Error("auth-user-profile-uid-required");
+  }
+  if (!cleanCode || !/^REF-[A-Z0-9]{4,8}$/.test(cleanCode)) {
+    throw new Error("referral-code-invalid");
+  }
+  if (!Number.isFinite(rewardAmount) || rewardAmount <= 0) {
+    throw new Error("referral-coins-invalid");
+  }
+
+  const ownCode = getReferralCodeForUid(cleanUid);
+  if (cleanCode === ownCode) {
+    throw new Error("referral-code-self-not-allowed");
+  }
+
+  const profileRef = doc(firestoreDb, "users", cleanUid);
+  const snapshot = await withRetry(async () => getDoc(profileRef));
+  const existingData = snapshot.exists() ? (snapshot.data() || {}) : {};
+
+  if (existingData?.referralRedemption?.code) {
+    return { redeemed: false, coins: Number(existingData?.requestCredits?.coins) || 0, reason: "already-redeemed" };
+  }
+
+  const currentCoins = Number(existingData?.requestCredits?.coins) || 0;
+  const nextCoins = Math.max(0, currentCoins + rewardAmount);
+
+  await withRetry(async () =>
+    setDoc(
+      profileRef,
+      {
+        requestCredits: {
+          ...(existingData?.requestCredits || {}),
+          coins: nextCoins,
+        },
+        referralRedemption: {
+          code: cleanCode,
+          awardedCoins: rewardAmount,
+          redeemedAt: new Date().toISOString(),
+        },
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    )
+  );
+
+  return { redeemed: true, coins: nextCoins };
 }
 
 export async function deleteUserProfileInFirebase(uid) {

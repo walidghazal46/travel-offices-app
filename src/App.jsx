@@ -30,7 +30,12 @@ import {
   fetchUserProfileFromFirebase,
   fetchUserProfilesFromFirebase,
   grantOfficeReviewCoinsIfEligible,
+  getReferralCodeForUid,
+  redeemReferralCodeIfEligible,
   getCurrentAuthUser,
+  subscribeAdminNotificationsFromFirebase,
+  sendAdminNotificationInFirebase,
+  deleteAdminNotificationInFirebase,
   deleteOfficeReviewFromFirebase,
   saveOfficeReviewToFirebase,
   saveAddedOfficeInFirebase,
@@ -63,6 +68,10 @@ import {
   subscribeStudyOfficesInlineAdFromFirebase,
   subscribeJobsBannerAdFromFirebase,
   subscribeMainBannerAdFromFirebase,
+  subscribeCvSectionInlineAdFromFirebase,
+  saveCvSectionInlineAdConfigInFirebase,
+  subscribeSaudiLinksInlineAdFromFirebase,
+  saveSaudiLinksInlineAdConfigInFirebase,
   uploadStudyAdImageToFirebase,
   uploadReceiptToFirebase,
   verifyCurrentUserPhoneUpdateCode,
@@ -946,26 +955,56 @@ class PaidFlowErrorBoundary extends React.Component {
   }
 }
 
-function AdSenseUnit() {
+function AdSenseUnit({ lang = "ar", dark = false }) {
   const ref = React.useRef(null);
+  const [adFilled, setAdFilled] = React.useState(false);
+
   React.useEffect(() => {
     if (!ref.current) return;
     try {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch { /* silent */ }
+    // check after short delay if AdSense filled the slot
+    const timer = setTimeout(() => {
+      const ins = ref.current;
+      if (ins && ins.getAttribute("data-ad-status") === "filled") {
+        setAdFilled(true);
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
-    <div style={{ overflow: "hidden", margin: "10px 0" }}>
+    <div style={{ overflow: "hidden", margin: "10px 0", minHeight: 336, background: dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)", borderRadius: 10, position: "relative", display: "flex", flexDirection: "column", alignItems: "stretch" }}>
       <ins
         ref={ref}
         className="adsbygoogle"
-        style={{ display: "block" }}
+        style={{ display: "block", minHeight: 336, width: "100%" }}
         data-ad-client="ca-pub-6810176545596111"
         data-ad-slot="2882839892"
         data-ad-format="auto"
         data-full-width-responsive="true"
       />
+      {!adFilled && (
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none", gap: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fbbf24" : "#d97706", fontFamily: "'Cairo',sans-serif" }}>
+            📢 {lang === "ar" ? "مساحة إعلانية" : "Ad Space"}
+          </div>
+          <div style={{ fontSize: 11, color: dark ? "#94a3b8" : "#64748b", lineHeight: 1.6, textAlign: "center", maxWidth: 240, fontFamily: "'Cairo',sans-serif" }}>
+            {lang === "ar"
+              ? "هذه المنطقة مخصصة للإعلانات. للحجز تواصل معنا."
+              : "This area is reserved for ads. Contact us to book."}
+          </div>
+          <a
+            href="https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82"
+            target="_blank"
+            rel="noreferrer"
+            style={{ pointerEvents: "all", display: "inline-block", padding: "8px 18px", borderRadius: 999, background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "#fff", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", textDecoration: "none" }}
+          >
+            {lang === "ar" ? "احجز إعلانك الآن" : "Book your ad now"}
+          </a>
+        </div>
+      )}
     </div>
   );
 }
@@ -1097,6 +1136,22 @@ export default function App() {
     startDate: "",
     endDate: "",
   });
+  const [cvSectionAd, setCvSectionAd] = useState({
+    active: false,
+    imageUrl: "",
+    linkUrl: "",
+    title: "",
+    startDate: "",
+    endDate: "",
+  });
+  const [saudiLinksAd, setSaudiLinksAd] = useState({
+    active: false,
+    imageUrl: "",
+    linkUrl: "",
+    title: "",
+    startDate: "",
+    endDate: "",
+  });
   const [selectedCountry, setSelectedCountry] = useState("مصر");
   const [selectedNationality, setSelectedNationality] = useState(() => {
     try {
@@ -1190,6 +1245,48 @@ export default function App() {
   const didHydrateProfileNationalityRef = useRef(false);
   const appTopAnchorRef = useRef(null);
   const [accountPanelOpen, setAccountPanelOpen] = useState(false);
+  const [favoritesPanelOpen, setFavoritesPanelOpen] = useState(false);
+  const [officeMinRatingFilter, setOfficeMinRatingFilter] = useState(0);
+  const [officeSortBy, setOfficeSortBy] = useState("default");
+  const [showFavoriteOfficesOnly, setShowFavoriteOfficesOnly] = useState(false);
+  const [officeFiltersPanelOpen, setOfficeFiltersPanelOpen] = useState(false);
+  const [orderTrackingPanelOpen, setOrderTrackingPanelOpen] = useState(false);
+  const [expandedTrackedOrderId, setExpandedTrackedOrderId] = useState(null);
+  const [supportPanelOpen, setSupportPanelOpen] = useState(false);
+  const [supportSelectedTopicId, setSupportSelectedTopicId] = useState(null);
+  const [referralPanelOpen, setReferralPanelOpen] = useState(false);
+  const [referralCodeInput, setReferralCodeInput] = useState("");
+  const [referralRedeemBusy, setReferralRedeemBusy] = useState(false);
+  const [referralRedeemMessage, setReferralRedeemMessage] = useState(null);
+  const [referralRedemptionInfo, setReferralRedemptionInfo] = useState(null);
+  const [referralCopyDone, setReferralCopyDone] = useState(false);
+  const [notificationsPanelOpen, setNotificationsPanelOpen] = useState(false);
+  const [adminNotifications, setAdminNotifications] = useState([]);
+  const [adminNotificationTitle, setAdminNotificationTitle] = useState("");
+  const [adminNotificationBody, setAdminNotificationBody] = useState("");
+  const [adminNotificationLink, setAdminNotificationLink] = useState("");
+  const [adminNotificationBusy, setAdminNotificationBusy] = useState(false);
+  const [adminNotificationError, setAdminNotificationError] = useState("");
+  const [adminNotificationSuccess, setAdminNotificationSuccess] = useState("");
+  const [adminNotificationDeletingId, setAdminNotificationDeletingId] = useState("");
+  const [seenNotificationIds, setSeenNotificationIds] = useState(() => {
+    try {
+      const raw = localStorage.getItem("seenNotificationIds");
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+  const [favoriteOffices, setFavoriteOffices] = useState(() => {
+    try {
+      const raw = typeof window !== "undefined" ? window.localStorage.getItem("favoriteOffices") : null;
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
   const [accountProfileName, setAccountProfileName] = useState("");
   const [accountProfileEmail, setAccountProfileEmail] = useState("");
   const [accountProfilePhone, setAccountProfilePhone] = useState("");
@@ -1265,6 +1362,22 @@ export default function App() {
   const [adminStudyAdBusy, setAdminStudyAdBusy] = useState(false);
   const [adminStudyAdError, setAdminStudyAdError] = useState("");
   const [adminStudyAdSuccess, setAdminStudyAdSuccess] = useState("");
+  const [adminCvAdImageUrl, setAdminCvAdImageUrl] = useState("");
+  const [adminCvAdClickUrl, setAdminCvAdClickUrl] = useState("https://wa.me/201064463650");
+  const [adminCvAdTitle, setAdminCvAdTitle] = useState("");
+  const [adminCvAdActive, setAdminCvAdActive] = useState(true);
+  const [adminCvAdFile, setAdminCvAdFile] = useState(null);
+  const [adminCvAdBusy, setAdminCvAdBusy] = useState(false);
+  const [adminCvAdError, setAdminCvAdError] = useState("");
+  const [adminCvAdSuccess, setAdminCvAdSuccess] = useState("");
+  const [adminSaudiAdImageUrl, setAdminSaudiAdImageUrl] = useState("");
+  const [adminSaudiAdClickUrl, setAdminSaudiAdClickUrl] = useState("https://wa.me/201064463650");
+  const [adminSaudiAdTitle, setAdminSaudiAdTitle] = useState("");
+  const [adminSaudiAdActive, setAdminSaudiAdActive] = useState(true);
+  const [adminSaudiAdFile, setAdminSaudiAdFile] = useState(null);
+  const [adminSaudiAdBusy, setAdminSaudiAdBusy] = useState(false);
+  const [adminSaudiAdError, setAdminSaudiAdError] = useState("");
+  const [adminSaudiAdSuccess, setAdminSaudiAdSuccess] = useState("");
   const [providerApprovalSnapshot, setProviderApprovalSnapshot] = useState(null);
   const [providerAllRequests, setProviderAllRequests] = useState([]);
   const [providerPortalMode, setProviderPortalMode] = useState("service");
@@ -1324,6 +1437,8 @@ export default function App() {
   const adminTravelAdFileInputRef = useRef(null);
   const adminJobsAdFileInputRef = useRef(null);
   const adminStudyAdFileInputRef = useRef(null);
+  const adminCvAdFileInputRef = useRef(null);
+  const adminSaudiAdFileInputRef = useRef(null);
 
   // ── CV Builder States ──────────────────────────────────────────────────────
   const [cvStep, setCvStep] = useState(0);
@@ -1921,6 +2036,182 @@ export default function App() {
     };
   }, [accountPanelOpen, authPreviewUser?.uid]);
 
+  // مركز الإشعارات: يشترك أي مستخدم مسجّل في قائمة الإشعارات المُرسلة من الأدمن
+  useEffect(() => {
+    if (!authPreviewUser?.uid || isGuestUser) {
+      setAdminNotifications([]);
+      return undefined;
+    }
+    const unsubscribe = subscribeAdminNotificationsFromFirebase((items) => {
+      setAdminNotifications(Array.isArray(items) ? items : []);
+    });
+    return () => unsubscribe?.();
+  }, [authPreviewUser?.uid, isGuestUser]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("seenNotificationIds", JSON.stringify(seenNotificationIds.slice(-200)));
+    } catch {}
+  }, [seenNotificationIds]);
+
+  const unseenNotificationsCount = useMemo(() => {
+    if (!Array.isArray(adminNotifications) || adminNotifications.length === 0) return 0;
+    const seenSet = new Set(seenNotificationIds);
+    return adminNotifications.filter((item) => !seenSet.has(item.id)).length;
+  }, [adminNotifications, seenNotificationIds]);
+
+  const markAllNotificationsSeen = useCallback(() => {
+    if (!Array.isArray(adminNotifications) || adminNotifications.length === 0) return;
+    setSeenNotificationIds((prev) => {
+      const merged = new Set(prev);
+      adminNotifications.forEach((item) => merged.add(item.id));
+      return Array.from(merged);
+    });
+  }, [adminNotifications]);
+
+  const handleSendAdminNotification = useCallback(async () => {
+    if (!isAdminUser || adminNotificationBusy) return;
+    const cleanTitle = String(adminNotificationTitle || "").trim();
+    const cleanBody = String(adminNotificationBody || "").trim();
+    const cleanLink = String(adminNotificationLink || "").trim();
+
+    if (!cleanTitle || !cleanBody) {
+      setAdminNotificationError(
+        lang === "ar"
+          ? "من فضلك اكتب عنوان ونص الإشعار قبل الإرسال."
+          : "Please enter both a title and a message before sending."
+      );
+      return;
+    }
+
+    setAdminNotificationBusy(true);
+    setAdminNotificationError("");
+    setAdminNotificationSuccess("");
+
+    try {
+      await sendAdminNotificationInFirebase({ title: cleanTitle, body: cleanBody, link: cleanLink });
+      setAdminNotificationTitle("");
+      setAdminNotificationBody("");
+      setAdminNotificationLink("");
+      setAdminNotificationSuccess(
+        lang === "ar"
+          ? "تم إرسال الإشعار لجميع المستخدمين بنجاح."
+          : "Notification sent to all users successfully."
+      );
+    } catch (error) {
+      console.error("Failed to send admin notification", error);
+      setAdminNotificationError(
+        lang === "ar"
+          ? "تعذر إرسال الإشعار الآن، حاول مرة أخرى."
+          : "Unable to send the notification right now, please try again."
+      );
+    } finally {
+      setAdminNotificationBusy(false);
+    }
+  }, [adminNotificationBody, adminNotificationBusy, adminNotificationLink, adminNotificationTitle, isAdminUser, lang]);
+
+  const handleDeleteAdminNotification = useCallback(async (notificationId) => {
+    if (!isAdminUser || !notificationId || adminNotificationDeletingId) return;
+    setAdminNotificationDeletingId(notificationId);
+    setAdminNotificationError("");
+    try {
+      await deleteAdminNotificationInFirebase(notificationId);
+    } catch (error) {
+      console.error("Failed to delete admin notification", error);
+      setAdminNotificationError(
+        lang === "ar"
+          ? "تعذر حذف الإشعار الآن، حاول مرة أخرى."
+          : "Unable to delete the notification right now, please try again."
+      );
+    } finally {
+      setAdminNotificationDeletingId("");
+    }
+  }, [adminNotificationDeletingId, isAdminUser, lang]);
+
+  const formatNotificationTimestamp = useCallback((createdAt) => {
+    try {
+      const date = createdAt?.toDate ? createdAt.toDate() : (createdAt ? new Date(createdAt) : null);
+      if (!date || Number.isNaN(date.getTime())) return "";
+      return date.toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
+        year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+      });
+    } catch {
+      return "";
+    }
+  }, [lang]);
+
+  useEffect(() => {
+    if (!referralPanelOpen || !authPreviewUser?.uid) return;
+    let cancelled = false;
+    setReferralRedeemMessage(null);
+
+    (async () => {
+      try {
+        const profileSnapshot = await fetchUserProfileFromFirebase(authPreviewUser.uid);
+        if (cancelled) return;
+        setAccountCoins(Number(profileSnapshot?.requestCredits?.coins) || 0);
+        setReferralRedemptionInfo(profileSnapshot?.referralRedemption || null);
+      } catch (error) {
+        if (!cancelled) {
+          console.warn("Referral profile fetch failed", error);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [referralPanelOpen, authPreviewUser?.uid]);
+
+  const myReferralCode = useMemo(
+    () => getReferralCodeForUid(authPreviewUser?.uid || ""),
+    [authPreviewUser?.uid]
+  );
+
+  const referralShareMessage = useMemo(() => {
+    return lang === "ar"
+      ? `جرّب تطبيق مكاتب السفريات الموثوقة! 🌍 استخدم كود الدعوة الخاص بي ${myReferralCode} عند التسجيل واحصل على مكافأة كوينز ترحيبية. حمّل التطبيق وابدأ الآن.`
+      : `Try the Trusted Travel Offices app! 🌍 Use my invite code ${myReferralCode} when you sign up to get a welcome coin bonus. Download the app and get started now.`;
+  }, [lang, myReferralCode]);
+
+  const handleRedeemReferralCode = useCallback(async () => {
+    const code = String(referralCodeInput || "").trim().toUpperCase();
+    if (!authPreviewUser?.uid) {
+      setReferralRedeemMessage({ type: "error", text: lang === "ar" ? "يجب تسجيل الدخول أولًا لاستخدام كود الدعوة." : "Please sign in first to redeem an invite code." });
+      return;
+    }
+    if (!code) {
+      setReferralRedeemMessage({ type: "error", text: lang === "ar" ? "أدخل كود الدعوة أولًا." : "Please enter an invite code first." });
+      return;
+    }
+    setReferralRedeemBusy(true);
+    setReferralRedeemMessage(null);
+    try {
+      const result = await redeemReferralCodeIfEligible(authPreviewUser.uid, code, 15);
+      if (result?.redeemed) {
+        setAccountCoins(Number(result.coins) || 0);
+        setReferralRedemptionInfo({ code, awardedCoins: 15, redeemedAt: new Date().toISOString() });
+        setReferralCodeInput("");
+        setReferralRedeemMessage({ type: "success", text: lang === "ar" ? "🎉 تم تفعيل الكود وحصلت على 15 كوينز ترحيبية!" : "🎉 Code applied — you've earned 15 welcome coins!" });
+      } else if (result?.reason === "already-redeemed") {
+        setReferralRedeemMessage({ type: "error", text: lang === "ar" ? "لقد استخدمت كود دعوة من قبل بالفعل." : "You've already redeemed an invite code before." });
+      } else {
+        setReferralRedeemMessage({ type: "error", text: lang === "ar" ? "تعذر تفعيل الكود، حاول مجددًا." : "Couldn't apply the code, please try again." });
+      }
+    } catch (error) {
+      const msg = String(error?.message || "");
+      if (msg.includes("referral-code-self-not-allowed")) {
+        setReferralRedeemMessage({ type: "error", text: lang === "ar" ? "لا يمكنك استخدام كودك الخاص." : "You can't redeem your own code." });
+      } else if (msg.includes("referral-code-invalid")) {
+        setReferralRedeemMessage({ type: "error", text: lang === "ar" ? "صيغة الكود غير صحيحة، تأكد من نسخه كاملًا." : "That code format looks invalid — please check it and try again." });
+      } else {
+        setReferralRedeemMessage({ type: "error", text: lang === "ar" ? "حدث خطأ أثناء تفعيل الكود، حاول لاحقًا." : "Something went wrong applying the code — please try again later." });
+      }
+    } finally {
+      setReferralRedeemBusy(false);
+    }
+  }, [referralCodeInput, authPreviewUser, lang]);
+
   const clearAuthPreviewFeedback = useCallback(() => {
     setAuthPreviewError("");
     setAuthPreviewSuccess("");
@@ -2323,6 +2614,117 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    try {
+      window?.localStorage?.setItem("favoriteOffices", JSON.stringify(favoriteOffices));
+    } catch {
+      // ignore storage errors (e.g., private browsing mode)
+    }
+  }, [favoriteOffices]);
+
+  const isOfficeFavorite = useCallback((officeId) => {
+    return favoriteOffices.some((item) => item?.id === officeId);
+  }, [favoriteOffices]);
+
+  const toggleFavoriteOffice = useCallback((office) => {
+    if (!office?.id) return;
+    setFavoriteOffices((prev) => {
+      const exists = prev.some((item) => item?.id === office.id);
+      if (exists) {
+        return prev.filter((item) => item?.id !== office.id);
+      }
+      return [
+        {
+          id: office.id,
+          name: office.name || "",
+          country: selectedCountry || "",
+          license: office.license || "",
+          type: office.type || "",
+          savedAt: Date.now(),
+        },
+        ...prev,
+      ].slice(0, 200);
+    });
+  }, [selectedCountry]);
+
+  const deriveOrderStageIndex = useCallback((order) => {
+    if (!order) return 0;
+    if (Number.isInteger(order.statusIndex)) {
+      return Math.max(0, Math.min(STATUS_STEP_KEYS.length - 1, order.statusIndex));
+    }
+    if (order.stageConfirmations && typeof order.stageConfirmations === "object") {
+      const firstPending = STATUS_STEP_KEYS.findIndex((key) => !order.stageConfirmations[key]);
+      if (firstPending === -1) return STATUS_STEP_KEYS.length - 1;
+      return Math.max(0, firstPending - 1);
+    }
+    const statusText = String(order.orderStatus || order.status || order.statusValue || "").trim().toLowerCase();
+    if (["done", "completed", "approved", "finished"].includes(statusText)) return STATUS_STEP_KEYS.length - 1;
+    if (["in-progress", "inprogress", "active"].includes(statusText)) return 3;
+    if (["contacted"].includes(statusText)) return 2;
+    if (["contact48", "contacting"].includes(statusText)) return 1;
+    return 0;
+  }, []);
+
+  const trackedOrders = useMemo(() => {
+    const items = [];
+
+    (cvBuilderOrders || []).forEach((order) => {
+      if (!order) return;
+      items.push({
+        id: `cv-builder-${order.id || order.orderNumber || items.length}`,
+        title: order.packageName || (lang === "ar" ? "خدمة بناء السيرة الذاتية" : "CV Builder Service"),
+        subtitle: order.orderNumber || order.serial || "",
+        dateStr: order.dateStr || "",
+        createdAt: order.createdAt || null,
+        stageIndex: deriveOrderStageIndex(order),
+        raw: order,
+      });
+    });
+
+    ["cvPaidOrders-premium", "cvPaidOrders-elite"].forEach((storageKey) => {
+      try {
+        const list = JSON.parse(typeof window !== "undefined" ? (window.localStorage.getItem(storageKey) || "[]") : "[]");
+        if (!Array.isArray(list)) return;
+        list.forEach((order, idx) => {
+          if (!order) return;
+          items.push({
+            id: `${storageKey}-${order.serial || order.orderNumber || idx}`,
+            title: order.packageName || (storageKey.includes("elite") ? (lang === "ar" ? "السيرة الذاتية — Elite" : "CV — Elite") : (lang === "ar" ? "السيرة الذاتية — Premium" : "CV — Premium")),
+            subtitle: order.orderNumber || order.serial || "",
+            dateStr: order.dateStr || "",
+            createdAt: order.createdAt || null,
+            stageIndex: deriveOrderStageIndex(order),
+            raw: order,
+          });
+        });
+      } catch {}
+    });
+
+    try {
+      const list = JSON.parse(typeof window !== "undefined" ? (window.localStorage.getItem("paidOrders") || "[]") : "[]");
+      if (Array.isArray(list)) {
+        list.forEach((order, idx) => {
+          if (!order) return;
+          items.push({
+            id: `paid-order-${order.serial || order.orderNumber || idx}`,
+            title: order.serviceName || order.packageName || (lang === "ar" ? "خدمة مدفوعة" : "Paid Service"),
+            subtitle: order.orderNumber || order.serial || "",
+            dateStr: order.dateStr || "",
+            createdAt: order.createdAt || null,
+            stageIndex: deriveOrderStageIndex(order),
+            raw: order,
+          });
+        });
+      }
+    } catch {}
+
+    return items.sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
+  }, [cvBuilderOrders, lang, deriveOrderStageIndex, orderTrackingPanelOpen]);
+
   const closeAccountPanel = useCallback(() => {
     setAccountPanelOpen(false);
     setAccountProfileError("");
@@ -2509,6 +2911,53 @@ export default function App() {
     lang,
   ]);
 
+  const handleAdminJobsAdRemove = useCallback(async () => {
+    if (!isAdminUser || adminJobsAdBusy) return;
+
+    setAdminJobsAdBusy(true);
+    setAdminJobsAdError("");
+    setAdminJobsAdSuccess("");
+
+    try {
+      await saveJobsBannerAdConfigInFirebase({
+        active: false,
+        imageUrl: "",
+        linkUrl: "",
+        title: "",
+      });
+
+      setAdminJobsAdImageUrl("");
+      setAdminJobsAdClickUrl(JOBS_AD_DEFAULT_CLICK_URL);
+      setAdminJobsAdTitle("");
+      setAdminJobsAdActive(true);
+      setAdminJobsAdFile(null);
+      if (adminJobsAdFileInputRef.current) {
+        adminJobsAdFileInputRef.current.value = "";
+      }
+      setJobsBannerAd((prev) => ({
+        ...prev,
+        active: false,
+        imageUrl: "",
+        linkUrl: "",
+        title: "",
+      }));
+      setAdminJobsAdSuccess(
+        lang === "ar"
+          ? "تم حذف إعلان التوظيف، وستظهر مساحة التواصل الافتراضية بدلاً منه."
+          : "Jobs ad removed. The default contact-for-ads space will show instead."
+      );
+    } catch (error) {
+      console.error("Failed to remove jobs ad config", error);
+      setAdminJobsAdError(
+        lang === "ar"
+          ? "تعذر حذف الإعلان الآن، حاول مرة أخرى."
+          : "Unable to remove the ad right now, please try again."
+      );
+    } finally {
+      setAdminJobsAdBusy(false);
+    }
+  }, [adminJobsAdBusy, isAdminUser, lang]);
+
   const adminJobsAdPreviewUrl = useMemo(() => {
     if (adminJobsAdFile) {
       return URL.createObjectURL(adminJobsAdFile);
@@ -2594,6 +3043,53 @@ export default function App() {
     isAdminUser,
     lang,
   ]);
+
+  const handleAdminTravelAdRemove = useCallback(async () => {
+    if (!isAdminUser || adminTravelAdBusy) return;
+
+    setAdminTravelAdBusy(true);
+    setAdminTravelAdError("");
+    setAdminTravelAdSuccess("");
+
+    try {
+      await saveMainBannerAdConfigInFirebase({
+        active: false,
+        imageUrl: "",
+        linkUrl: "",
+        title: "",
+      });
+
+      setAdminTravelAdImageUrl("");
+      setAdminTravelAdClickUrl(TRAVEL_AD_DEFAULT_CLICK_URL);
+      setAdminTravelAdTitle("");
+      setAdminTravelAdActive(true);
+      setAdminTravelAdFile(null);
+      if (adminTravelAdFileInputRef.current) {
+        adminTravelAdFileInputRef.current.value = "";
+      }
+      setMainBannerAd((prev) => ({
+        ...prev,
+        active: false,
+        imageUrl: "",
+        linkUrl: "",
+        title: "",
+      }));
+      setAdminTravelAdSuccess(
+        lang === "ar"
+          ? "تم حذف إعلان مكاتب السفريات، وستظهر مساحة التواصل الافتراضية بدلاً منه."
+          : "Travel offices ad removed. The default contact-for-ads space will show instead."
+      );
+    } catch (error) {
+      console.error("Failed to remove travel ad config", error);
+      setAdminTravelAdError(
+        lang === "ar"
+          ? "تعذر حذف الإعلان الآن، حاول مرة أخرى."
+          : "Unable to remove the ad right now, please try again."
+      );
+    } finally {
+      setAdminTravelAdBusy(false);
+    }
+  }, [adminTravelAdBusy, isAdminUser, lang]);
 
   const adminTravelAdPreviewUrl = useMemo(() => {
     if (adminTravelAdFile) {
@@ -2687,6 +3183,46 @@ export default function App() {
     lang,
   ]);
 
+  const handleAdminStudyAdRemove = useCallback(async () => {
+    if (!isAdminUser || adminStudyAdBusy) return;
+
+    setAdminStudyAdBusy(true);
+    setAdminStudyAdError("");
+    setAdminStudyAdSuccess("");
+
+    try {
+      await saveStudyOfficesInlineAdConfigInFirebase({
+        active: false,
+        imageUrl: "",
+        linkUrl: STUDY_AD_DEFAULT_CLICK_URL,
+        title: "",
+      });
+
+      setAdminStudyAdImageUrl("");
+      setAdminStudyAdClickUrl(STUDY_AD_DEFAULT_CLICK_URL);
+      setAdminStudyAdTitle("");
+      setAdminStudyAdActive(true);
+      setAdminStudyAdFile(null);
+      if (adminStudyAdFileInputRef.current) {
+        adminStudyAdFileInputRef.current.value = "";
+      }
+      setAdminStudyAdSuccess(
+        lang === "ar"
+          ? "تم حذف إعلان مكاتب الدراسة، وستظهر مساحة التواصل الافتراضية بدلاً منه."
+          : "Study offices ad removed. The default contact-for-ads space will show instead."
+      );
+    } catch (error) {
+      console.error("Failed to remove study ad config", error);
+      setAdminStudyAdError(
+        lang === "ar"
+          ? "تعذر حذف الإعلان الآن، حاول مرة أخرى."
+          : "Unable to remove the ad right now, please try again."
+      );
+    } finally {
+      setAdminStudyAdBusy(false);
+    }
+  }, [adminStudyAdBusy, isAdminUser, lang]);
+
   const adminStudyAdPreviewUrl = useMemo(() => {
     if (adminStudyAdFile) {
       return URL.createObjectURL(adminStudyAdFile);
@@ -2703,6 +3239,170 @@ export default function App() {
       }
     };
   }, [adminStudyAdPreviewUrl]);
+
+  // ── CV Section Ad (admin subscription + handlers) ────────────────────────
+  useEffect(() => {
+    if (!isAdminUser) return undefined;
+    const unsubscribe = subscribeCvSectionInlineAdFromFirebase((adConfig) => {
+      setAdminCvAdImageUrl(String(adConfig?.imageUrl || "").trim());
+      setAdminCvAdClickUrl(String(adConfig?.linkUrl || "").trim() || "https://wa.me/201064463650");
+      setAdminCvAdTitle(String(adConfig?.title || "").trim());
+      setAdminCvAdActive(adConfig?.active !== false);
+    });
+    return () => unsubscribe?.();
+  }, [isAdminUser]);
+
+  const handleAdminCvAdSave = useCallback(async () => {
+    if (!isAdminUser || adminCvAdBusy) return;
+    setAdminCvAdBusy(true);
+    setAdminCvAdError("");
+    setAdminCvAdSuccess("");
+    try {
+      let nextImageUrl = String(adminCvAdImageUrl || "").trim();
+      if (adminCvAdFile) {
+        const uploaded = await uploadStudyAdImageToFirebase(adminCvAdFile);
+        nextImageUrl = String(uploaded?.url || "").trim();
+      }
+      if (!nextImageUrl) {
+        setAdminCvAdError(lang === "ar" ? "اختر صورة للإعلان أولاً." : "Please choose an ad image first.");
+        setAdminCvAdBusy(false);
+        return;
+      }
+      await saveCvSectionInlineAdConfigInFirebase({
+        active: adminCvAdActive,
+        imageUrl: nextImageUrl,
+        linkUrl: String(adminCvAdClickUrl || "").trim() || "https://wa.me/201064463650",
+        title: String(adminCvAdTitle || "").trim(),
+      });
+      setAdminCvAdImageUrl(nextImageUrl);
+      setAdminCvAdFile(null);
+      if (adminCvAdFileInputRef.current) adminCvAdFileInputRef.current.value = "";
+      setAdminCvAdSuccess(lang === "ar" ? "✅ تم حفظ إعلان قسم السي في بنجاح." : "✅ CV section ad saved successfully.");
+      setCvSectionAd((prev) => ({ ...prev, active: adminCvAdActive, imageUrl: nextImageUrl, linkUrl: String(adminCvAdClickUrl || "").trim() || "https://wa.me/201064463650", title: String(adminCvAdTitle || "").trim() }));
+    } catch (error) {
+      console.error("Failed to save CV ad config", error);
+      setAdminCvAdError(lang === "ar" ? "تعذر حفظ الإعلان الآن، حاول مرة أخرى." : "Unable to save the ad right now, please try again.");
+    } finally {
+      setAdminCvAdBusy(false);
+    }
+  }, [adminCvAdActive, adminCvAdBusy, adminCvAdClickUrl, adminCvAdFile, adminCvAdImageUrl, adminCvAdTitle, isAdminUser, lang]);
+
+  const handleAdminCvAdRemove = useCallback(async () => {
+    if (!isAdminUser || adminCvAdBusy) return;
+    setAdminCvAdBusy(true);
+    setAdminCvAdError("");
+    setAdminCvAdSuccess("");
+    try {
+      await saveCvSectionInlineAdConfigInFirebase({ active: false, imageUrl: "", linkUrl: "", title: "" });
+      setAdminCvAdImageUrl("");
+      setAdminCvAdTitle("");
+      setAdminCvAdActive(true);
+      setAdminCvAdFile(null);
+      if (adminCvAdFileInputRef.current) adminCvAdFileInputRef.current.value = "";
+      setAdminCvAdSuccess(lang === "ar" ? "تم حذف إعلان قسم السي في، وستظهر المساحة الافتراضية بدلاً منه." : "CV section ad removed. Default placeholder will show instead.");
+      setCvSectionAd((prev) => ({ ...prev, active: false, imageUrl: "", linkUrl: "", title: "" }));
+    } catch (error) {
+      console.error("Failed to remove CV ad config", error);
+      setAdminCvAdError(lang === "ar" ? "تعذر حذف الإعلان الآن، حاول مرة أخرى." : "Unable to remove the ad right now, please try again.");
+    } finally {
+      setAdminCvAdBusy(false);
+    }
+  }, [adminCvAdBusy, isAdminUser, lang]);
+
+  const adminCvAdPreviewUrl = useMemo(() => {
+    if (adminCvAdFile) return URL.createObjectURL(adminCvAdFile);
+    return String(adminCvAdImageUrl || "").trim();
+  }, [adminCvAdFile, adminCvAdImageUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (adminCvAdPreviewUrl && adminCvAdPreviewUrl.startsWith("blob:")) {
+        try { URL.revokeObjectURL(adminCvAdPreviewUrl); } catch {}
+      }
+    };
+  }, [adminCvAdPreviewUrl]);
+
+  // ── Saudi Links Inline Ad (admin subscription + handlers) ────────────────
+  useEffect(() => {
+    if (!isAdminUser) return undefined;
+    const unsubscribe = subscribeSaudiLinksInlineAdFromFirebase((adConfig) => {
+      setAdminSaudiAdImageUrl(String(adConfig?.imageUrl || "").trim());
+      setAdminSaudiAdClickUrl(String(adConfig?.linkUrl || "").trim() || "https://wa.me/201064463650");
+      setAdminSaudiAdTitle(String(adConfig?.title || "").trim());
+      setAdminSaudiAdActive(adConfig?.active !== false);
+    });
+    return () => unsubscribe?.();
+  }, [isAdminUser]);
+
+  const handleAdminSaudiAdSave = useCallback(async () => {
+    if (!isAdminUser || adminSaudiAdBusy) return;
+    setAdminSaudiAdBusy(true);
+    setAdminSaudiAdError("");
+    setAdminSaudiAdSuccess("");
+    try {
+      let nextImageUrl = String(adminSaudiAdImageUrl || "").trim();
+      if (adminSaudiAdFile) {
+        const uploaded = await uploadStudyAdImageToFirebase(adminSaudiAdFile);
+        nextImageUrl = String(uploaded?.url || "").trim();
+      }
+      if (!nextImageUrl) {
+        setAdminSaudiAdError(lang === "ar" ? "اختر صورة للإعلان أولاً." : "Please choose an ad image first.");
+        setAdminSaudiAdBusy(false);
+        return;
+      }
+      await saveSaudiLinksInlineAdConfigInFirebase({
+        active: adminSaudiAdActive,
+        imageUrl: nextImageUrl,
+        linkUrl: String(adminSaudiAdClickUrl || "").trim() || "https://wa.me/201064463650",
+        title: String(adminSaudiAdTitle || "").trim(),
+      });
+      setAdminSaudiAdImageUrl(nextImageUrl);
+      setAdminSaudiAdFile(null);
+      if (adminSaudiAdFileInputRef.current) adminSaudiAdFileInputRef.current.value = "";
+      setAdminSaudiAdSuccess(lang === "ar" ? "✅ تم حفظ إعلان قسم الروابط السعودية بنجاح." : "✅ Saudi links ad saved successfully.");
+      setSaudiLinksAd((prev) => ({ ...prev, active: adminSaudiAdActive, imageUrl: nextImageUrl, linkUrl: String(adminSaudiAdClickUrl || "").trim() || "https://wa.me/201064463650", title: String(adminSaudiAdTitle || "").trim() }));
+    } catch (error) {
+      console.error("Failed to save Saudi links ad config", error);
+      setAdminSaudiAdError(lang === "ar" ? "تعذر حفظ الإعلان الآن، حاول مرة أخرى." : "Unable to save the ad right now, please try again.");
+    } finally {
+      setAdminSaudiAdBusy(false);
+    }
+  }, [adminSaudiAdActive, adminSaudiAdBusy, adminSaudiAdClickUrl, adminSaudiAdFile, adminSaudiAdImageUrl, adminSaudiAdTitle, isAdminUser, lang]);
+
+  const handleAdminSaudiAdRemove = useCallback(async () => {
+    if (!isAdminUser || adminSaudiAdBusy) return;
+    setAdminSaudiAdBusy(true);
+    setAdminSaudiAdError("");
+    setAdminSaudiAdSuccess("");
+    try {
+      await saveSaudiLinksInlineAdConfigInFirebase({ active: false, imageUrl: "", linkUrl: "", title: "" });
+      setAdminSaudiAdImageUrl("");
+      setAdminSaudiAdTitle("");
+      setAdminSaudiAdActive(true);
+      setAdminSaudiAdFile(null);
+      if (adminSaudiAdFileInputRef.current) adminSaudiAdFileInputRef.current.value = "";
+      setAdminSaudiAdSuccess(lang === "ar" ? "تم حذف إعلان الروابط السعودية." : "Saudi links ad removed.");
+      setSaudiLinksAd((prev) => ({ ...prev, active: false, imageUrl: "", linkUrl: "", title: "" }));
+    } catch (error) {
+      console.error("Failed to remove Saudi links ad config", error);
+      setAdminSaudiAdError(lang === "ar" ? "تعذر حذف الإعلان الآن، حاول مرة أخرى." : "Unable to remove the ad right now, please try again.");
+    } finally {
+      setAdminSaudiAdBusy(false);
+    }
+  }, [adminSaudiAdBusy, isAdminUser, lang]);
+
+  const adminSaudiAdPreviewUrl = useMemo(() => {
+    if (adminSaudiAdFile) return URL.createObjectURL(adminSaudiAdFile);
+    return String(adminSaudiAdImageUrl || "").trim();
+  }, [adminSaudiAdFile, adminSaudiAdImageUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (adminSaudiAdPreviewUrl && adminSaudiAdPreviewUrl.startsWith("blob:")) {
+        try { URL.revokeObjectURL(adminSaudiAdPreviewUrl); } catch {}
+      }
+    };
+  }, [adminSaudiAdPreviewUrl]);
 
   const loadAdminUsers = useCallback(async () => {
     setAdminUsersLoading(true);
@@ -5418,6 +6118,24 @@ const mobileOfficeCardWidth = "100%";
   const showJobsBannerAd = isMainBannerAdActive(jobsBannerAd);
 
   useEffect(() => {
+    const unsubscribe = subscribeCvSectionInlineAdFromFirebase((nextAd) => {
+      setCvSectionAd(nextAd);
+    });
+    return () => unsubscribe?.();
+  }, []);
+
+  const showCvSectionAd = isMainBannerAdActive(cvSectionAd);
+
+  useEffect(() => {
+    const unsubscribe = subscribeSaudiLinksInlineAdFromFirebase((nextAd) => {
+      setSaudiLinksAd(nextAd);
+    });
+    return () => unsubscribe?.();
+  }, []);
+
+  const showSaudiLinksAd = isMainBannerAdActive(saudiLinksAd);
+
+  useEffect(() => {
     if (showJobsBannerAd && isAndroidPlatform) {
       hideNativeInlineAdSlot("jobs-inline-slot").catch(() => {});
       hideNativeInlineAdSlot("jobs-inline-slot-bottom").catch(() => {});
@@ -5693,8 +6411,23 @@ const mobileOfficeCardWidth = "100%";
         || String(o.license || "").includes(query)
       );
     }
+    if (showFavoriteOfficesOnly) {
+      list = list.filter((o) => isOfficeFavorite(o.id));
+    }
+    if (officeMinRatingFilter > 0) {
+      list = list.filter((o) => Number(officeRatings[o.id]?.avg || 0) >= officeMinRatingFilter);
+    }
+    if (officeSortBy === "rating") {
+      list = [...list].sort((a, b) => {
+        const ratingDiff = Number(officeRatings[b.id]?.avg || 0) - Number(officeRatings[a.id]?.avg || 0);
+        if (ratingDiff !== 0) return ratingDiff;
+        return Number(officeRatings[b.id]?.count || 0) - Number(officeRatings[a.id]?.count || 0);
+      });
+    } else if (officeSortBy === "name") {
+      list = [...list].sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || ""), "ar"));
+    }
     return list;
-  }, [effectiveOffices, isSameGovernorate, saudiOffices, americaOffices, euOffices, search, selectedCountry, selectedGov, selectedServiceFilter]);
+  }, [effectiveOffices, isSameGovernorate, saudiOffices, americaOffices, euOffices, search, selectedCountry, selectedGov, selectedServiceFilter, showFavoriteOfficesOnly, isOfficeFavorite, officeMinRatingFilter, officeRatings, officeSortBy]);
   const guestOfficeLimit = useMemo(() => {
     if (!isGuestUser || !selectedGov) return 0;
     const totalInSelectedRegion = countryOffices.length;
@@ -5725,12 +6458,20 @@ const mobileOfficeCardWidth = "100%";
 
   useEffect(() => {
     setOfficePage(1);
-  }, [selectedGov, search, selectedCountry, selectedServiceFilter]);
+  }, [selectedGov, search, selectedCountry, selectedServiceFilter, showFavoriteOfficesOnly, officeMinRatingFilter, officeSortBy]);
 
   useEffect(() => {
     setSelectedServiceFilter(null);
     setShowAllSaudiServices(false);
+    setOfficeMinRatingFilter(0);
+    setOfficeSortBy("default");
+    setShowFavoriteOfficesOnly(false);
+    setOfficeFiltersPanelOpen(false);
   }, [selectedGov, selectedCountry]);
+
+  const activeOfficeFiltersCount = (officeMinRatingFilter > 0 ? 1 : 0)
+    + (officeSortBy !== "default" ? 1 : 0)
+    + (showFavoriteOfficesOnly ? 1 : 0);
 
   useEffect(() => {
     const normalizedNationality = sanitizeNationalityValue(selectedNationality);
@@ -7633,6 +8374,779 @@ const mobileOfficeCardWidth = "100%";
     </div>
   ) : null;
 
+  const FavoritesPanel = () => favoritesPanelOpen ? (
+    <div style={{ ...styles.overlay, background: "rgba(2, 6, 23, 0.78)", backdropFilter: "blur(10px)" }}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 380,
+          maxHeight: "80vh",
+          display: "flex",
+          flexDirection: "column",
+          borderRadius: 24,
+          padding: isCompactPhone ? "16px 14px 14px" : "20px 18px 18px",
+          background: "linear-gradient(180deg, #122b63 0%, #0b1f4a 100%)",
+          border: `1px solid ${t.gold}38`,
+          boxShadow: "0 24px 80px rgba(7, 15, 35, 0.6), 0 0 0 1px rgba(212,175,55,0.12)",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <button
+          onClick={() => setFavoritesPanelOpen(false)}
+          style={{
+            position: "absolute",
+            top: 12,
+            right: dir === "rtl" ? 12 : "auto",
+            left: dir === "rtl" ? "auto" : 12,
+            border: `1px solid ${t.gold}52`,
+            background: "rgba(255,255,255,0.06)",
+            color: "#f5d77b",
+            borderRadius: 10,
+            padding: "6px 10px",
+            fontFamily: "'Cairo',sans-serif",
+            fontSize: 11,
+            fontWeight: 800,
+            cursor: "pointer",
+            zIndex: 2,
+          }}
+        >
+          {lang === "ar" ? "إغلاق ✕" : "Close ✕"}
+        </button>
+
+        <div style={{ fontSize: 30, textAlign: "center", marginBottom: 6 }}>❤️</div>
+        <div style={{ fontSize: 17, fontWeight: 900, color: "#f5d77b", textAlign: "center", marginBottom: 4, fontFamily: "'Cairo',sans-serif" }}>
+          {lang === "ar" ? "المكاتب المفضلة" : "Favorite Offices"}
+        </div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", textAlign: "center", marginBottom: 14, fontFamily: "'Cairo',sans-serif" }}>
+          {lang === "ar"
+            ? "المكاتب التي حفظتها تظهر هنا للرجوع إليها بسرعة في أي وقت."
+            : "Offices you've saved appear here so you can find them again quickly."}
+        </div>
+
+        <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, paddingInlineEnd: 2 }}>
+          {favoriteOffices.length === 0 ? (
+            <div style={{ textAlign: "center", color: "rgba(255,255,255,0.6)", padding: "26px 10px", fontSize: 13, fontFamily: "'Cairo',sans-serif", lineHeight: 1.8 }}>
+              {lang === "ar"
+                ? "لا توجد مكاتب محفوظة بعد. اضغط على أيقونة ❤️ على أي مكتب لإضافته إلى المفضلة."
+                : "No saved offices yet. Tap the ❤️ icon on any office to add it to your favorites."}
+            </div>
+          ) : favoriteOffices.map((fav) => (
+            <div
+              key={fav.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                background: "rgba(255,255,255,0.05)",
+                border: `1px solid ${t.gold}26`,
+                borderRadius: 14,
+                padding: "10px 12px",
+              }}
+            >
+              <div style={{ textAlign: lang === "ar" ? "right" : "left", minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", fontFamily: "'Cairo',sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {getOfficeLabel(fav.name) || fav.name}
+                </div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", fontFamily: "'Cairo',sans-serif", marginTop: 2 }}>
+                  {fav.country}{fav.license ? ` · ${tx.licenseNo} ${fav.license}` : ""}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <button
+                  onClick={() => {
+                    setFavoritesPanelOpen(false);
+                    const allOffices = (offices || []).concat(saudiOfficesData || []);
+                    const target = allOffices.find((o) => o.id === fav.id) || fav;
+                    if (fav.country) setSelectedCountry(fav.country);
+                    openOfficeDetails(target);
+                  }}
+                  style={{ border: "none", borderRadius: 10, padding: "7px 12px", background: `${t.gold}26`, color: t.gold, fontSize: 11, fontWeight: 800, fontFamily: "'Cairo',sans-serif", cursor: "pointer", whiteSpace: "nowrap" }}
+                >
+                  {lang === "ar" ? "عرض" : "View"}
+                </button>
+                <button
+                  onClick={() => setFavoriteOffices((prev) => prev.filter((item) => item.id !== fav.id))}
+                  aria-label={lang === "ar" ? "إزالة" : "Remove"}
+                  style={{ border: "none", borderRadius: 10, width: 32, height: 32, background: "rgba(239,68,68,0.16)", color: "#ef4444", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  const OrderTrackingPanel = () => orderTrackingPanelOpen ? (
+    <div style={{ ...styles.overlay, background: "rgba(2, 6, 23, 0.78)", backdropFilter: "blur(10px)" }}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 420,
+          maxHeight: "84vh",
+          display: "flex",
+          flexDirection: "column",
+          borderRadius: 24,
+          padding: isCompactPhone ? "16px 14px 14px" : "20px 18px 18px",
+          background: "linear-gradient(180deg, #122b63 0%, #0b1f4a 100%)",
+          border: `1px solid ${t.gold}38`,
+          boxShadow: "0 24px 80px rgba(7, 15, 35, 0.6), 0 0 0 1px rgba(212,175,55,0.12)",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <button
+          onClick={() => { setOrderTrackingPanelOpen(false); setExpandedTrackedOrderId(null); }}
+          style={{
+            position: "absolute",
+            top: 12,
+            right: dir === "rtl" ? 12 : "auto",
+            left: dir === "rtl" ? "auto" : 12,
+            border: `1px solid ${t.gold}52`,
+            background: "rgba(255,255,255,0.06)",
+            color: "#f5d77b",
+            borderRadius: 10,
+            padding: "6px 10px",
+            fontFamily: "'Cairo',sans-serif",
+            fontSize: 11,
+            fontWeight: 800,
+            cursor: "pointer",
+            zIndex: 2,
+          }}
+        >
+          {lang === "ar" ? "إغلاق ✕" : "Close ✕"}
+        </button>
+
+        <div style={{ fontSize: 30, textAlign: "center", marginBottom: 6 }}>📦</div>
+        <div style={{ fontSize: 17, fontWeight: 900, color: "#f5d77b", textAlign: "center", marginBottom: 4, fontFamily: "'Cairo',sans-serif" }}>
+          {lang === "ar" ? "تتبع طلباتي" : "Track My Orders"}
+        </div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", textAlign: "center", marginBottom: 14, fontFamily: "'Cairo',sans-serif" }}>
+          {lang === "ar"
+            ? "تابع حالة طلباتك خطوة بخطوة من لحظة الدفع وحتى اكتمال الخدمة."
+            : "Follow your orders step by step, from payment to service completion."}
+        </div>
+
+        <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, paddingInlineEnd: 2 }}>
+          {trackedOrders.length === 0 ? (
+            <div style={{ textAlign: "center", color: "rgba(255,255,255,0.6)", padding: "26px 10px", fontSize: 13, fontFamily: "'Cairo',sans-serif", lineHeight: 1.8 }}>
+              {lang === "ar"
+                ? "لا توجد طلبات بعد. عندما تطلب أي خدمة مدفوعة، ستظهر هنا لتتمكن من متابعة حالتها."
+                : "No orders yet. Once you request a paid service, it will appear here so you can track its status."}
+            </div>
+          ) : trackedOrders.map((order) => {
+            const isExpanded = expandedTrackedOrderId === order.id;
+            const steps = lang === "ar" ? STATUS_STEPS_AR : STATUS_STEPS_EN;
+            return (
+              <div
+                key={order.id}
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  border: `1px solid ${t.gold}26`,
+                  borderRadius: 14,
+                  padding: "10px 12px",
+                }}
+              >
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setExpandedTrackedOrderId(isExpanded ? null : order.id)}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setExpandedTrackedOrderId(isExpanded ? null : order.id); }}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, cursor: "pointer" }}
+                >
+                  <div style={{ textAlign: lang === "ar" ? "right" : "left", minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", fontFamily: "'Cairo',sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {order.title}
+                    </div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", fontFamily: "'Cairo',sans-serif", marginTop: 2 }}>
+                      {[order.subtitle, order.dateStr].filter(Boolean).join(" · ")}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <span style={{
+                      fontSize: 10,
+                      fontWeight: 800,
+                      color: order.stageIndex >= steps.length - 1 ? "#4ade80" : t.gold,
+                      background: order.stageIndex >= steps.length - 1 ? "rgba(34,197,94,0.16)" : `${t.gold}1f`,
+                      borderRadius: 999,
+                      padding: "4px 10px",
+                      whiteSpace: "nowrap",
+                    }}>
+                      {steps[order.stageIndex]?.icon} {steps[order.stageIndex]?.label}
+                    </span>
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform .2s" }}>▾</span>
+                  </div>
+                </div>
+
+                {isExpanded && (
+                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${t.gold}1f`, display: "flex", flexDirection: "column", gap: 0 }}>
+                    {steps.map((step, idx) => {
+                      const isDone = idx < order.stageIndex;
+                      const isCurrent = idx === order.stageIndex;
+                      const isLast = idx === steps.length - 1;
+                      const dotColor = isDone || isCurrent ? (isCurrent ? t.gold : "#4ade80") : "rgba(255,255,255,0.25)";
+                      return (
+                        <div key={step.key} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                            <div style={{
+                              width: 26,
+                              height: 26,
+                              borderRadius: "50%",
+                              background: isCurrent ? `${t.gold}26` : isDone ? "rgba(34,197,94,0.16)" : "rgba(255,255,255,0.06)",
+                              border: `2px solid ${dotColor}`,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 12,
+                              flexShrink: 0,
+                            }}>
+                              {isDone ? "✓" : step.icon}
+                            </div>
+                            {!isLast && <div style={{ width: 2, flex: 1, minHeight: 22, background: isDone ? "#4ade80" : "rgba(255,255,255,0.15)" }} />}
+                          </div>
+                          <div style={{ paddingBottom: isLast ? 0 : 16, paddingTop: 2 }}>
+                            <div style={{ fontSize: 12, fontWeight: isCurrent ? 900 : 700, color: isCurrent ? t.gold : isDone ? "#bbf7d0" : "rgba(255,255,255,0.55)", fontFamily: "'Cairo',sans-serif" }}>
+                              {step.label}
+                            </div>
+                            {step.duration && (
+                              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 2, fontFamily: "'Cairo',sans-serif" }}>
+                                {step.duration}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  const SUPPORT_TOPICS = [
+    {
+      id: "order",
+      icon: "📦",
+      titleAr: "استفسار عن طلب",
+      titleEn: "Order inquiry",
+      msgAr: "مرحبًا، لدي استفسار بخصوص أحد طلباتي في التطبيق. ",
+      msgEn: "Hello, I have a question about one of my orders in the app. ",
+    },
+    {
+      id: "office",
+      icon: "🏛️",
+      titleAr: "استفسار عن مكتب أو خدمة",
+      titleEn: "Office or service inquiry",
+      msgAr: "مرحبًا، أحتاج مساعدة بخصوص أحد المكاتب أو الخدمات المعروضة في التطبيق. ",
+      msgEn: "Hello, I need help regarding one of the offices or services listed in the app. ",
+    },
+    {
+      id: "technical",
+      icon: "⚙️",
+      titleAr: "مشكلة تقنية في التطبيق",
+      titleEn: "Technical issue",
+      msgAr: "مرحبًا، أواجه مشكلة تقنية في التطبيق وأحتاج للمساعدة في حلها. ",
+      msgEn: "Hello, I'm facing a technical issue in the app and need help resolving it. ",
+    },
+    {
+      id: "feedback",
+      icon: "💡",
+      titleAr: "اقتراح أو ملاحظة",
+      titleEn: "Suggestion or feedback",
+      msgAr: "مرحبًا، أود مشاركة اقتراح أو ملاحظة حول التطبيق. ",
+      msgEn: "Hello, I'd like to share a suggestion or feedback about the app. ",
+    },
+    {
+      id: "other",
+      icon: "🤝",
+      titleAr: "موضوع آخر",
+      titleEn: "Something else",
+      msgAr: "مرحبًا، أحتاج التواصل مع فريق الدعم بخصوص موضوع آخر. ",
+      msgEn: "Hello, I need to reach the support team about something else. ",
+    },
+  ];
+
+  const SupportPanel = () => supportPanelOpen ? (
+    <div style={{ ...styles.overlay, background: "rgba(2, 6, 23, 0.78)", backdropFilter: "blur(10px)" }}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 400,
+          maxHeight: "84vh",
+          display: "flex",
+          flexDirection: "column",
+          borderRadius: 24,
+          padding: isCompactPhone ? "16px 14px 14px" : "20px 18px 18px",
+          background: "linear-gradient(180deg, #122b63 0%, #0b1f4a 100%)",
+          border: `1px solid ${t.gold}38`,
+          boxShadow: "0 24px 80px rgba(7, 15, 35, 0.6), 0 0 0 1px rgba(212,175,55,0.12)",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <button
+          onClick={() => { setSupportPanelOpen(false); setSupportSelectedTopicId(null); }}
+          style={{
+            position: "absolute",
+            top: 12,
+            right: dir === "rtl" ? 12 : "auto",
+            left: dir === "rtl" ? "auto" : 12,
+            border: `1px solid ${t.gold}52`,
+            background: "rgba(255,255,255,0.06)",
+            color: "#f5d77b",
+            borderRadius: 10,
+            padding: "6px 10px",
+            fontFamily: "'Cairo',sans-serif",
+            fontSize: 11,
+            fontWeight: 800,
+            cursor: "pointer",
+            zIndex: 2,
+          }}
+        >
+          {lang === "ar" ? "إغلاق ✕" : "Close ✕"}
+        </button>
+
+        <div style={{ fontSize: 30, textAlign: "center", marginBottom: 6 }}>💬</div>
+        <div style={{ fontSize: 17, fontWeight: 900, color: "#f5d77b", textAlign: "center", marginBottom: 4, fontFamily: "'Cairo',sans-serif" }}>
+          {lang === "ar" ? "الدعم المباشر" : "Live Support"}
+        </div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", textAlign: "center", marginBottom: 14, fontFamily: "'Cairo',sans-serif", lineHeight: 1.7 }}>
+          {lang === "ar"
+            ? "اختر الموضوع المناسب وسنحوّلك مباشرة إلى محادثة واتساب مع فريق الدعم."
+            : "Pick the right topic and we'll take you straight to a WhatsApp chat with our support team."}
+        </div>
+
+        <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, paddingInlineEnd: 2 }}>
+          <a
+            href={`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
+              lang === "ar"
+                ? "مرحبًا، أحتاج التواصل مع فريق الدعم."
+                : "Hello, I need to contact the support team."
+            )}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              textDecoration: "none",
+              borderRadius: 14,
+              padding: "13px 14px",
+              background: "linear-gradient(145deg,#25d366,#128c4a)",
+              color: "#fff",
+              fontFamily: "'Cairo',sans-serif",
+              fontSize: 14,
+              fontWeight: 900,
+              boxShadow: "0 10px 26px rgba(37,211,102,0.30)",
+            }}
+          >
+            <span style={{ fontSize: 18 }}>🟢</span>
+            {lang === "ar" ? "تواصل فوري عبر واتساب" : "Chat now on WhatsApp"}
+          </a>
+
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", fontFamily: "'Cairo',sans-serif", margin: "8px 2px 2px", fontWeight: 800 }}>
+            {lang === "ar" ? "أو اختر موضوعًا لإرسال رسالة جاهزة:" : "Or pick a topic to send a ready-made message:"}
+          </div>
+
+          {SUPPORT_TOPICS.map((topic) => {
+            const isSelected = supportSelectedTopicId === topic.id;
+            const message = lang === "ar" ? topic.msgAr : topic.msgEn;
+            return (
+              <div key={topic.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <button
+                  onClick={() => setSupportSelectedTopicId(isSelected ? null : topic.id)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    textAlign: lang === "ar" ? "right" : "left",
+                    flexDirection: lang === "ar" ? "row-reverse" : "row",
+                    border: `1px solid ${isSelected ? t.gold : `${t.gold}26`}`,
+                    background: isSelected ? `${t.gold}1c` : "rgba(255,255,255,0.05)",
+                    borderRadius: 14,
+                    padding: "10px 12px",
+                    cursor: "pointer",
+                    width: "100%",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <span style={{ fontSize: 20 }}>{topic.icon}</span>
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 800, color: "#fff", fontFamily: "'Cairo',sans-serif" }}>
+                    {lang === "ar" ? topic.titleAr : topic.titleEn}
+                  </span>
+                  <span style={{ fontSize: 12, color: t.gold, transform: isSelected ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>
+                    {dir === "rtl" ? "‹" : "›"}
+                  </span>
+                </button>
+                {isSelected && (
+                  <div style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: `1px solid ${t.gold}26`,
+                    borderRadius: 12,
+                    padding: "10px 12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                  }}>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", fontFamily: "'Cairo',sans-serif", lineHeight: 1.7 }}>
+                      {message}
+                    </div>
+                    <a
+                      href={`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(message)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        alignSelf: lang === "ar" ? "flex-end" : "flex-start",
+                        textDecoration: "none",
+                        borderRadius: 10,
+                        padding: "7px 14px",
+                        background: `${t.gold}26`,
+                        color: t.gold,
+                        fontSize: 11,
+                        fontWeight: 800,
+                        fontFamily: "'Cairo',sans-serif",
+                      }}
+                    >
+                      {lang === "ar" ? "📨 إرسال عبر واتساب" : "📨 Send via WhatsApp"}
+                    </a>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          <a
+            href="mailto:walidghazal46@gmail.com?subject=دعم فني - تطبيق مكاتب السفريات الموثوقة"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              textDecoration: "none",
+              borderRadius: 12,
+              padding: "10px 14px",
+              border: `1px solid ${t.gold}38`,
+              color: "#f5d77b",
+              fontFamily: "'Cairo',sans-serif",
+              fontSize: 12,
+              fontWeight: 800,
+              marginTop: 4,
+            }}
+          >
+            📧 {lang === "ar" ? "أو راسلنا عبر البريد الإلكتروني" : "Or email us instead"}
+          </a>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  const ReferralPanel = () => referralPanelOpen ? (
+    <div style={{ ...styles.overlay, background: "rgba(2, 6, 23, 0.78)", backdropFilter: "blur(10px)" }}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 400,
+          maxHeight: "84vh",
+          display: "flex",
+          flexDirection: "column",
+          borderRadius: 24,
+          padding: isCompactPhone ? "16px 14px 14px" : "20px 18px 18px",
+          background: "linear-gradient(180deg, #122b63 0%, #0b1f4a 100%)",
+          border: `1px solid ${t.gold}38`,
+          boxShadow: "0 24px 80px rgba(7, 15, 35, 0.6), 0 0 0 1px rgba(212,175,55,0.12)",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <button
+          onClick={() => { setReferralPanelOpen(false); setReferralRedeemMessage(null); setReferralCopyDone(false); }}
+          style={{
+            position: "absolute",
+            top: 12,
+            right: dir === "rtl" ? 12 : "auto",
+            left: dir === "rtl" ? "auto" : 12,
+            border: `1px solid ${t.gold}52`,
+            background: "rgba(255,255,255,0.06)",
+            color: "#f5d77b",
+            borderRadius: 10,
+            padding: "6px 10px",
+            fontFamily: "'Cairo',sans-serif",
+            fontSize: 11,
+            fontWeight: 800,
+            cursor: "pointer",
+            zIndex: 2,
+          }}
+        >
+          {lang === "ar" ? "إغلاق ✕" : "Close ✕"}
+        </button>
+
+        <div style={{ fontSize: 30, textAlign: "center", marginBottom: 6 }}>🎁</div>
+        <div style={{ fontSize: 17, fontWeight: 900, color: "#f5d77b", textAlign: "center", marginBottom: 4, fontFamily: "'Cairo',sans-serif" }}>
+          {lang === "ar" ? "الإحالة والمكافآت" : "Referrals & Rewards"}
+        </div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", textAlign: "center", marginBottom: 14, fontFamily: "'Cairo',sans-serif", lineHeight: 1.7 }}>
+          {lang === "ar"
+            ? "شارك كودك مع أصدقائك، وعند تسجيلهم باستخدام كودك يحصلون على مكافأة كوينز ترحيبية فورية."
+            : "Share your code with friends — when they sign up using it, they get an instant welcome coin bonus."}
+        </div>
+
+        {!authPreviewUser?.uid ? (
+          <div style={{ textAlign: "center", color: "rgba(255,255,255,0.6)", padding: "26px 10px", fontSize: 13, fontFamily: "'Cairo',sans-serif", lineHeight: 1.8 }}>
+            {lang === "ar"
+              ? "سجّل الدخول إلى حسابك للحصول على كود الدعوة الخاص بك واستخدام أكواد أصدقائك."
+              : "Sign in to your account to get your personal invite code and redeem your friends' codes."}
+          </div>
+        ) : (
+          <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, paddingInlineEnd: 2 }}>
+
+            <div style={{ borderRadius: 16, border: `1px solid ${t.gold}38`, background: "linear-gradient(135deg, rgba(212,175,55,0.16), rgba(245,215,123,0.06))", padding: "14px 14px" }}>
+              <div style={{ fontSize: 11, color: "rgba(245,215,123,0.85)", fontWeight: 800, fontFamily: "'Cairo',sans-serif", marginBottom: 6 }}>
+                {lang === "ar" ? "كود الدعوة الخاص بك" : "Your invite code"}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ flex: 1, fontSize: 19, fontWeight: 900, letterSpacing: 1.5, color: "#fde68a", fontFamily: "'Cairo',sans-serif", textAlign: "center", padding: "8px 10px", borderRadius: 10, background: "rgba(0,0,0,0.18)", border: `1px dashed ${t.gold}55` }}>
+                  {myReferralCode}
+                </div>
+                <button
+                  onClick={() => {
+                    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+                      navigator.clipboard.writeText(myReferralCode).then(() => {
+                        setReferralCopyDone(true);
+                        setTimeout(() => setReferralCopyDone(false), 2000);
+                      }).catch(() => {});
+                    }
+                  }}
+                  style={{ border: `1px solid ${t.gold}52`, background: "rgba(255,255,255,0.06)", color: t.gold, borderRadius: 10, padding: "10px 12px", fontFamily: "'Cairo',sans-serif", fontSize: 11, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}
+                >
+                  {referralCopyDone ? (lang === "ar" ? "✓ تم النسخ" : "✓ Copied") : (lang === "ar" ? "نسخ" : "Copy")}
+                </button>
+              </div>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(referralShareMessage)}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  marginTop: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  textDecoration: "none",
+                  borderRadius: 12,
+                  padding: "11px 14px",
+                  background: "linear-gradient(145deg,#25d366,#128c4a)",
+                  color: "#fff",
+                  fontFamily: "'Cairo',sans-serif",
+                  fontSize: 13,
+                  fontWeight: 900,
+                  boxShadow: "0 10px 24px rgba(37,211,102,0.28)",
+                }}
+              >
+                <span style={{ fontSize: 16 }}>🟢</span>
+                {lang === "ar" ? "شارك الكود عبر واتساب" : "Share code on WhatsApp"}
+              </a>
+            </div>
+
+            <div style={{ borderRadius: 16, border: `1px solid ${t.gold}26`, background: "rgba(255,255,255,0.05)", padding: "14px 14px" }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: "#fff", fontFamily: "'Cairo',sans-serif", marginBottom: 8 }}>
+                {lang === "ar" ? "🎟️ هل لديك كود من صديق؟" : "🎟️ Have a friend's code?"}
+              </div>
+              {referralRedemptionInfo?.code ? (
+                <div style={{ fontSize: 12, color: "#4ade80", fontFamily: "'Cairo',sans-serif", lineHeight: 1.8 }}>
+                  {lang === "ar"
+                    ? `✅ لقد فعّلت كود الدعوة "${referralRedemptionInfo.code}" وحصلت على ${Number(referralRedemptionInfo.awardedCoins) || 15} كوينز.`
+                    : `✅ You've already redeemed the invite code "${referralRedemptionInfo.code}" and earned ${Number(referralRedemptionInfo.awardedCoins) || 15} coins.`}
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      value={referralCodeInput}
+                      onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
+                      placeholder={lang === "ar" ? "مثال: REF-AB12CD34" : "e.g. REF-AB12CD34"}
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        borderRadius: 10,
+                        border: `1px solid ${t.gold}38`,
+                        background: "rgba(0,0,0,0.18)",
+                        color: "#fff",
+                        padding: "10px 12px",
+                        fontSize: 13,
+                        fontFamily: "'Cairo',sans-serif",
+                        textAlign: "center",
+                        letterSpacing: 1,
+                        boxSizing: "border-box",
+                      }}
+                    />
+                    <button
+                      onClick={handleRedeemReferralCode}
+                      disabled={referralRedeemBusy}
+                      style={{
+                        border: "none",
+                        borderRadius: 10,
+                        padding: "10px 16px",
+                        background: referralRedeemBusy ? "rgba(212,175,55,0.35)" : `${t.gold}`,
+                        color: "#1c1404",
+                        fontSize: 12,
+                        fontWeight: 900,
+                        fontFamily: "'Cairo',sans-serif",
+                        cursor: referralRedeemBusy ? "default" : "pointer",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {referralRedeemBusy ? (lang === "ar" ? "جارٍ التفعيل..." : "Applying...") : (lang === "ar" ? "تفعيل" : "Apply")}
+                    </button>
+                  </div>
+                  {referralRedeemMessage && (
+                    <div style={{ marginTop: 8, fontSize: 12, fontFamily: "'Cairo',sans-serif", lineHeight: 1.7, color: referralRedeemMessage.type === "success" ? "#4ade80" : "#f87171" }}>
+                      {referralRedeemMessage.text}
+                    </div>
+                  )}
+                  <div style={{ marginTop: 8, fontSize: 11, color: "rgba(255,255,255,0.5)", fontFamily: "'Cairo',sans-serif", lineHeight: 1.7 }}>
+                    {lang === "ar" ? "يمكنك استخدام كود دعوة واحد فقط لكل حساب، وستحصل فورًا على 15 كوينز ترحيبية." : "You can redeem only one invite code per account, and you'll instantly earn 15 welcome coins."}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, borderRadius: 14, border: `1px solid ${t.gold}26`, background: "rgba(255,255,255,0.04)", padding: "10px 14px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 18 }}>🪙</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: "#f5d77b", fontFamily: "'Cairo',sans-serif" }}>
+                  {lang === "ar" ? "رصيدك الحالي من الكوينز" : "Your current coin balance"}
+                </span>
+              </div>
+              <span style={{ fontSize: 17, fontWeight: 900, color: "#fde68a", fontFamily: "'Cairo',sans-serif" }}>
+                {Number(accountCoins) || 0}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  ) : null;
+
+  const NotificationsPanel = () => notificationsPanelOpen ? (
+    <div style={{ ...styles.overlay, background: "rgba(2, 6, 23, 0.78)", backdropFilter: "blur(10px)" }}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 400,
+          maxHeight: "84vh",
+          display: "flex",
+          flexDirection: "column",
+          borderRadius: 24,
+          padding: isCompactPhone ? "16px 14px 14px" : "20px 18px 18px",
+          background: "linear-gradient(180deg, #122b63 0%, #0b1f4a 100%)",
+          border: `1px solid ${t.gold}38`,
+          boxShadow: "0 24px 80px rgba(7, 15, 35, 0.6), 0 0 0 1px rgba(212,175,55,0.12)",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <button
+          onClick={() => setNotificationsPanelOpen(false)}
+          style={{
+            position: "absolute",
+            top: 12,
+            right: dir === "rtl" ? 12 : "auto",
+            left: dir === "rtl" ? "auto" : 12,
+            border: `1px solid ${t.gold}52`,
+            background: "rgba(255,255,255,0.06)",
+            color: "#f5d77b",
+            borderRadius: 10,
+            padding: "6px 10px",
+            fontFamily: "'Cairo',sans-serif",
+            fontSize: 11,
+            fontWeight: 800,
+            cursor: "pointer",
+            zIndex: 2,
+          }}
+        >
+          {lang === "ar" ? "إغلاق ✕" : "Close ✕"}
+        </button>
+
+        <div style={{ fontSize: 30, textAlign: "center", marginBottom: 6 }}>🔔</div>
+        <div style={{ fontSize: 17, fontWeight: 900, color: "#f5d77b", textAlign: "center", marginBottom: 4, fontFamily: "'Cairo',sans-serif" }}>
+          {lang === "ar" ? "الإشعارات" : "Notifications"}
+        </div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", textAlign: "center", marginBottom: 14, fontFamily: "'Cairo',sans-serif", lineHeight: 1.7 }}>
+          {lang === "ar"
+            ? "آخر التحديثات والإعلانات المُرسلة من فريق التطبيق."
+            : "The latest updates and announcements from the app team."}
+        </div>
+
+        {!authPreviewUser?.uid || isGuestUser ? (
+          <div style={{ textAlign: "center", color: "rgba(255,255,255,0.6)", padding: "26px 10px", fontSize: 13, fontFamily: "'Cairo',sans-serif", lineHeight: 1.8 }}>
+            {lang === "ar"
+              ? "سجّل الدخول إلى حسابك لعرض الإشعارات الخاصة بالتطبيق."
+              : "Sign in to your account to view app notifications."}
+          </div>
+        ) : (
+          <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, paddingInlineEnd: 2 }}>
+            {adminNotifications.length === 0 ? (
+              <div style={{ textAlign: "center", color: "rgba(255,255,255,0.55)", padding: "30px 10px", fontSize: 12, fontFamily: "'Cairo',sans-serif", lineHeight: 1.8 }}>
+                {lang === "ar" ? "لا توجد إشعارات حتى الآن." : "No notifications yet."}
+              </div>
+            ) : (
+              adminNotifications.map((item) => {
+                const isUnseen = !seenNotificationIds.includes(item.id);
+                const timestampLabel = formatNotificationTimestamp(item.createdAt);
+                return (
+                  <div
+                    key={item.id}
+                    style={{
+                      borderRadius: 16,
+                      border: isUnseen ? `1px solid ${t.gold}55` : "1px solid rgba(255,255,255,0.12)",
+                      background: isUnseen ? "linear-gradient(135deg, rgba(212,175,55,0.14), rgba(245,215,123,0.05))" : "rgba(255,255,255,0.04)",
+                      padding: "12px 14px",
+                      position: "relative",
+                    }}
+                  >
+                    {isUnseen && (
+                      <span style={{ position: "absolute", top: 10, insetInlineStart: dir === "rtl" ? "auto" : 10, insetInlineEnd: dir === "rtl" ? 10 : "auto", width: 8, height: 8, borderRadius: "50%", background: "#f59e0b", boxShadow: "0 0 0 3px rgba(245,158,11,0.22)" }} />
+                    )}
+                    <div style={{ fontSize: 13, fontWeight: 900, color: "#f8fafc", fontFamily: "'Cairo',sans-serif", marginBottom: 4, paddingInlineEnd: isUnseen ? 16 : 0 }}>
+                      {item.title}
+                    </div>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.78)", fontFamily: "'Cairo',sans-serif", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                      {item.body}
+                    </div>
+                    {!!item.link && (
+                      <a
+                        href={item.link}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        style={{ display: "inline-block", marginTop: 8, color: "#93c5fd", fontSize: 11, fontWeight: 800, fontFamily: "'Cairo',sans-serif", textDecoration: "underline" }}
+                      >
+                        {lang === "ar" ? "فتح الرابط ←" : "Open link →"}
+                      </a>
+                    )}
+                    {!!timestampLabel && (
+                      <div style={{ marginTop: 8, fontSize: 10, color: "rgba(255,255,255,0.45)", fontFamily: "'Cairo',sans-serif" }}>
+                        {timestampLabel}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  ) : null;
+
   const SignOutConfirmPanel = () => signOutConfirmOpen ? (
     <div style={{ ...styles.overlay, background: "rgba(2, 6, 23, 0.60)", backdropFilter: "blur(8px)" }}>
       <div
@@ -8130,6 +9644,30 @@ const mobileOfficeCardWidth = "100%";
               tone: "linear-gradient(135deg, rgba(14,165,233,0.18), rgba(3,105,161,0.16))",
               border: "1px solid rgba(56,189,248,0.42)",
               icon: "🖼️",
+            }, {
+              key: "cvAds",
+              titleAr: "إعلان قسم السي في",
+              titleEn: "CV Section Ad",
+              count: adminCvAdImageUrl ? 1 : 0,
+              tone: "linear-gradient(135deg, rgba(139,92,246,0.18), rgba(109,40,217,0.16))",
+              border: "1px solid rgba(167,139,250,0.42)",
+              icon: "📄",
+            }, {
+              key: "saudiAds",
+              titleAr: "إعلان الروابط السعودية",
+              titleEn: "Saudi Links Ad",
+              count: adminSaudiAdImageUrl ? 1 : 0,
+              tone: "linear-gradient(135deg, rgba(16,185,129,0.18), rgba(5,150,105,0.16))",
+              border: "1px solid rgba(52,211,153,0.42)",
+              icon: "🇸🇦",
+            }, {
+              key: "notifications",
+              titleAr: "مركز إرسال الإشعارات",
+              titleEn: "Notification Center",
+              count: adminNotifications.length,
+              tone: "linear-gradient(135deg, rgba(245,158,11,0.20), rgba(180,83,9,0.16))",
+              border: "1px solid rgba(251,191,36,0.45)",
+              icon: "🔔",
             }].map((item) => (
               <button
                 key={item.key}
@@ -8710,6 +10248,18 @@ const mobileOfficeCardWidth = "100%";
                 : (lang === "ar" ? "حفظ إعلان مكاتب السفريات" : "Save Travel Ad")}
             </button>
 
+            {!!adminTravelAdImageUrl && (
+              <button
+                onClick={handleAdminTravelAdRemove}
+                disabled={adminTravelAdBusy}
+                style={{ width: "100%", padding: "9px 10px", borderRadius: 12, border: "1px solid rgba(248,113,113,0.45)", background: "rgba(127,29,29,0.18)", color: "#fecaca", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: adminTravelAdBusy ? "not-allowed" : "pointer", opacity: adminTravelAdBusy ? 0.7 : 1 }}
+              >
+                {adminTravelAdBusy
+                  ? (lang === "ar" ? "جارٍ الحذف..." : "Removing...")
+                  : (lang === "ar" ? "🗑️ حذف الإعلان الحالي" : "🗑️ Remove current ad")}
+              </button>
+            )}
+
             {!!adminTravelAdError && (
               <div style={{ borderRadius: 10, border: "1px solid rgba(248,113,113,0.35)", background: "rgba(127,29,29,0.2)", color: "#fecaca", padding: "8px 9px", fontSize: 10, fontWeight: 800, textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
                 {adminTravelAdError}
@@ -8814,6 +10364,18 @@ const mobileOfficeCardWidth = "100%";
                 ? (lang === "ar" ? "جارٍ الحفظ..." : "Saving...")
                 : (lang === "ar" ? "حفظ إعلان التوظيف" : "Save Jobs Ad")}
             </button>
+
+            {!!adminJobsAdImageUrl && (
+              <button
+                onClick={handleAdminJobsAdRemove}
+                disabled={adminJobsAdBusy}
+                style={{ width: "100%", padding: "9px 10px", borderRadius: 12, border: "1px solid rgba(248,113,113,0.45)", background: "rgba(127,29,29,0.18)", color: "#fecaca", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: adminJobsAdBusy ? "not-allowed" : "pointer", opacity: adminJobsAdBusy ? 0.7 : 1 }}
+              >
+                {adminJobsAdBusy
+                  ? (lang === "ar" ? "جارٍ الحذف..." : "Removing...")
+                  : (lang === "ar" ? "🗑️ حذف الإعلان الحالي" : "🗑️ Remove current ad")}
+              </button>
+            )}
 
             {!!adminJobsAdError && (
               <div style={{ borderRadius: 10, border: "1px solid rgba(248,113,113,0.35)", background: "rgba(127,29,29,0.2)", color: "#fecaca", padding: "8px 9px", fontSize: 10, fontWeight: 800, textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
@@ -8920,6 +10482,18 @@ const mobileOfficeCardWidth = "100%";
                 : (lang === "ar" ? "حفظ إعلان مكاتب الدراسة" : "Save Study Ad")}
             </button>
 
+            {!!adminStudyAdImageUrl && (
+              <button
+                onClick={handleAdminStudyAdRemove}
+                disabled={adminStudyAdBusy}
+                style={{ width: "100%", padding: "9px 10px", borderRadius: 12, border: "1px solid rgba(248,113,113,0.45)", background: "rgba(127,29,29,0.18)", color: "#fecaca", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: adminStudyAdBusy ? "not-allowed" : "pointer", opacity: adminStudyAdBusy ? 0.7 : 1 }}
+              >
+                {adminStudyAdBusy
+                  ? (lang === "ar" ? "جارٍ الحذف..." : "Removing...")
+                  : (lang === "ar" ? "🗑️ حذف الإعلان الحالي" : "🗑️ Remove current ad")}
+              </button>
+            )}
+
             {!!adminStudyAdError && (
               <div style={{ borderRadius: 10, border: "1px solid rgba(248,113,113,0.35)", background: "rgba(127,29,29,0.2)", color: "#fecaca", padding: "8px 9px", fontSize: 10, fontWeight: 800, textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
                 {adminStudyAdError}
@@ -8928,6 +10502,277 @@ const mobileOfficeCardWidth = "100%";
             {!!adminStudyAdSuccess && (
               <div style={{ borderRadius: 10, border: "1px solid rgba(34,197,94,0.35)", background: "rgba(21,128,61,0.2)", color: "#bbf7d0", padding: "8px 9px", fontSize: 10, fontWeight: 800, textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
                 {adminStudyAdSuccess}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(167,139,250,0.34)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px", display: adminPanelSection === "cvAds" ? "block" : "none" }}>
+          <div style={{ marginBottom: 8, color: "#c4b5fd", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif" }}>
+            {lang === "ar" ? "إدارة إعلان قسم السي في" : "CV Section Ad Management"}
+          </div>
+
+          <div style={{ display: "grid", gap: 8 }}>
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "رابط صورة الإعلان" : "Ad image URL"}</span>
+              <input
+                value={adminCvAdImageUrl}
+                onChange={(event) => setAdminCvAdImageUrl(event.target.value)}
+                placeholder="https://..."
+                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(167,139,250,0.35)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "sans-serif" }}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "رابط الضغط عند فتح الإعلان" : "Ad click URL"}</span>
+              <input
+                value={adminCvAdClickUrl}
+                onChange={(event) => setAdminCvAdClickUrl(event.target.value)}
+                placeholder="https://..."
+                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(167,139,250,0.35)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "sans-serif" }}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "عنوان الإعلان (اختياري)" : "Ad title (optional)"}</span>
+              <input
+                value={adminCvAdTitle}
+                onChange={(event) => setAdminCvAdTitle(event.target.value)}
+                placeholder={lang === "ar" ? "مثال: مساحة إعلانية" : "e.g. Ad Space"}
+                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(167,139,250,0.35)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "'Cairo',sans-serif" }}
+              />
+            </label>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                id="adminCvAdActive"
+                type="checkbox"
+                checked={adminCvAdActive}
+                onChange={(event) => setAdminCvAdActive(event.target.checked)}
+              />
+              <label htmlFor="adminCvAdActive" style={{ color: "#e2e8f0", fontSize: 11, fontWeight: 800, fontFamily: "'Cairo',sans-serif", cursor: "pointer" }}>
+                {lang === "ar" ? "تفعيل الإعلان" : "Ad active"}
+              </label>
+            </div>
+
+            <div style={{ borderRadius: 12, border: "1px dashed rgba(167,139,250,0.45)", background: "rgba(109,40,217,0.10)", padding: "8px" }}>
+              <div style={{ color: "#c4b5fd", fontSize: 10, fontWeight: 800, marginBottom: 5, fontFamily: "'Cairo',sans-serif" }}>
+                {lang === "ar" ? "أو ارفع صورة مباشرة" : "Or upload image directly"}
+              </div>
+              <input
+                ref={adminCvAdFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  const nextFile = event.target.files?.[0] || null;
+                  setAdminCvAdFile(nextFile);
+                }}
+                style={{ width: "100%", color: "#f8fafc", fontSize: 11, fontFamily: "'Cairo',sans-serif" }}
+              />
+              {!!adminCvAdFile && (
+                <div style={{ marginTop: 5, color: "#ede9fe", fontSize: 10, fontWeight: 700, fontFamily: "'Cairo',sans-serif", wordBreak: "break-word" }}>
+                  {lang === "ar" ? "الملف المحدد" : "Selected"}: {adminCvAdFile.name}
+                </div>
+              )}
+            </div>
+
+            {!!adminCvAdPreviewUrl && (
+              <div style={{ borderRadius: 12, border: "1px solid rgba(167,139,250,0.35)", background: "rgba(2,6,23,0.22)", padding: 8 }}>
+                <div style={{ color: "#c4b5fd", fontSize: 10, fontWeight: 800, marginBottom: 5, fontFamily: "'Cairo',sans-serif" }}>
+                  {lang === "ar" ? "معاينة الإعلان قبل الحفظ" : "Ad preview before save"}
+                </div>
+                <img
+                  src={adminCvAdPreviewUrl}
+                  alt={adminCvAdTitle || (lang === "ar" ? "معاينة الإعلان" : "Ad preview")}
+                  style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.14)", maxHeight: 180, objectFit: "cover", display: "block" }}
+                />
+              </div>
+            )}
+
+            <button
+              onClick={handleAdminCvAdSave}
+              disabled={adminCvAdBusy}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 12, border: "none", background: "linear-gradient(135deg,#8b5cf6,#6d28d9)", color: "#fff", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: adminCvAdBusy ? "not-allowed" : "pointer", opacity: adminCvAdBusy ? 0.7 : 1 }}
+            >
+              {adminCvAdBusy
+                ? (lang === "ar" ? "جارٍ الحفظ..." : "Saving...")
+                : (lang === "ar" ? "حفظ إعلان قسم السي في" : "Save CV Section Ad")}
+            </button>
+
+            {!!adminCvAdImageUrl && (
+              <button
+                onClick={handleAdminCvAdRemove}
+                disabled={adminCvAdBusy}
+                style={{ width: "100%", padding: "9px 10px", borderRadius: 12, border: "1px solid rgba(248,113,113,0.45)", background: "rgba(127,29,29,0.18)", color: "#fecaca", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: adminCvAdBusy ? "not-allowed" : "pointer", opacity: adminCvAdBusy ? 0.7 : 1 }}
+              >
+                {adminCvAdBusy
+                  ? (lang === "ar" ? "جارٍ الحذف..." : "Removing...")
+                  : (lang === "ar" ? "🗑️ حذف الإعلان الحالي" : "🗑️ Remove current ad")}
+              </button>
+            )}
+
+            {!!adminCvAdError && (
+              <div style={{ borderRadius: 10, border: "1px solid rgba(248,113,113,0.35)", background: "rgba(127,29,29,0.2)", color: "#fecaca", padding: "8px 9px", fontSize: 10, fontWeight: 800, textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
+                {adminCvAdError}
+              </div>
+            )}
+            {!!adminCvAdSuccess && (
+              <div style={{ borderRadius: 10, border: "1px solid rgba(34,197,94,0.35)", background: "rgba(21,128,61,0.2)", color: "#bbf7d0", padding: "8px 9px", fontSize: 10, fontWeight: 800, textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
+                {adminCvAdSuccess}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(52,211,153,0.34)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px", display: adminPanelSection === "saudiAds" ? "block" : "none" }}>
+          <div style={{ marginBottom: 8, color: "#6ee7b7", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif" }}>
+            {lang === "ar" ? "🇸🇦 إدارة إعلان الروابط السعودية" : "Saudi Links Ad Management"}
+          </div>
+          <div style={{ display: "grid", gap: 8 }}>
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "رابط صورة الإعلان" : "Ad image URL"}</span>
+              <input value={adminSaudiAdImageUrl} onChange={(e) => setAdminSaudiAdImageUrl(e.target.value)} placeholder="https://..." style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(52,211,153,0.35)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "sans-serif" }} />
+            </label>
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "رابط الضغط عند فتح الإعلان" : "Ad click URL"}</span>
+              <input value={adminSaudiAdClickUrl} onChange={(e) => setAdminSaudiAdClickUrl(e.target.value)} placeholder="https://..." style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(52,211,153,0.35)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "sans-serif" }} />
+            </label>
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "عنوان الإعلان (اختياري)" : "Ad title (optional)"}</span>
+              <input value={adminSaudiAdTitle} onChange={(e) => setAdminSaudiAdTitle(e.target.value)} placeholder={lang === "ar" ? "مثال: مساحة إعلانية" : "e.g. Ad Space"} style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(52,211,153,0.35)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "'Cairo',sans-serif" }} />
+            </label>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input id="adminSaudiAdActive" type="checkbox" checked={adminSaudiAdActive} onChange={(e) => setAdminSaudiAdActive(e.target.checked)} />
+              <label htmlFor="adminSaudiAdActive" style={{ color: "#e2e8f0", fontSize: 11, fontWeight: 800, fontFamily: "'Cairo',sans-serif", cursor: "pointer" }}>{lang === "ar" ? "تفعيل الإعلان" : "Ad active"}</label>
+            </div>
+            <div style={{ borderRadius: 12, border: "1px dashed rgba(52,211,153,0.45)", background: "rgba(5,150,105,0.10)", padding: "8px" }}>
+              <div style={{ color: "#6ee7b7", fontSize: 10, fontWeight: 800, marginBottom: 5, fontFamily: "'Cairo',sans-serif" }}>{lang === "ar" ? "أو ارفع صورة مباشرة" : "Or upload image directly"}</div>
+              <input ref={adminSaudiAdFileInputRef} type="file" accept="image/*" onChange={(e) => setAdminSaudiAdFile(e.target.files?.[0] || null)} style={{ width: "100%", color: "#f8fafc", fontSize: 11, fontFamily: "'Cairo',sans-serif" }} />
+              {!!adminSaudiAdFile && <div style={{ marginTop: 5, color: "#d1fae5", fontSize: 10, fontWeight: 700, fontFamily: "'Cairo',sans-serif", wordBreak: "break-word" }}>{lang === "ar" ? "الملف المحدد" : "Selected"}: {adminSaudiAdFile.name}</div>}
+            </div>
+            {!!adminSaudiAdPreviewUrl && (
+              <div style={{ borderRadius: 12, border: "1px solid rgba(52,211,153,0.35)", background: "rgba(2,6,23,0.22)", padding: 8 }}>
+                <div style={{ color: "#6ee7b7", fontSize: 10, fontWeight: 800, marginBottom: 5, fontFamily: "'Cairo',sans-serif" }}>{lang === "ar" ? "معاينة الإعلان قبل الحفظ" : "Ad preview before save"}</div>
+                <img src={adminSaudiAdPreviewUrl} alt={adminSaudiAdTitle || (lang === "ar" ? "معاينة الإعلان" : "Ad preview")} style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.14)", maxHeight: 180, objectFit: "cover", display: "block" }} />
+              </div>
+            )}
+            <button onClick={handleAdminSaudiAdSave} disabled={adminSaudiAdBusy} style={{ width: "100%", padding: "9px 10px", borderRadius: 12, border: "none", background: "linear-gradient(135deg,#10b981,#059669)", color: "#fff", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: adminSaudiAdBusy ? "not-allowed" : "pointer", opacity: adminSaudiAdBusy ? 0.7 : 1 }}>
+              {adminSaudiAdBusy ? (lang === "ar" ? "جارٍ الحفظ..." : "Saving...") : (lang === "ar" ? "حفظ إعلان الروابط السعودية" : "Save Saudi Links Ad")}
+            </button>
+            {!!adminSaudiAdImageUrl && (
+              <button onClick={handleAdminSaudiAdRemove} disabled={adminSaudiAdBusy} style={{ width: "100%", padding: "9px 10px", borderRadius: 12, border: "1px solid rgba(248,113,113,0.45)", background: "rgba(127,29,29,0.18)", color: "#fecaca", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: adminSaudiAdBusy ? "not-allowed" : "pointer", opacity: adminSaudiAdBusy ? 0.7 : 1 }}>
+                {adminSaudiAdBusy ? (lang === "ar" ? "جارٍ الحذف..." : "Removing...") : (lang === "ar" ? "🗑️ حذف الإعلان الحالي" : "🗑️ Remove current ad")}
+              </button>
+            )}
+            {!!adminSaudiAdError && <div style={{ borderRadius: 10, border: "1px solid rgba(248,113,113,0.35)", background: "rgba(127,29,29,0.2)", color: "#fecaca", padding: "8px 9px", fontSize: 10, fontWeight: 800, textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>{adminSaudiAdError}</div>}
+            {!!adminSaudiAdSuccess && <div style={{ borderRadius: 10, border: "1px solid rgba(34,197,94,0.35)", background: "rgba(21,128,61,0.2)", color: "#bbf7d0", padding: "8px 9px", fontSize: 10, fontWeight: 800, textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>{adminSaudiAdSuccess}</div>}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(251,191,36,0.40)", background: "rgba(255,255,255,0.04)", padding: "10px 10px 12px", display: adminPanelSection === "notifications" ? "block" : "none" }}>
+          <div style={{ marginBottom: 8, color: "#fde68a", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif" }}>
+            {lang === "ar" ? "🔔 مركز إرسال الإشعارات" : "🔔 Notification Center"}
+          </div>
+          <div style={{ marginBottom: 10, color: "rgba(255,255,255,0.65)", fontSize: 10.5, fontWeight: 600, fontFamily: "'Cairo',sans-serif", lineHeight: 1.7 }}>
+            {lang === "ar"
+              ? "أرسل إشعارًا عامًا يصل لجميع المستخدمين المسجلين داخل التطبيق فورًا (يظهر في 🔔 الإشعارات بإعداداتهم)."
+              : "Send a broadcast notification that instantly reaches all signed-in users (shown in their 🔔 Notifications panel)."}
+          </div>
+
+          <div style={{ display: "grid", gap: 8 }}>
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "عنوان الإشعار" : "Notification title"}</span>
+              <input
+                value={adminNotificationTitle}
+                onChange={(event) => setAdminNotificationTitle(event.target.value)}
+                placeholder={lang === "ar" ? "مثال: تحديث جديد متاح الآن 🎉" : "e.g. A new update is available 🎉"}
+                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(251,191,36,0.38)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "'Cairo',sans-serif" }}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "نص الإشعار" : "Notification message"}</span>
+              <textarea
+                value={adminNotificationBody}
+                onChange={(event) => setAdminNotificationBody(event.target.value)}
+                rows={3}
+                placeholder={lang === "ar" ? "اكتب تفاصيل الإشعار هنا..." : "Write the notification details here..."}
+                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(251,191,36,0.38)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "'Cairo',sans-serif", resize: "vertical" }}
+              />
+            </label>
+
+            <label style={{ display: "grid", gap: 4, color: "#e2e8f0", fontSize: 10, fontWeight: 800, fontFamily: "'Cairo',sans-serif" }}>
+              <span>{lang === "ar" ? "رابط (اختياري)" : "Link (optional)"}</span>
+              <input
+                value={adminNotificationLink}
+                onChange={(event) => setAdminNotificationLink(event.target.value)}
+                placeholder="https://..."
+                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(251,191,36,0.38)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: 11, fontWeight: 700, padding: "8px 10px", fontFamily: "sans-serif" }}
+              />
+            </label>
+
+            <button
+              onClick={handleSendAdminNotification}
+              disabled={adminNotificationBusy}
+              style={{ width: "100%", padding: "9px 10px", borderRadius: 12, border: "none", background: "linear-gradient(135deg,#f59e0b,#b45309)", color: "#fff", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: adminNotificationBusy ? "not-allowed" : "pointer", opacity: adminNotificationBusy ? 0.7 : 1 }}
+            >
+              {adminNotificationBusy
+                ? (lang === "ar" ? "جارٍ الإرسال..." : "Sending...")
+                : (lang === "ar" ? "📤 إرسال الإشعار لجميع المستخدمين" : "📤 Send to all users")}
+            </button>
+
+            {!!adminNotificationError && (
+              <div style={{ borderRadius: 10, border: "1px solid rgba(248,113,113,0.35)", background: "rgba(127,29,29,0.2)", color: "#fecaca", padding: "8px 9px", fontSize: 10, fontWeight: 800, textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
+                {adminNotificationError}
+              </div>
+            )}
+            {!!adminNotificationSuccess && (
+              <div style={{ borderRadius: 10, border: "1px solid rgba(34,197,94,0.35)", background: "rgba(21,128,61,0.2)", color: "#bbf7d0", padding: "8px 9px", fontSize: 10, fontWeight: 800, textAlign: "center", fontFamily: "'Cairo',sans-serif" }}>
+                {adminNotificationSuccess}
+              </div>
+            )}
+
+            <div style={{ marginTop: 6, color: "#fde68a", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif" }}>
+              {lang === "ar" ? `الإشعارات المُرسلة (${adminNotifications.length})` : `Sent notifications (${adminNotifications.length})`}
+            </div>
+
+            {adminNotifications.length === 0 ? (
+              <div style={{ borderRadius: 12, border: "1px dashed rgba(251,191,36,0.35)", background: "rgba(255,255,255,0.03)", padding: "12px 10px", textAlign: "center", color: "rgba(255,255,255,0.6)", fontSize: 11, fontWeight: 700, fontFamily: "'Cairo',sans-serif" }}>
+                {lang === "ar" ? "لم يتم إرسال أي إشعارات بعد." : "No notifications sent yet."}
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 8 }}>
+                {adminNotifications.map((item) => {
+                  const timestampLabel = formatNotificationTimestamp(item.createdAt);
+                  const isDeleting = adminNotificationDeletingId === item.id;
+                  return (
+                    <div key={item.id} style={{ borderRadius: 12, border: "1px solid rgba(251,191,36,0.28)", background: "rgba(255,255,255,0.03)", padding: "10px 10px" }}>
+                      <div style={{ color: "#f8fafc", fontSize: 12, fontWeight: 900, fontFamily: "'Cairo',sans-serif", marginBottom: 3 }}>
+                        {item.title}
+                      </div>
+                      <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: 600, fontFamily: "'Cairo',sans-serif", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                        {item.body}
+                      </div>
+                      {!!item.link && (
+                        <div style={{ marginTop: 4, color: "#93c5fd", fontSize: 10, fontWeight: 700, wordBreak: "break-all" }}>
+                          🔗 {item.link}
+                        </div>
+                      )}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
+                        <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 10 }}>{timestampLabel}</span>
+                        <button
+                          onClick={() => handleDeleteAdminNotification(item.id)}
+                          disabled={!!adminNotificationDeletingId}
+                          style={{ border: "1px solid rgba(248,113,113,0.45)", background: "rgba(127,29,29,0.18)", color: "#fecaca", borderRadius: 10, padding: "5px 10px", fontSize: 10, fontWeight: 900, fontFamily: "'Cairo',sans-serif", cursor: adminNotificationDeletingId ? "not-allowed" : "pointer", opacity: adminNotificationDeletingId && !isDeleting ? 0.5 : 1 }}
+                        >
+                          {isDeleting
+                            ? (lang === "ar" ? "جارٍ الحذف..." : "Removing...")
+                            : (lang === "ar" ? "🗑️ حذف" : "🗑️ Delete")}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -9925,6 +11770,11 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
 
       {AuthPreview()}
       {AccountPanel()}
+      {FavoritesPanel()}
+      {OrderTrackingPanel()}
+      {SupportPanel()}
+      {ReferralPanel()}
+      {NotificationsPanel()}
       {AdminSecurityModal()}
       {AdminPanel()}
       {AdminAddOfficeModal()}
@@ -10790,6 +12640,34 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                         ? `${lang === "ar" ? "إرسال التقييم" : "Submit review"} (${userRating} ★)`
                         : (lang === "ar" ? "اختر عدد النجوم أولاً" : "Choose stars first")}
                   </button>
+                  <button
+                    onClick={async () => {
+                      const officeLabel = getOfficeLabel(off.name);
+                      const appLink = "https://play.google.com/store/apps/details?id=com.travel.offices";
+                      const shareMessage = lang === "ar"
+                        ? `أنصحك بمكتب "${officeLabel}" 👌 اكتشف هذا المكتب وغيره عبر تطبيق مكاتب السفريات الموثوقة:\n${appLink}`
+                        : `I recommend the "${officeLabel}" office 👌 Discover it and more on the Trusted Travel Offices app:\n${appLink}`;
+                      try {
+                        if (isNativePlatform) {
+                          await Share.share({
+                            title: officeLabel,
+                            text: shareMessage,
+                            url: appLink,
+                            dialogTitle: lang === "ar" ? "مشاركة المكتب" : "Share office",
+                          });
+                        } else if (navigator.share) {
+                          await navigator.share({ title: officeLabel, text: shareMessage, url: appLink });
+                        } else {
+                          window.open(`https://wa.me/?text=${encodeURIComponent(shareMessage)}`, "_blank", "noopener,noreferrer");
+                        }
+                      } catch (error) {
+                        // المستخدم ألغى المشاركة أو حدث خطأ بسيط - لا داعي لإظهار رسالة خطأ
+                      }
+                    }}
+                    style={{ width: "100%", padding: "12px", borderRadius: 12, border: "none", marginTop: 10, background: "linear-gradient(135deg,#0ea5e9,#0369a1)", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'Cairo',sans-serif", transition: "all 0.2s" }}
+                  >
+                    {lang === "ar" ? "📤 شارك هذا المكتب" : "📤 Share this office"}
+                  </button>
                   {officeReviewError && (
                     <div style={{ marginTop:10, fontSize:12, color:"#dc2626", textAlign:"center" }}>
                       {officeReviewError}
@@ -10800,7 +12678,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
 
               {!isNativePlatform && (
                 <div style={{ marginBottom: 10 }}>
-                  <AdSenseUnit />
+                  <AdSenseUnit lang={lang} dark={dark} />
                 </div>
               )}
               {isAndroidPlatform && (
@@ -11877,6 +13755,47 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     </div>
                     );
                   })()}
+
+                  {/* ── Saudi Links Inline Ad ── */}
+                  <div style={{ marginTop:10, borderRadius:14, overflow:"hidden", position:"relative", border: showSaudiLinksAd ? "none" : `1px solid ${dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.07)"}`, background: showSaudiLinksAd ? "transparent" : (dark ? "rgba(255,255,255,0.03)" : "#fbfcff"), padding: showSaudiLinksAd ? 0 : 12, minHeight:336, display:"flex", flexDirection:"column", justifyContent:"center" }}>
+                    {isAdminUser && (
+                      <button
+                        onClick={() => { openAdminSecurityModal(); setAdminPanelSection("saudiAds"); }}
+                        style={{ position:"absolute", top:6, insetInlineEnd:8, border:"1px solid rgba(212,175,55,0.65)", background:"rgba(18,43,99,0.88)", color:"#f5d77b", borderRadius:10, padding:"4px 9px", fontSize:10, fontWeight:900, cursor:"pointer", fontFamily:"'Cairo',sans-serif", zIndex:3, backdropFilter:"blur(4px)", boxShadow:"0 2px 8px rgba(0,0,0,0.28)" }}
+                      >
+                        ✏️ {lang === "ar" ? "إدارة الإعلان" : "Manage Ad"}
+                      </button>
+                    )}
+                    {showSaudiLinksAd ? (
+                      saudiLinksAd.linkUrl ? (
+                        <a href={saudiLinksAd.linkUrl} target="_blank" rel="noreferrer" style={{ display:"block", borderRadius:14, overflow:"hidden" }}>
+                          <img src={saudiLinksAd.imageUrl} alt={saudiLinksAd.title || (lang === "ar" ? "إعلان" : "Ad")} loading="lazy" style={{ width:"100%", display:"block", height:336, objectFit:"cover" }} />
+                        </a>
+                      ) : (
+                        <img src={saudiLinksAd.imageUrl} alt={saudiLinksAd.title || (lang === "ar" ? "إعلان" : "Ad")} loading="lazy" style={{ width:"100%", display:"block", borderRadius:14, height:336, objectFit:"cover" }} />
+                      )
+                    ) : (
+                      <div style={{ textAlign:"center" }}>
+                        <div style={{ fontSize:13, fontWeight:900, color: dark ? "#fbbf24" : "#d97706", marginBottom:4, fontFamily:"'Cairo',sans-serif" }}>
+                          📢 {lang === "ar" ? "مساحة إعلانية" : "Ad Space"}
+                        </div>
+                        <div style={{ fontSize:11, color: dark ? "#94a3b8" : "#64748b", lineHeight:1.6, marginBottom:10, fontFamily:"'Cairo',sans-serif" }}>
+                          {lang === "ar"
+                            ? "هذه المنطقة مخصصة للإعلانات، وتظهر للمستخدمين المهتمين بالعمل في السعودية."
+                            : "This area is reserved for ads shown to users interested in working in Saudi Arabia."}
+                        </div>
+                        <a
+                          href="https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82"
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ display:"inline-block", padding:"8px 18px", borderRadius:999, background:"linear-gradient(135deg,#10b981,#059669)", color:"#fff", fontSize:11, fontWeight:900, fontFamily:"'Cairo',sans-serif", textDecoration:"none" }}
+                        >
+                          {lang === "ar" ? "احجز إعلانك الآن" : "Book your ad now"}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+
                   {/* ── المهن المحظورة (Mamno) card ── */}
                   {(() => {
                     const isLocked = !authPreviewUser || isGuestUser;
@@ -11973,7 +13892,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     style={{
                       marginTop: 12,
                       borderRadius: 16,
-                      minHeight: showMainBannerAd ? 0 : 190,
+                      minHeight: 336,
                       padding: showMainBannerAd ? 0 : "12px 12px",
                       border: showMainBannerAd ? "none" : `1px dashed ${dark ? "rgba(148,163,184,0.42)" : "rgba(100,116,139,0.34)"}`,
                       background: showMainBannerAd ? "transparent" : (dark
@@ -12009,6 +13928,14 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       {lang === "ar" ? "مساحة إعلانية" : "Ad Space"}
                     </div>
                     )}
+                    {isAdminUser && (
+                      <button
+                        onClick={() => { openAdminSecurityModal(); setAdminPanelSection("travelAds"); }}
+                        style={{ position: "absolute", top: 6, insetInlineEnd: 8, border: "1px solid rgba(212,175,55,0.65)", background: "rgba(18,43,99,0.88)", color: "#f5d77b", borderRadius: 10, padding: "4px 9px", fontSize: 10, fontWeight: 900, cursor: "pointer", fontFamily: "'Cairo',sans-serif", zIndex: 3, backdropFilter: "blur(4px)", boxShadow: "0 2px 8px rgba(0,0,0,0.28)" }}
+                      >
+                        ✏️ {lang === "ar" ? "إدارة الإعلان" : "Manage Ad"}
+                      </button>
+                    )}
                     {showMainBannerAd ? (
                       mainBannerAd.linkUrl ? (
                         <a
@@ -12022,7 +13949,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                           <img
                             src={mainBannerAd.imageUrl}
                             alt={mainBannerAd.title || "ad"}
-                            style={{ width: "100%", height: "auto", display: "block", borderRadius: 14, maxWidth: "100%" }}
+                            style={{ width: "100%", height: 336, objectFit: "cover", display: "block", borderRadius: 14, maxWidth: "100%" }}
                           />
                         </a>
                       ) : (
@@ -12030,7 +13957,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                           src={mainBannerAd.imageUrl}
                           alt={mainBannerAd.title || "ad"}
                           title={mainBannerAd.title || ""}
-                          style={{ width: "100%", height: "auto", display: "block", borderRadius: 14, maxWidth: "100%" }}
+                          style={{ width: "100%", height: 336, objectFit: "cover", display: "block", borderRadius: 14, maxWidth: "100%" }}
                         />
                       )
                     ) : (
@@ -13289,14 +15216,164 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   <span style={{ fontSize: 14 }}>🔍</span>
                   <input type="text" placeholder={tx.searchPlaceholder} value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...styles.searchInput, background: "transparent", color: t.text }} />
                 </div>
+                <div style={{ marginTop: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setOfficeFiltersPanelOpen((prev) => !prev)}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      borderRadius: 12,
+                      border: `1px solid ${activeOfficeFiltersCount > 0 ? t.gold : t.border}`,
+                      background: activeOfficeFiltersCount > 0 ? `${t.gold}1f` : t.inputBg,
+                      color: activeOfficeFiltersCount > 0 ? t.gold : t.subText,
+                      fontSize: 11.5,
+                      fontWeight: 800,
+                      fontFamily: "'Cairo',sans-serif",
+                      padding: "7px 13px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span style={{ fontSize: 13 }}>🔧</span>
+                    <span>{lang === "ar" ? "فلاتر وترتيب متقدم" : "Advanced filters & sort"}</span>
+                    {activeOfficeFiltersCount > 0 && (
+                      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, borderRadius: 999, background: t.gold, color: "#000", fontSize: 10, fontWeight: 900, padding: "0 5px" }}>
+                        {activeOfficeFiltersCount}
+                      </span>
+                    )}
+                    <span style={{ fontSize: 11, transform: officeFiltersPanelOpen ? "rotate(180deg)" : "none", transition: "transform .2s" }}>▾</span>
+                  </button>
+                  {officeFiltersPanelOpen && (
+                    <div style={{ marginTop: 8, borderRadius: 14, border: `1px solid ${t.border}`, background: t.cardBg, padding: "12px 12px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: t.subText, marginBottom: 7, fontFamily: "'Cairo',sans-serif" }}>
+                          {lang === "ar" ? "⭐ الحد الأدنى للتقييم" : "⭐ Minimum rating"}
+                        </div>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          {[
+                            { value: 0, labelAr: "الكل", labelEn: "All" },
+                            { value: 4, labelAr: "4 نجوم فأعلى", labelEn: "4+ stars" },
+                            { value: 4.5, labelAr: "4.5 نجوم فأعلى", labelEn: "4.5+ stars" },
+                          ].map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setOfficeMinRatingFilter(opt.value)}
+                              style={{
+                                borderRadius: 10,
+                                padding: "6px 12px",
+                                fontSize: 11,
+                                fontWeight: 800,
+                                fontFamily: "'Cairo',sans-serif",
+                                cursor: "pointer",
+                                border: officeMinRatingFilter === opt.value ? "none" : `1px solid ${t.border}`,
+                                background: officeMinRatingFilter === opt.value ? t.gold : t.inputBg,
+                                color: officeMinRatingFilter === opt.value ? "#000" : t.subText,
+                              }}
+                            >
+                              {lang === "ar" ? opt.labelAr : opt.labelEn}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: t.subText, marginBottom: 7, fontFamily: "'Cairo',sans-serif" }}>
+                          {lang === "ar" ? "↕️ ترتيب حسب" : "↕️ Sort by"}
+                        </div>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          {[
+                            { value: "default", labelAr: "الافتراضي", labelEn: "Default" },
+                            { value: "rating", labelAr: "الأعلى تقييمًا", labelEn: "Top rated" },
+                            { value: "name", labelAr: "الاسم (أبجديًا)", labelEn: "Name (A-Z)" },
+                          ].map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setOfficeSortBy(opt.value)}
+                              style={{
+                                borderRadius: 10,
+                                padding: "6px 12px",
+                                fontSize: 11,
+                                fontWeight: 800,
+                                fontFamily: "'Cairo',sans-serif",
+                                cursor: "pointer",
+                                border: officeSortBy === opt.value ? "none" : `1px solid ${t.border}`,
+                                background: officeSortBy === opt.value ? t.gold : t.inputBg,
+                                color: officeSortBy === opt.value ? "#000" : t.subText,
+                              }}
+                            >
+                              {lang === "ar" ? opt.labelAr : opt.labelEn}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => setShowFavoriteOfficesOnly((prev) => !prev)}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 7,
+                            borderRadius: 10,
+                            padding: "7px 13px",
+                            fontSize: 11.5,
+                            fontWeight: 800,
+                            fontFamily: "'Cairo',sans-serif",
+                            cursor: "pointer",
+                            border: showFavoriteOfficesOnly ? "none" : `1px solid ${t.border}`,
+                            background: showFavoriteOfficesOnly ? "rgba(239,68,68,0.16)" : t.inputBg,
+                            color: showFavoriteOfficesOnly ? "#ef4444" : t.subText,
+                          }}
+                        >
+                          <span>{showFavoriteOfficesOnly ? "❤️" : "🤍"}</span>
+                          <span>{lang === "ar" ? "إظهار المفضلة فقط" : "Show favorites only"}</span>
+                        </button>
+                      </div>
+                      {activeOfficeFiltersCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOfficeMinRatingFilter(0);
+                            setOfficeSortBy("default");
+                            setShowFavoriteOfficesOnly(false);
+                          }}
+                          style={{
+                            alignSelf: lang === "ar" ? "flex-end" : "flex-start",
+                            border: "none",
+                            background: "transparent",
+                            color: t.gold,
+                            fontSize: 11,
+                            fontWeight: 800,
+                            fontFamily: "'Cairo',sans-serif",
+                            cursor: "pointer",
+                            textDecoration: "underline",
+                            padding: 0,
+                          }}
+                        >
+                          {lang === "ar" ? "↺ إعادة ضبط الفلاتر" : "↺ Reset filters"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <div style={{ display: "grid", gridTemplateColumns: officeGridTemplateColumns, gap: officeGridGap, width: "100%", minWidth: 0, overflowX: "hidden", alignItems: "stretch" }}>
                   {visibleFilteredOffices.length === 0 ? (
                     <div style={{ textAlign: "center", color: t.subText, padding: "40px 0", fontSize: 15, gridColumn: "1 / -1" }}>{tx.noResults}</div>
                   ) : paginatedOffices.map((office, i) => {
                     const egyptOfficeFontScale = selectedCountry === "مصر" ? 0.94 : 0.75;
                     return (
-                    <button key={office.id} onClick={() => openOfficeDetails(office)}
-                      style={{ ...styles.officeCard, background: t.cardBg, border: `1px solid ${t.border}`, animationDelay: `${i * 30}ms`, padding: "13px 8px", display: "flex", flexDirection: "column", gap: 9, borderRadius: 14, cursor: "pointer", textAlign: "center", width: mobileOfficeCardWidth, maxWidth: "100%", minWidth: 0, justifySelf: "center", marginInline: "auto", minHeight: 174, boxSizing: "border-box" }}>
+                    <div key={office.id} role="button" tabIndex={0} onClick={() => openOfficeDetails(office)}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") openOfficeDetails(office); }}
+                      style={{ ...styles.officeCard, background: t.cardBg, border: `1px solid ${t.border}`, animationDelay: `${i * 30}ms`, padding: "13px 8px", display: "flex", flexDirection: "column", gap: 9, borderRadius: 14, cursor: "pointer", textAlign: "center", width: mobileOfficeCardWidth, maxWidth: "100%", minWidth: 0, justifySelf: "center", marginInline: "auto", minHeight: 174, boxSizing: "border-box", position: "relative" }}>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); toggleFavoriteOffice(office); }}
+                        aria-label={isOfficeFavorite(office.id) ? (lang === "ar" ? "إزالة من المفضلة" : "Remove from favorites") : (lang === "ar" ? "إضافة إلى المفضلة" : "Add to favorites")}
+                        style={{ position: "absolute", top: 6, insetInlineEnd: 6, width: 28, height: 28, borderRadius: "50%", border: "none", background: isOfficeFavorite(office.id) ? "rgba(239,68,68,0.16)" : "rgba(120,120,120,0.12)", color: isOfficeFavorite(office.id) ? "#ef4444" : t.subText, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, cursor: "pointer", zIndex: 2 }}>
+                        {isOfficeFavorite(office.id) ? "❤️" : "🤍"}
+                      </button>
                       <div style={{ width: 36, height: 36, borderRadius: 10, background: `${t.gold}22`, color: t.gold, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 * egyptOfficeFontScale, fontWeight: 700, flexShrink: 0, margin: "0 auto" }}>{((officePage - 1) * officesPerPage) + i + 1}</div>
                       <div style={{ fontSize: 14 * egyptOfficeFontScale, fontWeight: 700, color: t.text, textAlign: "center", lineHeight: 1.3 }}>{getOfficeLabel(office.name)}</div>
                       <div style={{ display: "inline-block", alignSelf:"center", borderRadius: 999, padding: "5px 13px", fontSize: 12 * egyptOfficeFontScale, fontWeight: 700, background: `${t.gold}15`, color: t.gold, textAlign: "center" }}>
@@ -13318,7 +15395,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                           ))}
                         {officeRatings[office.id] && <span style={{ fontSize: 10 * egyptOfficeFontScale, color: t.subText }}>({officeRatings[office.id].count})</span>}
                         </div>
-                    </button>
+                    </div>
                   )})}
                   {isGuestUser && guestLockedOfficesCount > 0 && Array.from({ length: Math.min(guestLockedOfficesCount, 6) }).map((_, idx) => (
                     <button
@@ -13911,7 +15988,15 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
             </div>
           );
           const cvJobSitesAdCard = (
-            <div style={{ ...cardStyle, padding:showJobsBannerAd ? "0" : "12px", border: showJobsBannerAd ? "none" : `1px solid ${t.border}`, background:showJobsBannerAd ? "transparent" : (dark ? "rgba(255,255,255,0.03)" : "#fbfcff"), overflow:"hidden" }}>
+            <div style={{ ...cardStyle, padding:showJobsBannerAd ? "0" : "12px", border: showJobsBannerAd ? "none" : `1px solid ${t.border}`, background:showJobsBannerAd ? "transparent" : (dark ? "rgba(255,255,255,0.03)" : "#fbfcff"), overflow:"hidden", position:"relative", minHeight:336 }}>
+              {isAdminUser && (
+                <button
+                  onClick={() => { openAdminSecurityModal(); setAdminPanelSection("jobsAds"); }}
+                  style={{ position:"absolute", top:6, insetInlineEnd:8, border:"1px solid rgba(212,175,55,0.65)", background:"rgba(18,43,99,0.88)", color:"#f5d77b", borderRadius:10, padding:"4px 9px", fontSize:10, fontWeight:900, cursor:"pointer", fontFamily:"'Cairo',sans-serif", zIndex:3, backdropFilter:"blur(4px)", boxShadow:"0 2px 8px rgba(0,0,0,0.28)" }}
+                >
+                  ✏️ {lang === "ar" ? "إدارة الإعلان" : "Manage Ad"}
+                </button>
+              )}
               {showJobsBannerAd ? (
                 jobsBannerAd.linkUrl ? (
                   <a
@@ -13925,7 +16010,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     <img
                       src={jobsBannerAd.imageUrl}
                       alt={jobsBannerAd.title || "ad"}
-                      style={{ width:"100%", maxWidth:"100%", height:"auto", display:"block", borderRadius:14 }}
+                      style={{ width:"100%", maxWidth:"100%", height:336, objectFit:"cover", display:"block", borderRadius:14 }}
                     />
                   </a>
                 ) : (
@@ -13933,7 +16018,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     src={jobsBannerAd.imageUrl}
                     alt={jobsBannerAd.title || "ad"}
                     title={jobsBannerAd.title || ""}
-                    style={{ width:"100%", maxWidth:"100%", height:"auto", display:"block", borderRadius:14 }}
+                    style={{ width:"100%", maxWidth:"100%", height:336, objectFit:"cover", display:"block", borderRadius:14 }}
                   />
                 )
               ) : isAndroidPlatform ? (
@@ -13948,7 +16033,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                   </div>
                 </div>
               ) : (
-                <AdSenseUnit />
+                <AdSenseUnit lang={lang} dark={dark} />
               )}
             </div>
           );
@@ -14072,6 +16157,61 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                       </div>
                     );
                   })}
+                </div>
+
+                {/* ── CV Section Inline Ad ─────────────────────────────────── */}
+                <div style={{ marginTop:12, borderRadius:14, overflow:"hidden", position:"relative", border: showCvSectionAd ? "none" : `1px solid ${t.border}`, background: showCvSectionAd ? "transparent" : (dark ? "rgba(255,255,255,0.03)" : "#fbfcff"), padding: showCvSectionAd ? 0 : 12, minHeight:336, display:"flex", flexDirection:"column", justifyContent:"center" }}>
+                  {isAdminUser && (
+                    <button
+                      onClick={() => { openAdminSecurityModal(); setAdminPanelSection("cvAds"); }}
+                      style={{ position:"absolute", top:6, insetInlineEnd:8, border:"1px solid rgba(212,175,55,0.65)", background:"rgba(18,43,99,0.88)", color:"#f5d77b", borderRadius:10, padding:"4px 9px", fontSize:10, fontWeight:900, cursor:"pointer", fontFamily:"'Cairo',sans-serif", zIndex:3, backdropFilter:"blur(4px)", boxShadow:"0 2px 8px rgba(0,0,0,0.28)" }}
+                    >
+                      ✏️ {lang === "ar" ? "إدارة الإعلان" : "Manage Ad"}
+                    </button>
+                  )}
+                  {showCvSectionAd ? (
+                    cvSectionAd.linkUrl ? (
+                      <a
+                        href={cvSectionAd.linkUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ display:"block", borderRadius:14, overflow:"hidden" }}
+                      >
+                        <img
+                          src={cvSectionAd.imageUrl}
+                          alt={cvSectionAd.title || (lang === "ar" ? "إعلان" : "Ad")}
+                          loading="lazy"
+                          style={{ width:"100%", display:"block", height:336, objectFit:"cover" }}
+                        />
+                      </a>
+                    ) : (
+                      <img
+                        src={cvSectionAd.imageUrl}
+                        alt={cvSectionAd.title || (lang === "ar" ? "إعلان" : "Ad")}
+                        loading="lazy"
+                        style={{ width:"100%", display:"block", borderRadius:14, height:336, objectFit:"cover" }}
+                      />
+                    )
+                  ) : (
+                    <div style={{ textAlign:"center" }}>
+                      <div style={{ fontSize:13, fontWeight:900, color:t.gold, marginBottom:4, fontFamily:"'Cairo',sans-serif" }}>
+                        {lang === "ar" ? "📢 مساحة إعلانية" : "📢 Ad Space"}
+                      </div>
+                      <div style={{ fontSize:11, color:t.subText, lineHeight:1.6, marginBottom:10, fontFamily:"'Cairo',sans-serif" }}>
+                        {lang === "ar"
+                          ? "هذه المنطقة مخصصة للإعلانات داخل صفحة السي في، وتظهر للمستخدمين المهتمين بتحسين سيرتهم الذاتية وفرص العمل."
+                          : "This area is reserved for ads in the CV section, shown to users interested in improving their CVs and job opportunities."}
+                      </div>
+                      <a
+                        href="https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D8%B5%D9%81%D8%AD%D8%A9%20%D8%A7%D9%84%D8%B3%D9%8A%20%D9%81%D9%8A"
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ display:"inline-block", padding:"8px 18px", borderRadius:999, background:"linear-gradient(135deg,#8b5cf6,#6d28d9)", color:"#fff", fontSize:11, fontWeight:900, fontFamily:"'Cairo',sans-serif", textDecoration:"none" }}
+                      >
+                        {lang === "ar" ? "احجز إعلانك الآن" : "Book your ad now"}
+                      </a>
+                    </div>
+                  )}
                 </div>
 
                 <>
@@ -15296,6 +17436,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
         onRequestAuth={promptStudyReviewsAuth}
         onRequestAccessAuth={promptStudyAccessAuth}
         onOpenOffice={showInterstitialAd}
+        onAdminManageAd={() => { openAdminSecurityModal(); setAdminPanelSection("studyAds"); }}
         resetSignal={studyTabResetToken}
       />
           </div>
@@ -15391,6 +17532,11 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                 boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 3px 10px rgba(0,0,0,0.18)",
               });
               const settingsActionTiles = [
+                { icon: "❤️", iconBg: "linear-gradient(145deg,#3d63b8,#27447f)", label: lang === "ar" ? "المفضلة" : "Favorites", desc: "", action: () => setFavoritesPanelOpen(true) },
+                { icon: "📦", iconBg: "linear-gradient(145deg,#3d63b8,#27447f)", label: lang === "ar" ? "تتبع الطلبات" : "Track Orders", desc: "", action: () => setOrderTrackingPanelOpen(true) },
+                { icon: "💬", iconBg: "linear-gradient(145deg,#25d366,#128c4a)", label: lang === "ar" ? "الدعم المباشر" : "Live Support", desc: "", action: () => setSupportPanelOpen(true) },
+                { icon: "🎁", iconBg: "linear-gradient(145deg,#a855f7,#6d28d9)", label: lang === "ar" ? "الإحالة والمكافآت" : "Referrals & Rewards", desc: "", action: () => setReferralPanelOpen(true) },
+                { icon: "🔔", iconBg: "linear-gradient(145deg,#f59e0b,#b45309)", label: lang === "ar" ? "الإشعارات" : "Notifications", desc: "", badge: unseenNotificationsCount, action: () => { setNotificationsPanelOpen(true); markAllNotificationsSeen(); } },
                 { icon: "⭐", iconBg: "linear-gradient(145deg,#3d63b8,#27447f)", label: tx.settingsRate, desc: "", href: PLAY_STORE_URL },
                 { icon: "🔄", iconBg: "linear-gradient(145deg,#3d63b8,#27447f)", label: tx.settingsUpdate, desc: "", href: PLAY_STORE_URL },
                 { icon: "🔒", iconBg: "linear-gradient(145deg,#3d63b8,#27447f)", label: tx.settingsPrivacy, desc: "", action: () => setPrivacyPolicyOpen(true) },
@@ -15466,6 +17612,28 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     <div style={{ position: "absolute", inset: 0, borderRadius: 18, background: "linear-gradient(135deg, rgba(255,255,255,0.06), transparent 44%, transparent 66%, rgba(255,255,255,0.025))", pointerEvents: "none" }} />
                     <div style={{ ...tileIconWrap(item.iconBg), position: "relative", zIndex: 1 }}>
                       <span style={{ color: "#ffffff", ...((item.iconStyle) || { fontSize: 16 }) }}>{item.icon}</span>
+                      {!!item.badge && (
+                        <span style={{
+                          position: "absolute",
+                          top: -4,
+                          insetInlineEnd: -4,
+                          minWidth: 16,
+                          height: 16,
+                          borderRadius: 999,
+                          background: "#ef4444",
+                          color: "#fff",
+                          fontSize: 9,
+                          fontWeight: 900,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: "0 3px",
+                          border: "1.5px solid rgba(11,31,74,0.9)",
+                          fontFamily: "'Cairo',sans-serif",
+                        }}>
+                          {item.badge > 9 ? "9+" : item.badge}
+                        </span>
+                      )}
                     </div>
                     <div style={{ minWidth: 0, position: "relative", zIndex: 1 }}>
                       <div style={{ fontSize: isCompactPhone ? 10.5 : 11.5, fontWeight: 900, color: "#ffffff", fontFamily: "'Cairo',sans-serif", lineHeight: 1.2 }}>

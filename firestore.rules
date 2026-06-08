@@ -146,6 +146,24 @@ service cloud.firestore {
         );
     }
 
+    // ─── studyAbroadOffices ──────────────────────────────────────────────────
+    // Public read for the directory listing (the app falls back to bundled
+    // seed data on permission-denied, masking this collection's absence of
+    // rules — but that means live Firestore updates never reach users).
+    // Admin-only write from Firebase Console or trusted admin tools.
+    match /studyAbroadOffices/{docId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── admin_notifications ─────────────────────────────────────────────────
+    // Public read so every signed-in user sees broadcast notifications.
+    // Admin-only write (the in-app "Notification Center").
+    match /admin_notifications/{notificationId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     // ─── cv_package_stats ────────────────────────────────────────────────────
     // Public read so every visitor can see CV package popularity/ratings.
     // Authenticated users can write because the app updates these aggregate
