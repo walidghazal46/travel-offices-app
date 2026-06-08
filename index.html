@@ -31,22 +31,10 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6810176545596111" crossorigin="anonymous"></script>
 
     <style>
-      /* SPA root layout — prevents body from scrolling so the static footer
-         stays in the DOM (visible to crawlers) but never intrudes into the app */
-      html, body {
-        height: 100%;
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-      }
-      #root {
-        height: 100%;
-        overflow: hidden;
-      }
-
-      /* Footer stays in DOM for SEO / AdSense crawlers but is not reachable
-         by users scrolling through the app */
+      /* Footer hidden from app users — links are provided inside the React app
+         instead. The element stays in DOM so crawlers can index it. */
       #site-footer {
+        display: none;
         font-family: Tahoma, Arial, sans-serif;
         background: #f1f5f9;
         border-top: 1px solid #e2e8f0;
@@ -55,7 +43,6 @@
         color: #475569;
         font-size: 13px;
         line-height: 1.8;
-        /* Visually below the app; body overflow:hidden keeps it unreachable */
       }
       #site-footer h2 { margin: 0 0 6px; font-size: 15px; color: #1e3a8a; }
       #site-footer p { margin: 0 0 6px; }
