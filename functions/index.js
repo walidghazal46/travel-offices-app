@@ -5,6 +5,7 @@ const {defineSecret} = require("firebase-functions/params");
 const {initializeApp} = require("firebase-admin/app");
 const {getAuth} = require("firebase-admin/auth");
 const {getFirestore, FieldValue} = require("firebase-admin/firestore");
+const {getMessaging} = require("firebase-admin/messaging");
 const {getStorage} = require("firebase-admin/storage");
 const {Resend} = require("resend");
 const {randomUUID} = require("node:crypto");
@@ -22,11 +23,11 @@ const ADMIN_EMAILS = [
 ];
 const FROM_EMAIL = "noreply@mail.trustedoffices.org";
 const DEFAULT_STORAGE_BUCKET = "travel-offices-90c53.appspot.com";
-const COUNTRY_PAID_DEVICE_REQUEST_LIMIT = 3;
-const COUNTRY_PAID_DEVICE_REQUEST_WINDOW_DAYS = 7;
-const CV_PAID_DEVICE_REQUEST_LIMIT = 3;
-const CV_PAID_DEVICE_REQUEST_WINDOW_DAYS = 7;
-const CV_BUILDER_DEVICE_REQUEST_LIMIT = 3;
+const COUNTRY_PAID_DEVICE_REQUEST_LIMIT = 5;
+const COUNTRY_PAID_DEVICE_REQUEST_WINDOW_DAYS = 30;
+const CV_PAID_DEVICE_REQUEST_LIMIT = 5;
+const CV_PAID_DEVICE_REQUEST_WINDOW_DAYS = 30;
+const CV_BUILDER_DEVICE_REQUEST_LIMIT = 5;
 const CV_BUILDER_DEVICE_REQUEST_WINDOW_DAYS = 30;
 
 function escapeHtml(value = "") {
@@ -62,6 +63,32 @@ function setCorsHeaders(res) {
   res.set("Access-Control-Allow-Origin", "*");
   res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+}
+
+async function requireAdminFromRequest(req, res) {
+  const authHeader = String(req.headers.authorization || "").trim();
+  if (!authHeader.startsWith("Bearer ")) {
+    res.status(401).json({ok: false, error: "missing-authorization"});
+    return null;
+  }
+
+  const idToken = authHeader.slice("Bearer ".length).trim();
+  const decoded = await getAuth().verifyIdToken(idToken);
+  const requesterUid = String(decoded?.uid || "").trim();
+  const requesterEmail = String(decoded?.email || "").trim().toLowerCase();
+  const isEmailAdmin = ADMIN_EMAILS.includes(requesterEmail);
+  const requesterProfileSnapshot = requesterUid
+    ? await firestoreDb.collection("users").doc(requesterUid).get()
+    : null;
+  const requesterRole = String(requesterProfileSnapshot?.data()?.role || "").trim().toLowerCase();
+  const isRoleAdmin = requesterRole === "admin";
+
+  if (!isEmailAdmin && !isRoleAdmin) {
+    res.status(403).json({ok: false, error: "admin-only"});
+    return null;
+  }
+
+  return {uid: requesterUid, email: requesterEmail};
 }
 
 function sanitizeFileName(name = "receipt") {
@@ -669,6 +696,112 @@ exports.deleteAuthUserByAdmin = onRequest(
     } catch (error) {
       logger.error("Failed to delete user by admin", {error: error?.message || error});
       res.status(500).json({ok: false, error: error?.message || "admin-delete-user-failed"});
+    }
+  }
+);
+
+exports.sendAdminPushNotification = onRequest(
+  {
+    region: "us-central1",
+    cors: false,
+  },
+  async (req, res) => {
+    setCorsHeaders(res);
+    if (req.method === "OPTIONS") {
+      res.status(204).send("");
+      return;
+    }
+    if (req.method !== "POST") {
+      res.status(405).json({ok: false, error: "method-not-allowed"});
+      return;
+    }
+
+    try {
+      const requester = await requireAdminFromRequest(req, res);
+      if (!requester) return;
+
+      const title = String(req.body?.title || "").trim();
+      const body = String(req.body?.body || "").trim();
+      const link = String(req.body?.link || "").trim();
+      if (!title || !body) {
+        res.status(400).json({ok: false, error: "title-and-body-required"});
+        return;
+      }
+
+      const snapshot = await firestoreDb.collection("push_tokens").get();
+      const tokenDocs = snapshot.docs
+        .map((docSnapshot) => ({
+          id: docSnapshot.id,
+          token: String(docSnapshot.data()?.token || "").trim(),
+        }))
+        .filter((item) => item.token);
+
+      let sentCount = 0;
+      let failureCount = 0;
+      const invalidTokenRefs = [];
+      const chunkSize = 500;
+
+      for (let i = 0; i < tokenDocs.length; i += chunkSize) {
+        const chunk = tokenDocs.slice(i, i + chunkSize);
+        const response = await getMessaging().sendEachForMulticast({
+          tokens: chunk.map((item) => item.token),
+          notification: {title, body},
+          data: removeUndefined({
+            type: "admin_broadcast",
+            title,
+            body,
+            link,
+          }),
+          android: {
+            priority: "high",
+            notification: {
+              sound: "default",
+              channelId: "default",
+            },
+          },
+        });
+
+        sentCount += Number(response.successCount || 0);
+        failureCount += Number(response.failureCount || 0);
+
+        response.responses.forEach((item, index) => {
+          if (item.success) return;
+          const code = String(item.error?.code || "").trim();
+          if (
+            code === "messaging/registration-token-not-registered" ||
+            code === "messaging/invalid-registration-token" ||
+            code === "messaging/invalid-argument"
+          ) {
+            invalidTokenRefs.push(firestoreDb.collection("push_tokens").doc(chunk[index].id));
+          }
+        });
+      }
+
+      for (let i = 0; i < invalidTokenRefs.length; i += 450) {
+        const batch = firestoreDb.batch();
+        invalidTokenRefs.slice(i, i + 450).forEach((ref) => batch.delete(ref));
+        await batch.commit();
+      }
+
+      logger.info("Admin push notification sent", {
+        requesterUid: requester.uid,
+        requesterEmail: requester.email,
+        tokenCount: tokenDocs.length,
+        sentCount,
+        failureCount,
+        deletedInvalidTokens: invalidTokenRefs.length,
+      });
+
+      res.status(200).json({
+        ok: true,
+        tokenCount: tokenDocs.length,
+        sentCount,
+        failureCount,
+        deletedInvalidTokens: invalidTokenRefs.length,
+      });
+    } catch (error) {
+      logger.error("Failed to send admin push notification", {error: error?.message || error});
+      res.status(500).json({ok: false, error: error?.message || "push-send-failed"});
     }
   }
 );

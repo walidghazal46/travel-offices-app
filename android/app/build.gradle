@@ -1,5 +1,11 @@
 apply plugin: 'com.android.application'
 
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.travel.offices"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +13,8 @@ android {
         applicationId "com.travel.offices"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 38
-        versionName "1.0.0.38"
+        versionCode 43
+        versionName "1.0.0.43"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,15 +22,33 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            release {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled true
             shrinkResources true
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
             minifyEnabled false
             debuggable true
+        }
+    }
+    sourceSets {
+        main {
+            assets.srcDirs += ['../../dist']
         }
     }
 }
@@ -52,34 +76,6 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
-
-// ── Auto-build web assets before every Android build ──────────────────────
-task buildWebAssets(type: Exec) {
-    description 'Run npm build then copy web assets into Android assets folder'
-    workingDir file('../../')
-
-    def isWindows = System.properties['os.name'].toLowerCase().contains('windows')
-
-    if (isWindows) {
-        // Android Studio JVM doesn't inherit the user PATH, so we add Node.js
-        // locations manually so npm/npx are found regardless of IDE settings.
-        def appData   = System.getenv('APPDATA') ?: ''
-        def extraPath = "${appData}\\npm;C:\\Program Files\\nodejs;C:\\Program Files (x86)\\nodejs"
-        environment 'PATH', "${extraPath};${System.getenv('PATH') ?: ''}"
-        commandLine 'cmd', '/c', 'npm run build && npx cap copy android'
-    } else {
-        def home      = System.getenv('HOME') ?: ''
-        def extraPath = "/usr/local/bin:/usr/bin:${home}/.nvm/current/bin:${home}/.volta/bin"
-        environment 'PATH', "${extraPath}:${System.getenv('PATH') ?: ''}"
-        commandLine 'sh', '-c', 'npm run build && npx cap copy android'
-    }
-
-    // Gradle up-to-date check — skips rebuild if src hasn't changed
-    inputs.files(fileTree('../../src'), file('../../package.json'), file('../../capacitor.config.ts'))
-    outputs.dir('src/main/assets/public')
-}
-preBuild.dependsOn buildWebAssets
-// ──────────────────────────────────────────────────────────────────────────
 
 try {
     def servicesJSON = file('google-services.json')

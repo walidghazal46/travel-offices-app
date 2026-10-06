@@ -314,6 +314,49 @@ export async function sendAdminNotificationInFirebase({ title, body, link } = {}
   );
 }
 
+export async function savePushTokenInFirebase({ token, userUid, platform } = {}) {
+  const cleanToken = String(token || "").trim();
+  const cleanUid = String(userUid || firebaseAuth.currentUser?.uid || "").trim();
+  if (!cleanToken || !cleanUid) return;
+
+  const tokenKey = `${cleanUid}_${cleanToken}`.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 140);
+  await withRetry(async () =>
+    setDoc(doc(firestoreDb, "push_tokens", tokenKey), removeUndefined({
+      token: cleanToken,
+      userUid: cleanUid,
+      platform: String(platform || Capacitor.getPlatform?.() || "").trim(),
+      appId: firebaseConfig.appId,
+      updatedAt: serverTimestamp(),
+      createdAt: serverTimestamp(),
+    }), { merge: true })
+  );
+}
+
+export async function sendAdminPushNotificationViaFirebase({ title, body, link } = {}) {
+  const currentUser = firebaseAuth.currentUser;
+  if (!currentUser) throw new Error("auth-required");
+  const idToken = await currentUser.getIdToken();
+  const response = await fetch("https://us-central1-travel-offices-90c53.cloudfunctions.net/sendAdminPushNotification", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({
+      title: String(title || "").trim(),
+      body: String(body || "").trim(),
+      link: String(link || "").trim(),
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(errorText || `push-http-${response.status}`);
+  }
+
+  return response.json().catch(() => ({ ok: true }));
+}
+
 export async function deleteAdminNotificationInFirebase(notificationId) {
   const cleanId = String(notificationId || "").trim();
   if (!cleanId) return;

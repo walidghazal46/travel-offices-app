@@ -17,25 +17,75 @@ const FREE_OFFICES_PREVIEW_LIMIT = 2;
 const STUDY_INLINE_AD_FALLBACK_IMAGE_URL = "https://firebasestorage.googleapis.com/v0/b/travel-offices-90c53.firebasestorage.app/o/studyads%2FChatGPT%20Image%20Apr%2028%2C%202026%2C%2010_52_43%20AM.png?alt=media&token=6e14882b-8807-4c82-9461-41769058ce51";
 const STUDY_INLINE_AD_FALLBACK_LINK_URL = "https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D8%B5%D9%81%D8%AD%D8%A9%20%D9%85%D9%83%D8%A7%D8%AA%D8%A8%20%D8%A7%D9%84%D8%AF%D8%B1%D8%A7%D8%B3%D8%A9";
 
+function loadAdsenseClientScript() {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return Promise.resolve(false);
+  }
+
+  if (window.adsbygoogle) {
+    return Promise.resolve(true);
+  }
+
+  const scriptId = "adsbygoogle-script";
+  const existingScript = document.getElementById(scriptId);
+  if (existingScript) {
+    return new Promise((resolve) => {
+      existingScript.addEventListener("load", () => resolve(true), { once: true });
+      existingScript.addEventListener("error", () => resolve(false), { once: true });
+    });
+  }
+
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.id = scriptId;
+    script.async = true;
+    script.crossOrigin = "anonymous";
+    script.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6810176545596111";
+    script.addEventListener("load", () => resolve(true), { once: true });
+    script.addEventListener("error", () => resolve(false), { once: true });
+    document.head.appendChild(script);
+  });
+}
+
 function StudyAdSenseSlot({ lang = "ar", dark = false }) {
   const ref = React.useRef(null);
   const [adFilled, setAdFilled] = React.useState(false);
+  const [adChecked, setAdChecked] = React.useState(false);
 
   useEffect(() => {
     if (!ref.current || typeof window === "undefined") return;
-    try {
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-    } catch {
-      // Keep silent if the ad network skips the request in local/dev environments.
-    }
-    const timer = setTimeout(() => {
+    let cancelled = false;
+    let timer = 0;
+
+    loadAdsenseClientScript().then((loaded) => {
+      if (cancelled || !loaded) {
+        setAdChecked(true);
+        return;
+      }
+
+      try {
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      } catch {
+        // Keep silent if the ad network skips the request in local/dev environments.
+      }
+
+      timer = window.setTimeout(() => {
+        if (cancelled) return;
       const ins = ref.current;
       if (ins && ins.getAttribute("data-ad-status") === "filled") {
         setAdFilled(true);
       }
-    }, 2000);
-    return () => clearTimeout(timer);
+      setAdChecked(true);
+      }, 2500);
+    });
+
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
   }, []);
+
+  if (adChecked && !adFilled) return null;
 
   return (
     <div style={{ margin: "0 16px 12px", overflow: "hidden", minHeight: 336, background: dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)", borderRadius: 10, position: "relative", display: "flex", flexDirection: "column", alignItems: "stretch" }}>
@@ -48,26 +98,6 @@ function StudyAdSenseSlot({ lang = "ar", dark = false }) {
         data-ad-format="auto"
         data-full-width-responsive="true"
       />
-      {!adFilled && (
-        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none", gap: 8 }}>
-          <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fbbf24" : "#d97706", fontFamily: "'Cairo',sans-serif" }}>
-            📢 {lang === "ar" ? "مساحة إعلانية" : "Ad Space"}
-          </div>
-          <div style={{ fontSize: 11, color: dark ? "#94a3b8" : "#64748b", lineHeight: 1.6, textAlign: "center", maxWidth: 240, fontFamily: "'Cairo',sans-serif" }}>
-            {lang === "ar"
-              ? "هذه المنطقة مخصصة للإعلانات. للحجز تواصل معنا."
-              : "This area is reserved for ads. Contact us to book."}
-          </div>
-          <a
-            href={STUDY_INLINE_AD_FALLBACK_LINK_URL}
-            target="_blank"
-            rel="noreferrer"
-            style={{ pointerEvents: "all", display: "inline-block", padding: "8px 18px", borderRadius: 999, background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "#fff", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", textDecoration: "none" }}
-          >
-            {lang === "ar" ? "احجز إعلانك الآن" : "Book your ad now"}
-          </a>
-        </div>
-      )}
     </div>
   );
 }

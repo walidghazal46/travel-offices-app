@@ -22,6 +22,15 @@ allprojects {
         google()
         mavenCentral()
     }
+
+    configurations.configureEach {
+        resolutionStrategy.eachDependency { details ->
+            if (details.requested.group == 'org.jetbrains.kotlin') {
+                details.useVersion rootProject.ext.kotlinversion
+                details.because 'Keep Kotlin stdlib artifacts aligned to avoid duplicate jdk7/jdk8 classes'
+            }
+        }
+    }
 }
 
 task clean(type: Delete) {

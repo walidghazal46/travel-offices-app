@@ -28,7 +28,26 @@
       "PowerShell(cd 'c:\\\\Users\\\\admin\\\\test1'; $job = Start-Job { cd 'c:\\\\Users\\\\admin\\\\test1'; npm run dev }; Start-Sleep 8; Receive-Job $job)",
       "PowerShell(cd 'c:\\\\Users\\\\admin\\\\test1'; $job = Start-Job { cd 'c:\\\\Users\\\\admin\\\\test1'; npm run dev 2>&1 }; Start-Sleep 8; Receive-Job $job)",
       "PowerShell(cd 'c:\\\\Users\\\\admin\\\\test1'; Start-Process powershell -ArgumentList \"-NoExit\", \"-Command\", \"cd 'c:\\\\Users\\\\admin\\\\test1'; npm run dev\")",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -sS -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173 --max-time 5)",
+      "Bash(curl -sS http://localhost:5173 --max-time 5)",
+      "Bash(grep -rn \"versionCode\\\\|versionName\\\\|version\" android/app/build.gradle)",
+      "Bash(find . -maxdepth 2 -iname \"*version*\")",
+      "Bash(sed -i '11880,11970d;11733,11823d' src/App.jsx)",
+      "Bash(sed -n '11725,11740p' src/App.jsx)",
+      "Bash(curl -s http://localhost:5173/src/App.jsx -o /dev/null -w \"vite-transform-status:%{http_code}\\\\n\" --max-time 15)",
+      "Bash(git diff *)",
+      "Read(//tmp/**)",
+      "Bash(sed -n '1,4p;51,148p' /tmp/appjsx.diff)",
+      "Bash(sed -n '1,4p;149,246p' /tmp/appjsx.diff)",
+      "Bash(sed -n '1,4p;51,246p' /tmp/appjsx.diff)",
+      "Bash(git apply *)",
+      "Bash(curl -s http://localhost:5173/src/App.jsx -o /dev/null -w \"vite-status:%{http_code}\\\\n\" --max-time 15)",
+      "Bash(file .claude/worktrees/stoic-khayyam-2b9b1d)",
+      "Bash(ls -la .claude/worktrees/)",
+      "Bash(stat -c \"%y %n\" android/app/src/main/assets/public/index.html)",
+      "Bash(powershell -c \"\\(Get-Item 'android/app/src/main/assets/public/index.html'\\).LastWriteTime\")",
+      "Bash(cd C:/Users/admin/test1 && rm -f .git/index.lock && git add src/App.jsx android/app/build.gradle && git status --porcelain)"
     ]
   }
 }

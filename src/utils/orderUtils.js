@@ -70,6 +70,34 @@ export function generateOrderSerial() {
   return `${prefix}-${ts}-${rand}`;
 }
 
+export function buildWhatsAppOrderUrl({
+  phone = "201064463650",
+  orderNumber = generateOrderSerial(),
+  service = "",
+  country = "",
+  city = "",
+  isAr = true,
+} = {}) {
+  const cleanPhone = String(phone || "").replace(/\D/g, "").replace(/^00/, "");
+  const messageLines = isAr
+    ? [
+        "السلام عليكم، أريد بدء طلب جديد.",
+        `رقم الطلب: ${orderNumber}`,
+        service ? `الخدمة: ${service}` : "",
+        country ? `الدولة: ${country}` : "",
+        city ? `المدينة: ${city}` : "",
+      ]
+    : [
+        "Hello, I want to start a new request.",
+        `Order number: ${orderNumber}`,
+        service ? `Service: ${service}` : "",
+        country ? `Country: ${country}` : "",
+        city ? `City: ${city}` : "",
+      ];
+
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageLines.filter(Boolean).join("\n"))}`;
+}
+
 export function getLocalOrdersFromStorage(storageKey) {
   try {
     return JSON.parse(localStorage.getItem(storageKey) || "[]");

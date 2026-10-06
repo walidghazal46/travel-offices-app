@@ -6,4 +6,5 @@
     <string name="package_name">com.travel.offices</string>
     <string name="custom_url_scheme">com.travel.offices</string>
     <string name="admob_application_id">ca-app-pub-6810176545596111~2542215116</string>
+    <string name="default_web_client_id">376340221289-9dt7bd5gb5ulafcti4gujpvksl64ajtg.apps.googleusercontent.com</string>
 </resources>

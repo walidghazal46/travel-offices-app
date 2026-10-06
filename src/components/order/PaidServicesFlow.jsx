@@ -14,6 +14,7 @@ import {
   fetchUserProfileFromFirebase,
   upsertAuthUserProfileInFirebase,
   grantOfficeReviewCoinsIfEligible,
+  getCurrentAuthUser,
 } from '../../firebase';
 import { EGYPT_BANKS_DATA, INTL_BANKS_DATA } from '../../data/paymentData';
 import { STATUS_STEPS_AR, STATUS_STEPS_EN, STATUS_STEP_KEYS } from '../../data/orderStatus';
@@ -31,6 +32,7 @@ import {
   getLocalOrdersFromStorage,
   getRecentOrderCountWithinDays,
   getRequestLimitMessage,
+  buildWhatsAppOrderUrl,
   openOrderEmailDraft,
   sendOrderEmails,
 } from '../../utils/orderUtils';
@@ -212,6 +214,7 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
   const [googlePaySoonModalOpen, setGooglePaySoonModalOpen] = useState(false);
   const [googlePaySoonCountdown, setGooglePaySoonCountdown] = useState(5);
   const [deleteConfirmOrder, setDeleteConfirmOrder] = useState(null);
+  const [quickOrderSyncNotice, setQuickOrderSyncNotice] = useState("");
   const [phoneFieldError, setPhoneFieldError] = useState("");
   const [whatsappFieldError, setWhatsappFieldError] = useState("");
   const [adminServiceOrders, setAdminServiceOrders] = useState([]);
@@ -536,6 +539,109 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
     setRequestLimitNotice(getRequestLimitMessage(windowDays, isAr));
   }, [isAr]);
 
+  const buildQuickOrderRecord = useCallback((serial) => {
+    const now = new Date();
+    const authUser = getCurrentAuthUser?.();
+    const email = String(authUser?.email || form?.email || "").trim();
+    const country = String(activeCountry || form?.country || selectedCountry || "").trim();
+    const serviceLabel = selectedService?.label || form?.providedService || (isAr ? "طلب جديد" : "New request");
+
+    return hydratePaidOrder({
+      serial,
+      serviceKey: selectedService?.key || "quick-order",
+      limitBucket,
+      service: serviceLabel,
+      providedService: serviceLabel,
+      serviceIcon: selectedService?.icon || "🧾",
+      serviceSubtitle: isAr ? "طلب مبسط محفوظ محليًا وعلى Firebase" : "Simple request saved locally and in Firebase",
+      country,
+      city: selectedCity || "",
+      name: authUser?.displayName || "",
+      phone: authUser?.phoneNumber || "",
+      email,
+      whatsapp: "",
+      paymentMethod: "",
+      paymentMethodKey: "",
+      notes: "",
+      date: now.toISOString(),
+      dateStr: now.toLocaleString(isAr ? "ar-EG" : "en-US", { dateStyle: "medium", timeStyle: "short" }),
+      statusIndex: 0,
+      price: 0,
+      originalPrice: 0,
+      billingLabel: isAr ? "طلب جديد" : "New request",
+      features: [],
+      serviceCategory: isCvPaidFlow ? "cv-quick-order" : "country-service-quick-order",
+      quickOrder: true,
+      userUid: authUser?.uid || "",
+      receiptName: "",
+      receiptAttached: false,
+      emailDeliveryStatus: "not-required",
+      stageConfirmations: createInitialStageConfirmations(),
+    });
+  }, [activeCountry, form?.country, form?.email, form?.providedService, isAr, isCvPaidFlow, limitBucket, selectedCity, selectedCountry, selectedService]);
+
+  const shareOrderOnWhatsApp = useCallback((orderItem) => {
+    const url = buildWhatsAppOrderUrl({
+      phone: WHATSAPP,
+      orderNumber: orderItem?.serial || generateOrderSerial(),
+      service: orderItem?.service || orderItem?.providedService || "",
+      country: orderItem?.country || activeCountry || "",
+      city: orderItem?.city || selectedCity || "",
+      isAr,
+    });
+    window.open(url, "_blank", "noopener,noreferrer");
+  }, [activeCountry, isAr, selectedCity]);
+
+  const createQuickOrderForNewRequest = useCallback(async () => {
+    const serial = generateOrderSerial();
+    const quickOrder = buildQuickOrderRecord(serial);
+    const nextOrders = [quickOrder, ...existingOrders.filter((entry) => entry?.serial !== serial)];
+    saveOrders(nextOrders);
+    setQuickOrderSyncNotice("");
+
+    if (!quickOrder.email) {
+      setQuickOrderSyncNotice(isAr ? "تم حفظ الطلب محليًا فقط لأن الحساب لا يحتوي على بريد إلكتروني." : "Saved locally only because the account has no email.");
+      return quickOrder;
+    }
+
+    try {
+      const firebaseId = await createOrderViaFirebaseFunction({
+        serial: quickOrder.serial,
+        email: quickOrder.email,
+        userUid: quickOrder.userUid,
+        country: quickOrder.country,
+        service: quickOrder.service,
+        serviceKey: quickOrder.serviceKey,
+        serviceCategory: quickOrder.serviceCategory,
+        limitBucket: quickOrder.limitBucket,
+        quickOrder: true,
+        date: quickOrder.date,
+        dateStr: quickOrder.dateStr,
+      });
+      const syncedOrder = hydratePaidOrder({ ...quickOrder, firebaseId, firebaseSyncStatus: "synced" });
+      setExistingOrders((prev) => {
+        const merged = prev.map((entry) => entry.serial === serial ? syncedOrder : entry);
+        try { localStorage.setItem(storageKey, JSON.stringify(merged)); } catch {}
+        return merged;
+      });
+      return syncedOrder;
+    } catch (error) {
+      console.error("Quick order Firebase save failed", error);
+      const failedOrder = hydratePaidOrder({
+        ...quickOrder,
+        firebaseSyncStatus: "failed",
+        firebaseSyncError: String(error?.code || error?.message || "firebase-save-failed"),
+      });
+      setExistingOrders((prev) => {
+        const merged = prev.map((entry) => entry.serial === serial ? failedOrder : entry);
+        try { localStorage.setItem(storageKey, JSON.stringify(merged)); } catch {}
+        return merged;
+      });
+      setQuickOrderSyncNotice(isAr ? "تم حفظ الطلب محليًا، وتعذر رفعه إلى Firebase الآن." : "Saved locally, but Firebase sync failed for now.");
+      return failedOrder;
+    }
+  }, [buildQuickOrderRecord, existingOrders, isAr, storageKey]);
+
   const serviceOrderMatches = useCallback((order, serviceItem) => {
     const serviceKey = String(serviceItem?.key || "").trim();
     const serviceLabel = String(serviceItem?.label || "").trim().toLowerCase();
@@ -673,7 +779,8 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
 
   const handleAdminDeleteServiceOrder = useCallback(async (orderItem) => {
     const firebaseId = String(orderItem?.firebaseId || orderItem?.id || "").trim();
-    if (!firebaseId) {
+    const serial = String(orderItem?.serial || "").trim();
+    if (!firebaseId && !serial) {
       setAdminServiceOrdersError(isAr ? "معرّف الطلب غير صالح للحذف." : "Invalid order identifier for deletion.");
       return;
     }
@@ -686,18 +793,30 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
     setDeleteConfirmOrder(null);
     if (!orderItem) return;
     const firebaseId = String(orderItem?.firebaseId || orderItem?.id || "").trim();
-    if (!firebaseId) return;
+    const serial = String(orderItem?.serial || "").trim();
+    if (!firebaseId && !serial) return;
 
-    setAdminServiceBusyOrderId(firebaseId);
+    setAdminServiceBusyOrderId(firebaseId || serial);
     setAdminServiceOrdersError("");
     try {
-      await deleteOrderInFirebase(firebaseId);
-      setAdminServiceOrders((prev) => prev.filter((entry) => String(entry.firebaseId || entry.id || "") !== firebaseId));
-      setExistingOrders((prev) => prev.filter((entry) => String(entry.firebaseId || entry.id || "") !== firebaseId));
+      if (firebaseId) {
+        await deleteOrderInFirebase(firebaseId);
+      }
+      const matchesOrder = (entry) => {
+        const entryFirebaseId = String(entry?.firebaseId || entry?.id || "").trim();
+        const entrySerial = String(entry?.serial || "").trim();
+        return (firebaseId && entryFirebaseId === firebaseId) || (serial && entrySerial === serial);
+      };
+      setAdminServiceOrders((prev) => prev.filter((entry) => !matchesOrder(entry)));
+      setExistingOrders((prev) => {
+        const next = prev.filter((entry) => !matchesOrder(entry));
+        try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch {}
+        return next;
+      });
       if (adminSelectedServiceOrderId === firebaseId) {
         setAdminSelectedServiceOrderId("");
       }
-      if (currentOrder && String(currentOrder.firebaseId || currentOrder.id || "") === firebaseId) {
+      if (currentOrder && matchesOrder(currentOrder)) {
         setCurrentOrder(null);
       }
     } catch (error) {
@@ -706,7 +825,7 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
     } finally {
       setAdminServiceBusyOrderId("");
     }
-  }, [deleteConfirmOrder, adminSelectedServiceOrderId, currentOrder, isAr]);
+  }, [deleteConfirmOrder, adminSelectedServiceOrderId, currentOrder, isAr, storageKey]);
 
   const handleAdminToggleOrderStage = useCallback(async (orderItem, stageKey, stageIndex) => {
     const firebaseId = String(orderItem?.firebaseId || "").trim();
@@ -808,17 +927,20 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
           .flatMap((key) => getLocalOrdersFromStorage(key))
       : getLocalOrdersFromStorage(storageKey);
 
-    const limit = 3;
-    const windowDays = 7;
+    const limit = 5;
+    const windowDays = 30;
     if (getRecentOrderCountWithinDays(recentOrders, windowDays) >= limit) {
       setRequestLimitNoticeTitle(isAr ? "تم الوصول إلى حد الطلبات" : "Request limit reached");
       setRequestLimitNotice(getRequestLimitMessage(windowDays, isAr));
       return;
     }
 
+    void createQuickOrderForNewRequest().then((quickOrder) => {
+      shareOrderOnWhatsApp(quickOrder);
+    });
+
     setStep(1);
-    setScreen("form");
-  }, [isAr, isCvPaidFlow, isGuestUser, storageKey]);
+  }, [createQuickOrderForNewRequest, isAr, isCvPaidFlow, isGuestUser, shareOrderOnWhatsApp, storageKey]);
 
   const handleInternalBack = useCallback(() => {
     setFirebaseSubmitError("");
@@ -991,6 +1113,7 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
   const buildOrder = () => {
     const serial = generateOrderSerial();
     const now = new Date();
+    const authUser = getCurrentAuthUser?.();
     const dateStr = now.toLocaleString(isAr ? "ar-EG" : "en-US",{dateStyle:"medium",timeStyle:"short"});
     const providedServiceValue = requiresSubService
       ? `${selectedService?.label || ""}${form.subService ? ` — ${isOtherSubService ? form.customService.trim() : form.subService}` : ""}`
@@ -1009,6 +1132,7 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
       phone:form.phone,
       email:form.email,
       whatsapp:form.whatsapp,
+      userUid: authUser?.uid || "",
       paymentMethod: isAr ? banks[form.paymentMethod]?.label : banks[form.paymentMethod]?.labelEn,
       paymentMethodKey:form.paymentMethod,
       notes:form.notes,
@@ -1754,6 +1878,9 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
       <button onClick={openPaidNewRequest} style={{ ...btnStyle(goldGrad), marginBottom:12 }}>
         ➕ {isAr?"طلب جديد":"New Request"}
       </button>
+      <div style={{ margin:"-4px 0 12px", textAlign:"center", color:t.subText, fontSize:11, fontWeight:800, lineHeight:1.7 }}>
+        {isAr ? "ملاحظة: لكل مستخدم 5 طلبات فقط خلال الشهر." : "Note: each user has only 5 requests per month."}
+      </div>
       {
         <a
           href={`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(isAr ? "السلام عليكم، في حالة فشل إرسال الطلب أرسل لكم كل البيانات للمساعدة." : "Hello, if the request fails to submit, I will send all details for support.")}`}
@@ -1771,10 +1898,38 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
           </div>
         </a>
       }
+      {quickOrderSyncNotice && (
+        <div style={{ marginBottom:10, borderRadius:12, padding:"9px 12px", background:"rgba(245,158,11,0.10)", border:"1px solid rgba(245,158,11,0.25)", color:"#b45309", fontSize:11, fontWeight:800, lineHeight:1.7 }}>
+          {quickOrderSyncNotice}
+        </div>
+      )}
       {existingOrders.length > 0 ? (
-        <button onClick={() => setScreen("previousOrders")} style={{ ...btnStyle(t.inputBg, t.gold), border:`1px solid ${t.gold}`, boxShadow:"none" }}>
-          📋 {isAr?`طلباتي السابقة (${existingOrders.length})`:`My Previous Orders (${existingOrders.length})`}
-        </button>
+        <div style={{ display:"grid", gap:8 }}>
+          {existingOrders.map((o, i) => (
+            <div key={o.serial || i} style={{ padding:"12px 14px", borderRadius:14, background:t.cardBg, border:`1px solid ${t.border}`, fontFamily:"'Cairo',sans-serif" }}>
+              <div style={{ display:"flex", alignItems:"flex-start", gap:10, marginBottom:10 }}>
+                <div style={{ width:36, height:36, borderRadius:10, background:t.goldBg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>{o.serviceIcon||"🧾"}</div>
+                <div style={{ flex:1, minWidth:0, textAlign:isAr?"right":"left" }}>
+                  <div style={{ fontSize:12, fontWeight:900, color:t.text }}>{o.service || (isAr ? "طلب جديد" : "New request")}</div>
+                  <div style={{ fontSize:11, color:t.gold, fontWeight:900, direction:"ltr" }}>{o.serial}</div>
+                  <div style={{ fontSize:10, color:t.subText, overflowWrap:"anywhere" }}>{o.email || (isAr ? "لا يوجد بريد بالحساب" : "No account email")}</div>
+                  <div style={{ fontSize:10, color:t.subText }}>{isAr ? "الدولة" : "Country"}: {o.country || "-"}</div>
+                </div>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:7 }}>
+                <button onClick={() => { setCurrentOrder(hydratePaidOrder(o)); setScreen("status"); }} style={{ border:`1px solid ${t.gold}44`, background:t.inputBg, color:t.gold, borderRadius:10, padding:"8px 6px", fontSize:11, fontWeight:900, cursor:"pointer", fontFamily:"'Cairo',sans-serif" }}>
+                  {isAr ? "متابعة" : "Track"}
+                </button>
+                <button onClick={() => shareOrderOnWhatsApp(o)} style={{ border:"1px solid rgba(34,197,94,0.28)", background:"rgba(34,197,94,0.10)", color:"#16a34a", borderRadius:10, padding:"8px 6px", fontSize:11, fontWeight:900, cursor:"pointer", fontFamily:"'Cairo',sans-serif" }}>
+                  {isAr ? "واتساب" : "WhatsApp"}
+                </button>
+                <button onClick={() => handleAdminDeleteServiceOrder(o)} style={{ border:"1px solid rgba(239,68,68,0.28)", background:"rgba(239,68,68,0.10)", color:"#dc2626", borderRadius:10, padding:"8px 6px", fontSize:11, fontWeight:900, cursor:"pointer", fontFamily:"'Cairo',sans-serif" }}>
+                  {isAr ? "حذف" : "Delete"}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div style={{ textAlign:"center", color:t.subText, fontSize:12, padding:16 }}>{isAr?"لا توجد طلبات سابقة":"No previous orders"}</div>
       )}
@@ -1796,12 +1951,14 @@ export default function PaidServicesFlow({ services, lang, dark, selectedCountry
               <div style={{ fontSize:10, color:t.subText }}>{o.dateStr}</div>
             </div>
             <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:5 }}>
-              {isAdminUser && (
-                <span onClick={(e) => { e.stopPropagation(); handleAdminDeleteServiceOrder(o); }}
-                  style={{ fontSize:10, background:"#ef444418", color:"#ef4444", border:"1px solid #ef444430", borderRadius:8, padding:"3px 8px", fontWeight:700, cursor:"pointer", fontFamily:"'Cairo',sans-serif", boxShadow:"0 0 8px #ef444430" }}>
-                  {isAr?"حذف":"Delete"}
-                </span>
-              )}
+              <span onClick={(e) => { e.stopPropagation(); shareOrderOnWhatsApp(o); }}
+                style={{ fontSize:10, background:"#22c55e18", color:"#16a34a", border:"1px solid #22c55e30", borderRadius:8, padding:"3px 8px", fontWeight:700, cursor:"pointer", fontFamily:"'Cairo',sans-serif" }}>
+                {isAr?"واتساب":"WhatsApp"}
+              </span>
+              <span onClick={(e) => { e.stopPropagation(); handleAdminDeleteServiceOrder(o); }}
+                style={{ fontSize:10, background:"#ef444418", color:"#ef4444", border:"1px solid #ef444430", borderRadius:8, padding:"3px 8px", fontWeight:700, cursor:"pointer", fontFamily:"'Cairo',sans-serif", boxShadow:"0 0 8px #ef444430" }}>
+                {isAr?"حذف":"Delete"}
+              </span>
               <div style={{ fontSize:10, background:"#22c55e18", color:"#22c55e", border:"1px solid #22c55e30", borderRadius:8, padding:"3px 8px", fontWeight:700 }}>{isAr?"متابعة":"Track"}</div>
             </div>
           </button>

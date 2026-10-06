@@ -612,7 +612,7 @@ export const useCVBuilder = ({ lang = 'ar', authUser = null, guestMode = false, 
   }, []);
 
   const openCvBuilderNewRequest = useCallback(() => {
-    if (getRecentOrderCountWithinDays(cvBuilderOrders, 30) >= 3) {
+    if (getRecentOrderCountWithinDays(cvBuilderOrders, 30) >= 5) {
       setModal({ type: "requestLimit", title: lang === "ar" ? "تم الوصول إلى حد الطلبات" : "Request limit reached", msg: getRequestLimitMessage(30, lang === "ar") });
       return;
     }

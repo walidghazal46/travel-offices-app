@@ -1,8 +1,8 @@
 ext {
     minSdkVersion = 24
-    compileSdkVersion = 35
-    targetSdkVersion = 35
-    kotlinversion = '2.0.21'
+    compileSdkVersion = 36
+    targetSdkVersion = 36
+    kotlinversion = '2.2.20'
     rgcfaIncludeGoogle = true
     androidxCredentialsVersion = '1.2.2'
     androidxActivityVersion = '1.9.3'

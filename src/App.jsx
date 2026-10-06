@@ -35,6 +35,7 @@ import {
   getCurrentAuthUser,
   subscribeAdminNotificationsFromFirebase,
   sendAdminNotificationInFirebase,
+  sendAdminPushNotificationViaFirebase,
   deleteAdminNotificationInFirebase,
   deleteOfficeReviewFromFirebase,
   saveOfficeReviewToFirebase,
@@ -90,6 +91,7 @@ import { buildCvPdfDocument, buildCvWordDocument } from "./components/cv/cvExpor
 import ServiceProviderPortalFlow from "./components/ServiceProviderPortalFlow";
 import StudyAbroadDirectory from "./components/studyAbroad/StudyAbroadDirectory";
 import { setAndroidSecureScreen } from "./services/screenSecurity";
+import { registerPushNotificationsForUser } from "./services/pushNotifications";
 const PaidServicesFlow = React.lazy(() => import("./components/order/PaidServicesFlow"));
 import logo from './assets/splash.png';
 const PRIMARY_ADMIN_EMAIL = "walidghazal46@gmail.com";
@@ -955,24 +957,73 @@ class PaidFlowErrorBoundary extends React.Component {
   }
 }
 
-function AdSenseUnit({ lang = "ar", dark = false }) {
+function loadAdsenseClientScript() {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return Promise.resolve(false);
+  }
+
+  if (window.adsbygoogle) {
+    return Promise.resolve(true);
+  }
+
+  const scriptId = "adsbygoogle-script";
+  const existingScript = document.getElementById(scriptId);
+  if (existingScript) {
+    return new Promise((resolve) => {
+      existingScript.addEventListener("load", () => resolve(true), { once: true });
+      existingScript.addEventListener("error", () => resolve(false), { once: true });
+    });
+  }
+
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.id = scriptId;
+    script.async = true;
+    script.crossOrigin = "anonymous";
+    script.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6810176545596111";
+    script.addEventListener("load", () => resolve(true), { once: true });
+    script.addEventListener("error", () => resolve(false), { once: true });
+    document.head.appendChild(script);
+  });
+}
+
+function AdSenseUnit({ lang = "ar", dark = false, slot = "2882839892" }) {
   const ref = React.useRef(null);
   const [adFilled, setAdFilled] = React.useState(false);
+  const [adChecked, setAdChecked] = React.useState(false);
 
   React.useEffect(() => {
     if (!ref.current) return;
-    try {
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-    } catch { /* silent */ }
-    // check after short delay if AdSense filled the slot
-    const timer = setTimeout(() => {
+    let cancelled = false;
+    let timer = 0;
+
+    loadAdsenseClientScript().then((loaded) => {
+      if (cancelled || !loaded) {
+        setAdChecked(true);
+        return;
+      }
+
+      try {
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      } catch { /* silent */ }
+
+      timer = window.setTimeout(() => {
+        if (cancelled) return;
       const ins = ref.current;
       if (ins && ins.getAttribute("data-ad-status") === "filled") {
         setAdFilled(true);
       }
-    }, 2000);
-    return () => clearTimeout(timer);
+      setAdChecked(true);
+      }, 2500);
+    });
+
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
   }, []);
+
+  if (adChecked && !adFilled) return null;
 
   return (
     <div style={{ overflow: "hidden", margin: "10px 0", minHeight: 336, background: dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)", borderRadius: 10, position: "relative", display: "flex", flexDirection: "column", alignItems: "stretch" }}>
@@ -981,30 +1032,10 @@ function AdSenseUnit({ lang = "ar", dark = false }) {
         className="adsbygoogle"
         style={{ display: "block", minHeight: 336, width: "100%" }}
         data-ad-client="ca-pub-6810176545596111"
-        data-ad-slot="2882839892"
+        data-ad-slot={slot}
         data-ad-format="auto"
         data-full-width-responsive="true"
       />
-      {!adFilled && (
-        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none", gap: 8 }}>
-          <div style={{ fontSize: 13, fontWeight: 900, color: dark ? "#fbbf24" : "#d97706", fontFamily: "'Cairo',sans-serif" }}>
-            📢 {lang === "ar" ? "مساحة إعلانية" : "Ad Space"}
-          </div>
-          <div style={{ fontSize: 11, color: dark ? "#94a3b8" : "#64748b", lineHeight: 1.6, textAlign: "center", maxWidth: 240, fontFamily: "'Cairo',sans-serif" }}>
-            {lang === "ar"
-              ? "هذه المنطقة مخصصة للإعلانات. للحجز تواصل معنا."
-              : "This area is reserved for ads. Contact us to book."}
-          </div>
-          <a
-            href="https://wa.me/201064463650?text=%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%AD%D8%AC%D8%B2%20%D8%A7%D8%B9%D9%84%D8%A7%D9%86%20%D8%A8%D8%A7%D9%84%D8%AA%D8%B7%D8%A8%D9%8A%D9%82"
-            target="_blank"
-            rel="noreferrer"
-            style={{ pointerEvents: "all", display: "inline-block", padding: "8px 18px", borderRadius: 999, background: "linear-gradient(135deg,#f59e0b,#d97706)", color: "#fff", fontSize: 11, fontWeight: 900, fontFamily: "'Cairo',sans-serif", textDecoration: "none" }}
-          >
-            {lang === "ar" ? "احجز إعلانك الآن" : "Book your ad now"}
-          </a>
-        </div>
-      )}
     </div>
   );
 }
@@ -2049,6 +2080,13 @@ export default function App() {
   }, [authPreviewUser?.uid, isGuestUser]);
 
   useEffect(() => {
+    if (!authPreviewUser?.uid || isGuestUser) return;
+    registerPushNotificationsForUser(authPreviewUser).catch((error) => {
+      console.warn("Push notification setup failed", error);
+    });
+  }, [authPreviewUser, authPreviewUser?.uid, isGuestUser]);
+
+  useEffect(() => {
     try {
       localStorage.setItem("seenNotificationIds", JSON.stringify(seenNotificationIds.slice(-200)));
     } catch {}
@@ -2090,13 +2128,15 @@ export default function App() {
 
     try {
       await sendAdminNotificationInFirebase({ title: cleanTitle, body: cleanBody, link: cleanLink });
+      const pushResult = await sendAdminPushNotificationViaFirebase({ title: cleanTitle, body: cleanBody, link: cleanLink });
       setAdminNotificationTitle("");
       setAdminNotificationBody("");
       setAdminNotificationLink("");
+      const sentCount = Number(pushResult?.sentCount || 0);
       setAdminNotificationSuccess(
         lang === "ar"
-          ? "تم إرسال الإشعار لجميع المستخدمين بنجاح."
-          : "Notification sent to all users successfully."
+          ? `تم إرسال الإشعار داخل التطبيق وإرسال Push إلى ${sentCount} جهاز.`
+          : `Notification saved in-app and pushed to ${sentCount} devices.`
       );
     } catch (error) {
       console.error("Failed to send admin notification", error);
@@ -7095,6 +7135,16 @@ const mobileOfficeCardWidth = "100%";
     }
   }, []);
 
+  const scrollAppToTopSoon = useCallback(() => {
+    scrollAppToTop();
+    if (typeof window === "undefined") return;
+
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => scrollAppToTop());
+    }
+    window.setTimeout(() => scrollAppToTop(), 120);
+  }, [scrollAppToTop]);
+
   const goToCountryLanding = () => {
     if (!closeSelectedOfficeView()) return;
     setMainTab("home");
@@ -7112,6 +7162,32 @@ const mobileOfficeCardWidth = "100%";
     setActiveTab("ministry");
     setView("egyptMenu");
   };
+
+  const handleBottomNavPress = useCallback((tabKey) => {
+    if (mainTab === tabKey) {
+      scrollAppToTopSoon();
+      return;
+    }
+
+    if (tabKey === "home") {
+      goToCountryLanding();
+    } else if (tabKey === "cv") {
+      showInterstitialAd();
+      setMainTab("cv");
+      setCvMode(null);
+      setSelectedCvPackage(null);
+      setCvBuilderScreen("menu");
+      setSelectedCvBuilderOrder(null);
+      setCvStep(0);
+      setCvUnlocked(false);
+    } else if (tabKey === "study") {
+      openStudyTabRoot();
+    } else {
+      setMainTab(tabKey);
+    }
+
+    scrollAppToTopSoon();
+  }, [goToCountryLanding, mainTab, openStudyTabRoot, scrollAppToTopSoon, showInterstitialAd]);
 
   const handleAppBackNavigation = useCallback(() => {
     if (showExitConfirm) {
@@ -10675,8 +10751,8 @@ const mobileOfficeCardWidth = "100%";
           </div>
           <div style={{ marginBottom: 10, color: "rgba(255,255,255,0.65)", fontSize: 10.5, fontWeight: 600, fontFamily: "'Cairo',sans-serif", lineHeight: 1.7 }}>
             {lang === "ar"
-              ? "أرسل إشعارًا عامًا يصل لجميع المستخدمين المسجلين داخل التطبيق فورًا (يظهر في 🔔 الإشعارات بإعداداتهم)."
-              : "Send a broadcast notification that instantly reaches all signed-in users (shown in their 🔔 Notifications panel)."}
+              ? "أرسل إشعارًا عامًا يظهر داخل التطبيق ويرسل Push Notification لأجهزة المستخدمين المسجلين بعد تفعيلهم للإشعارات."
+              : "Send a broadcast notification in-app and as a Push Notification to signed-in users who enabled notifications."}
           </div>
 
           <div style={{ display: "grid", gap: 8 }}>
@@ -13796,97 +13872,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
                     )}
                   </div>
 
-                  {/* ── المهن المحظورة (Mamno) card ── */}
-                  {(() => {
-                    const isLocked = !authPreviewUser || isGuestUser;
-                    const mamnoCats = [
-                      { icon: "🏢", label: lang === "ar" ? "المهن الإدارية والقيادية" : "Administrative & Leadership", items: ["مدير الموارد البشرية", "مسؤول التوظيف", "سكرتير تنفيذي", "مساعد إداري", "مدخل بيانات", "أمين مخزن", "مخلص جمركي", "موظف استقبال", "حارس أمن", "أخصائي علاقات عامة"] },
-                      { icon: "🛒", label: lang === "ar" ? "مهن التجارة والتجزئة" : "Retail & Trade", items: ["البائعون في الملابس", "البائعون في الأثاث", "البائعون في الأجهزة", "البائعون في الساعات", "البائعون في قطع الغيار", "كاشير (محاسب مبيعات)"] },
-                      { icon: "🏨", label: lang === "ar" ? "السياحة والضيافة" : "Tourism & Hospitality", items: ["موظف استقبال فندقي", "مأمور سنترال فندقي", "مدير فندق (نسبة 70%)", "مدير الأمن والسلامة", "مشرف طوابق", "مرشد سياحي"] },
-                      { icon: "📣", label: lang === "ar" ? "التسويق والمبيعات" : "Marketing & Sales", items: ["مدير تسويق", "مصمم جرافيك", "أخصائي تسويق رقمي", "مدير دعاية وإعلان", "أخصائي مبيعات أجهزة", "مندوب مبيعات دوائي"] },
-                      { icon: "📦", label: lang === "ar" ? "المشتريات والعقود" : "Procurement & Contracts", items: ["مدير مشتريات", "مندوب مشتريات", "مدير عقود", "أخصائي مناقصات", "محلل سلسلة إمداد", "مسؤول مستودع"] },
-                      { icon: "💰", label: lang === "ar" ? "المحاسبة والمالية" : "Accounting & Finance", items: ["محاسب قانوني", "مراجع داخلي", "محلل مالي", "مدير مالي", "أخصائي ضرائب", "مدير ميزانية"] },
-                      { icon: "🏗️", label: lang === "ar" ? "الهندسة والبناء" : "Engineering & Construction", items: ["مهندس مدني", "مهندس معماري", "مهندس كهربائي", "مهندس ميكانيكا", "مراقب بناء"] },
-                      { icon: "🏥", label: lang === "ar" ? "المهن الصحية" : "Healthcare", items: ["طبيب أسنان", "صيدلاني مستشفيات", "أخصائي مختبر طبي", "أخصائي أشعة", "فني علاج طبيعي"] },
-                    ];
-                    const q = mamnoSearch.trim();
-                    const filtered = q
-                      ? mamnoCats.map(c => ({ ...c, items: c.items.filter(i => i.includes(q)) })).filter(c => c.items.length > 0)
-                      : mamnoCats;
-
-                    return (
-                      <div style={{ marginTop: 10.4, borderRadius: 20, padding: "10px 10px 14px", background: dark ? "rgba(255,255,255,0.04)" : "linear-gradient(160deg,rgba(255,255,255,0.98) 0%,rgba(255,245,245,0.97) 100%)", border: `1px solid ${dark ? "rgba(220,38,38,0.20)" : "rgba(220,38,38,0.15)"}`, boxShadow: dark ? "none" : "0 4px 28px rgba(220,38,38,0.10),0 0 0 1px rgba(255,255,255,0.9)", position: "relative", overflow: "hidden" }}>
-                        {/* glow orbs */}
-                        <div style={{ position:"absolute",top:-50,left:-50,width:160,height:160,borderRadius:"50%",background:"radial-gradient(circle,rgba(220,38,38,0.07),transparent 70%)",pointerEvents:"none" }} />
-                        <div style={{ position:"absolute",bottom:-40,right:-40,width:130,height:130,borderRadius:"50%",background:"radial-gradient(circle,rgba(239,68,68,0.07),transparent 70%)",pointerEvents:"none" }} />
-                        {/* badge */}
-                        <div style={{ textAlign:"center", marginBottom:6 }}>
-                          <span style={{ display:"inline-block", background:"rgba(220,38,38,0.09)", border:"1px solid rgba(220,38,38,0.25)", color: dark?"#fca5a5":"#dc2626", fontSize:15, fontWeight:700, padding:"3px 14px", borderRadius:30, fontFamily:"'Cairo',sans-serif" }}>
-                            🚫 {lang==="ar" ? "دليل المهن الممنوع استقدامها 2026" : "Forbidden Jobs Guide 2026"}
-                          </span>
-                        </div>
-                        {/* title shimmer */}
-                        <div style={{ textAlign:"center", fontSize:14, fontWeight:900, lineHeight:1.35, marginBottom:6, fontFamily:"'Cairo',sans-serif", color: dark ? "#fca5a5" : "#991b1b" }}>
-                          {lang==="ar" ? "المهن المحظورة والمسعودة في السعودية 🇸🇦" : "Forbidden & Saudized Jobs in KSA 🇸🇦"}
-                        </div>
-                        {/* stats */}
-                        <div style={{ display:"flex", justifyContent:"center", gap:14, marginBottom:10 }}>
-                          {[{n:"69+",l:lang==="ar"?"مهنة محظورة":"Forbidden"},{n:"8",l:lang==="ar"?"قطاعات":"Sectors"},{n:"2026",l:lang==="ar"?"عام التطبيق":"Application Year"}].map(s=>(
-                            <div key={s.l} style={{ textAlign:"center" }}>
-                              <div style={{ fontSize:16, fontWeight:900, color: dark?"#fca5a5":"#dc2626", fontFamily:"'Cairo',sans-serif" }}>{s.n}</div>
-                              <div style={{ fontSize:10, color: dark?"rgba(255,255,255,0.5)":"#64748b", fontFamily:"'Cairo',sans-serif" }}>{s.l}</div>
-                            </div>
-                          ))}
-                        </div>
-                        {isLocked ? (
-                          <div
-                            onClick={() => setModal({ type:"guestLinksAlert", title: lang==="ar"?"تسجيل الدخول مطلوب":"Login Required", msg: lang==="ar"?"يجب تسجيل الدخول للوصول إلى دليل المهن المحظورة الكامل واللوائح التنظيمية":"Sign in to access the full forbidden jobs guide and regulatory restrictions" })}
-                            style={{ background: dark?"rgba(127,29,29,0.18)":"rgba(254,242,242,0.7)", borderRadius:16, padding:"20px 16px", textAlign:"center", cursor:"pointer", border:`2px solid ${dark?"rgba(248,113,113,0.25)":"rgba(220,38,38,0.3)"}`, marginTop:4 }}
-                          >
-                            <div style={{ fontSize:28, marginBottom:8 }}>🔒</div>
-                            <div style={{ fontSize:14, fontWeight:900, color: dark?"#fca5a5":"#991b1b", fontFamily:"'Cairo',sans-serif", lineHeight:1.5, marginBottom:12 }}>
-                              {lang==="ar" ? "يجب تسجيل الدخول للإطلاع على جميع المهن المحظور استقدامها ونسب التوطين" : "Sign in to view all forbidden jobs and Saudization percentages"}
-                            </div>
-                            <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(90deg,#dc2626,#991b1b)", color:"#fff", fontSize:13, fontWeight:800, padding:"9px 26px", borderRadius:24, fontFamily:"'Cairo',sans-serif", boxShadow:"0 4px 16px rgba(220,38,38,0.4)" }}>
-                              <span>تسجيل الدخول</span><span>←</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <button onClick={() => setShowMamnoPage(true)} style={{ width:"100%", padding:"9px 14px", borderRadius:12, background:"linear-gradient(90deg,#dc2626,#991b1b)", color:"#fff", fontSize:12, fontWeight:800, fontFamily:"'Cairo',sans-serif", border:"none", cursor:"pointer", marginBottom:10, boxShadow:"0 4px 14px rgba(220,38,38,0.3)" }}>
-                              📖 {lang==="ar" ? "عرض الدليل الكامل — المهن المحظورة والجزاءات" : "View Full Guide — Forbidden Jobs & Penalties"}
-                            </button>
-                            <input
-                              type="text"
-                              placeholder={lang==="ar" ? "🔍 ابحث عن مهنة محظورة..." : "🔍 Search forbidden profession..."}
-                              value={mamnoSearch}
-                              onChange={e => setMamnoSearch(e.target.value)}
-                              style={{ width:"100%", padding:"8px 12px", borderRadius:12, border:`1px solid ${dark?"rgba(255,255,255,0.15)":"rgba(220,38,38,0.2)"}`, background: dark?"rgba(255,255,255,0.07)":"rgba(255,245,245,0.8)", color: dark?"#f1f5f9":"#7f1d1d", fontSize:12, fontFamily:"'Cairo',sans-serif", marginBottom:10, outline:"none", direction:"rtl" }}
-                            />
-                            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                              {filtered.map(cat => (
-                                <button key={cat.label} onClick={() => setShowMamnoPage(true)} style={{ background: dark?"rgba(255,255,255,0.05)":"rgba(255,245,245,0.7)", borderRadius:14, padding:"9px 12px", border:`1px solid ${dark?"rgba(255,255,255,0.08)":"rgba(220,38,38,0.12)"}`, cursor:"pointer", textAlign:"right", width:"100%" }}>
-                                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7 }}>
-                                    <span style={{ fontSize:11, color: dark?"rgba(255,255,255,0.35)":"#94a3b8", fontFamily:"'Cairo',sans-serif" }}>اضغط للتفاصيل ←</span>
-                                    <div style={{ fontSize:13, fontWeight:800, color: dark?"#fca5a5":"#dc2626", fontFamily:"'Cairo',sans-serif" }}>{cat.icon} {cat.label}</div>
-                                  </div>
-                                  <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
-                                    {cat.items.slice(0,6).map(item => (
-                                      <span key={item} style={{ background: dark?"rgba(220,38,38,0.2)":"rgba(254,226,226,0.9)", border:`1px solid ${dark?"rgba(220,38,38,0.3)":"rgba(248,113,113,0.6)"}`, color: dark?"#fca5a5":"#991b1b", borderRadius:7, padding:"2px 9px", fontSize:12, fontFamily:"'Cairo',sans-serif" }}>{item}</span>
-                                    ))}
-                                    {cat.items.length > 6 && <span style={{ background:"transparent", border:`1px dashed ${dark?"rgba(220,38,38,0.3)":"rgba(248,113,113,0.6)"}`, color: dark?"#fca5a5":"#ef4444", borderRadius:7, padding:"2px 9px", fontSize:12, fontFamily:"'Cairo',sans-serif" }}>+{cat.items.length - 6} أكثر...</span>}
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                            <div style={{ marginTop:8, fontSize:10, color: dark?"rgba(255,255,255,0.3)":"#94a3b8", textAlign:"center", fontFamily:"'Cairo',sans-serif" }}>
-                              {lang==="ar" ? "المصدر: وزارة الموارد البشرية والتنمية الاجتماعية · منصة قوى" : "Source: HRSD · Qiwa"}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })()}
 
                   <div
                     style={{
@@ -17445,11 +17430,6 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
         {/* ══ SETTINGS TAB ══════════════════════════════════════════════════ */}
         {mainTab === "settings" && (
           <div style={{ padding: "72px 0 20px" }}>
-            {isAndroidPlatform && (
-              <div style={{ margin: "0 12px 16px", borderRadius: 24, overflow: "hidden" }}>
-                <NativeInlineAdSlot slotId="settings-inline-slot" lang={lang} dark={dark} height={184} />
-              </div>
-            )}
             {(() => {
               const settingsShell = {
                 background: "linear-gradient(145deg, #2c4f95 0%, #1f3f7a 55%, #16305f 100%)",
@@ -18162,36 +18142,7 @@ placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email addres
             <button
               key={tab.key}
               className="nav-tab-item"
-              onClick={() => {
-                if (tab.key === "home") {
-                  goToCountryLanding();
-                  scrollAppToTop();
-                  if (typeof window !== "undefined") {
-                    window.requestAnimationFrame(() => {
-                      scrollAppToTop();
-                    });
-                  }
-                } else if (tab.key === "cv") {
-                  showInterstitialAd();
-                  setMainTab("cv");
-                  setCvMode(null);
-                  setSelectedCvPackage(null);
-                  setCvBuilderScreen("menu");
-                  setSelectedCvBuilderOrder(null);
-                  setCvStep(0);
-                  setCvUnlocked(false);
-                  scrollAppToTop();
-                  if (typeof window !== "undefined") {
-                    window.requestAnimationFrame(() => {
-                      scrollAppToTop();
-                    });
-                  }
-                } else if (tab.key === "study") {
-                  openStudyTabRoot();
-                } else {
-                  setMainTab(tab.key);
-                }
-              }}
+              onClick={() => handleBottomNavPress(tab.key)}
               style={{
                 flex: 1,
                 display: "flex",
